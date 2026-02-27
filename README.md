@@ -2,16 +2,17 @@
 
 Preview: `npm run dev`
 
-1. Motivation/Vision
+1. Overview
 2. Core Functionality
-3. Demographic
-4. Advanced Features
-5. Tech Stack
-6. Data Model
+3. Advanced Features
+4. Tech Stack
+5. Data Model
 
 ---
 
-### 1. Motivation/Vision
+### 1. Overview
+
+#### Motivation/Vision
 
 This application provides preventative and early-stage cognitive support through visual, relational graphs. It can help you maintain routines, and stay on track through calendar integration, as well as preserve identity, and strengthen mental associations between the people, places, and activities most important to you
 
@@ -25,18 +26,18 @@ Our app's aim is to adapt to cognitive progression instead of being limited to a
 
 Visual Relationship Graphs lie at the heart of this application. They let you represents meaningful entities and their relationships to eachother.
 
-### Node Types:
+### 1. Node Types:
 
 - People (family, doctors, caregivers)
 - Places (home, work, doctor’s office)
 - Tasks / Events (Calendar integration)
 - Memories (Journal-entries)
 
-### Edge Types: (TBD)
+### 2. Edge Types: (TBD)
 
-### Adjustable Graph UI
+### 3. UI
 
-The graph is **highly customizable**:
+Each graph is **highly customizable**:
 
 - Node size and visibility control
 - Adjustable number of displayed nodes
@@ -46,22 +47,15 @@ The graph is **highly customizable**:
   - Add relationships
   - Upload images per node
   - Link nodes together
-
-### UI Enhancements:
-
 - Gentle 2D physics (nodes slowly float for an inviting feel)
 - Dynamic node scaling based on importance / urgency
-- Optimized for tablets and larger displays, but usable on phones
 - Accessibility features:
-  - Large date/time display
-  - Emergency call buttons
-  - Simplified layouts for cognitive load reduction
 
 ---
 
-### 4. Advanced Feature Concepts
+### 3. Advanced Feature Concepts
 
-### A. Task / Calendar Integration (Time-Oriented Cognitive Support)
+#### A. Task / Calendar Integration (Time-Oriented Cognitive Support)
 
 - Integrates external calendar APIs
 - Automatically creates task/event nodes
@@ -91,9 +85,7 @@ This targets common decline areas:
 - Planning
 - Sequencing
 
----
-
-### B. Memory / Moment Nodes (Past-Oriented Cognitive Support)
+#### B. Memory / Moment Nodes (Past-Oriented Cognitive Support)
 
 Memory nodes act as visual snapshots of the past, serving as:
 
@@ -115,7 +107,7 @@ Two design options:
 
 ---
 
-### 5. Tech Stack
+### 4. Tech Stack
 
 ### Frontend
 
@@ -148,7 +140,7 @@ Two design options:
 
 ---
 
-### 6. High-Level Data Model (WIP)
+### 5. High-Level Data Model (WIP)
 
 ```swift
 users/{userId}/
