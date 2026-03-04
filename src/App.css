@@ -48,3 +48,134 @@
   margin: 0;
   color: #555;
 }
+
+.home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr);
+  gap: 2rem;
+  margin-top: 1.5rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 768px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-overview h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.home-overview p {
+  margin: 0;
+  color: #4b5563;
+}
+
+.home-auth-card {
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  padding: 1.25rem 1.5rem;
+  background-color: #f9fafb;
+}
+
+.home-auth-subtitle {
+  margin: 0 0 1rem 0;
+  color: #4b5563;
+}
+
+.home-auth-email {
+  font-weight: 600;
+}
+
+.home-auth-toggle {
+  display: inline-flex;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  padding: 0.12rem;
+  background-color: #f9fafb;
+  margin-bottom: 1rem;
+}
+
+.home-auth-toggle-button {
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.home-auth-toggle-button.active {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+.home-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.home-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.home-auth-field input {
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+}
+
+.home-auth-field input:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 1px;
+}
+
+.home-auth-password-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.home-auth-password-row input {
+  flex: 1 1 auto;
+}
+
+.home-auth-password-toggle {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+.home-auth-password-toggle:hover {
+  border-color: #9ca3af;
+}
+
+.tab-content .home-auth-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b91c1c;
+}
+
+.home-auth-button {
+  background-color: #111827;
+  color: #f9fafb;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 1.5rem;
+}
+
+.home-auth-button:hover {
+  background-color: #48284f;
+}
