@@ -1,10 +1,17 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { type User, onAuthStateChanged } from 'firebase/auth'
-import { auth } from '../firebase/firebaseConfig'
-import { signInWithEmailPassword, signOutUser, signUpWithEmailPassword } from '../firebase/auth'
+import { doc, setDoc } from 'firebase/firestore'
+import {
+  signInWithEmailPassword,
+  signOutUser,
+  signUpWithEmailPassword,
+  auth,
+} from '../firebase/auth'
+import { db } from '../firebase/firestore'
 
 type AuthMode = 'signin' | 'signup'
 
+// Handle user authentication and authorization
 function Home() {
   const [authMode, setAuthMode] = useState<AuthMode>('signin')
   const [email, setEmail] = useState('')
@@ -19,16 +26,30 @@ function Home() {
     return () => unsubscribe()
   }, [])
 
+  // Handle form submission (sign in / sign up)
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
     setIsSubmitting(true)
 
     try {
+      let userCredential
       if (authMode === 'signin') {
-        await signInWithEmailPassword(email, password)
+        userCredential = await signInWithEmailPassword(email, password)
       } else {
-        await signUpWithEmailPassword(email, password)
+        userCredential = await signUpWithEmailPassword(email, password)
+      }
+
+      // Store user data in Firestore
+      const { user } = userCredential
+      if (user?.uid != null && user.email != null) {
+        await setDoc(
+          doc(db, 'users', user.uid),
+          {
+            email: user.email,
+          },
+          { merge: true },
+        )
       }
 
       setEmail('')

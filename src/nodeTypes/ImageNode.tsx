@@ -1,6 +1,7 @@
 import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 
+// Default Image Node
 export function ImageNode({ data }: NodeProps) {
   const label = typeof data.label === 'string' ? data.label : ''
   return (
@@ -8,8 +9,8 @@ export function ImageNode({ data }: NodeProps) {
       <Handle type="target" position={Position.Top} />
       <div
         style={{
-          width: 200,
-          height: 200,
+          width: 80,
+          height: 80,
           borderRadius: '50%',
           background: `url(${data.image || 'https://via.placeholder.com/150'})`,
           backgroundSize: 'cover',

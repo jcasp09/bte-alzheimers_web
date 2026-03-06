@@ -26,8 +26,7 @@ const initialNodes: Node[] = [
 
 // Initial edges
 const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', type: 'default' },
-
+  { id: 'e1-2', source: '1', target: '2', type: 'default' }
 ]
 
 function FlowDiagram({ nodes: initialNodesProp, edges: initialEdgesProp }: { nodes: Node[]; edges: Edge[] }) {
