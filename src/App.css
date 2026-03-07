@@ -179,3 +179,33 @@
 .home-auth-button:hover {
   background-color: #48284f;
 }
+
+/* Graph node subtle motion: bounce-in on appear, then gentle float */
+@keyframes node-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes node-bounce-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Target inner node content so we don't override React Flow's position transform */
+.react-flow__node.graph-node-motion > div {
+  animation: node-bounce-in 0.4s ease-out, node-float 3s ease-in-out 0.4s infinite;
+}

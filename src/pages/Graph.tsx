@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { Background, Controls, ReactFlow, addEdge, useEdgesState, useNodesState } from '@xyflow/react'
+import { Background, BackgroundVariant, Controls, ReactFlow, addEdge, useEdgesState, useNodesState } from '@xyflow/react'
 import type { Connection, Edge, Node } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 // Node types
@@ -13,20 +13,19 @@ const initialNodes: Node[] = [
     id: '1',
     position: { x: 0, y: 0 },
     data: { label: '', image: browtImage },
-    type: NODE_TYPE.IMAGE,
-    className: 'start-node',
+    type: NODE_TYPE.PERSON,
   },
   {
     id: '2',
     position: { x: 0, y: 250 },
-    data: { label: 'End node' },
-    type: NODE_TYPE.IMAGE,
+    data: { label: 'End node.' },
+    type: NODE_TYPE.PERSON,
   },
 ]
 
 // Initial edges
 const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', type: 'default' }
+  { id: 'e1-2', source: '1', target: '2', type: 'line' }
 ]
 
 function FlowDiagram({ nodes: initialNodesProp, edges: initialEdgesProp }: { nodes: Node[]; edges: Edge[] }) {
@@ -50,7 +49,12 @@ function FlowDiagram({ nodes: initialNodesProp, edges: initialEdgesProp }: { nod
       nodeTypes={nodeTypes}
       fitView
     >
-      <Background />
+      <Background
+        id="1"
+        gap={25}
+        color="#f1f1f1"
+        variant={BackgroundVariant.Cross}
+      />
       <Controls />
     </ReactFlow>
   )

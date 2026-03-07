@@ -1,8 +1,8 @@
 import { memo } from 'react'
-import { ImageNode } from './ImageNode'
+import { PersonNode } from './PersonNode'
 
-export const NODE_TYPE = { IMAGE: 'image' } as const
+export const NODE_TYPE = { PERSON : 'person' } as const
 
 export const nodeTypes = {
-  [NODE_TYPE.IMAGE]: memo(ImageNode),
+  [NODE_TYPE.PERSON]: memo(PersonNode),
 }

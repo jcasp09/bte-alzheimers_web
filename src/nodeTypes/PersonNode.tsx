@@ -2,7 +2,7 @@ import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 
 // Default Image Node
-export function ImageNode({ data }: NodeProps) {
+export function PersonNode({ data }: NodeProps) {
   const label = typeof data.label === 'string' ? data.label : ''
   return (
     <>
