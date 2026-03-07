@@ -1,62 +1,106 @@
-import { useCallback } from 'react'
-import { Background, Controls, ReactFlow, addEdge, useEdgesState, useNodesState } from '@xyflow/react'
-import type { Connection, Edge, Node } from '@xyflow/react'
-import '@xyflow/react/dist/style.css'
-// Node types
-import { NODE_TYPE, nodeTypes } from '../nodeTypes'
-// Image asset (Vite resolves this to a URL)
-import browtImage from '../assets/images/browt.jpeg'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import type { Edge, Node } from '@xyflow/react'
+import { useAuth } from '../contexts/AuthContext'
+import { DefaultFlow } from '../components/DefaultFlow'
+import { getEdges, getNodes } from '../firebase/graph'
 
-// Initial nodes
-const initialNodes: Node[] = [
-  {
-    id: '1',
-    position: { x: 0, y: 0 },
-    data: { label: '', image: browtImage },
-    type: NODE_TYPE.IMAGE,
-    className: 'start-node',
-  },
-  {
-    id: '2',
-    position: { x: 0, y: 250 },
-    data: { label: 'End node' },
-    type: NODE_TYPE.IMAGE,
-  },
-]
-
-// Initial edges
-const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', type: 'default' }
-]
-
-function FlowDiagram({ nodes: initialNodesProp, edges: initialEdgesProp }: { nodes: Node[]; edges: Edge[] }) {
-  const [nodes, , onNodesChange] = useNodesState(initialNodesProp)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdgesProp)
-
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      setEdges((eds) => addEdge(connection, eds))
+function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
+  return nodes.map((doc) => ({
+    id: doc.id,
+    type: doc.type as 'person' | 'place',
+    data: {
+      name: doc.name,
+      relationship: doc.relationship,
+      email: doc.email,
+      address: doc.address,
     },
-    [setEdges],
-  )
+    position: doc.position ?? { x: 0, y: 0 },
+  }))
+}
 
-  return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      nodeTypes={nodeTypes}
-      fitView
-    >
-      <Background />
-      <Controls />
-    </ReactFlow>
-  )
+function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>): Edge[] {
+  return edges.map((doc) => ({
+    id: doc.id,
+    source: doc.sourceNodeId,
+    target: doc.targetNodeId,
+    type: 'default',
+  }))
 }
 
 function Graph() {
+  const { user } = useAuth()
+  const [nodes, setNodes] = useState<Node[]>([])
+  const [edges, setEdges] = useState<Edge[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load nodes and edges from Firestore
+  useEffect(() => {
+    if (!user?.uid) {
+      queueMicrotask(() => {
+        setLoading(false)
+        setNodes([])
+        setEdges([])
+      })
+      return
+    }
+    let cancelled = false
+    queueMicrotask(() => {
+      setLoading(true)
+      setError(null)
+    })
+    Promise.all([getNodes(user.uid), getEdges(user.uid)])
+      .then(([nodesData, edgesData]) => {
+        if (cancelled) return
+        setNodes(firestoreNodesToReactFlow(nodesData))
+        setEdges(firestoreEdgesToReactFlow(edgesData))
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load graph')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.uid])
+
+  // If user is not logged in, send to login page
+  if (!user) {
+    return (
+      <section>
+        <h1>Graph</h1>
+        <p>Sign in to view your graph.</p>
+        <Link to="/">Go to Home</Link>
+      </section>
+    )
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <section>
+        <h1>Graph</h1>
+        <p>Loading your graph…</p>
+      </section>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <section>
+        <h1>Graph</h1>
+        <p className="home-auth-error">{error}</p>
+      </section>
+    )
+  }
+
+  // Render the graph
   return (
     <section>
       <div
@@ -67,7 +111,11 @@ function Graph() {
           border: '1px solid #e2e2e2',
         }}
       >
-        <FlowDiagram key={JSON.stringify({ nodes: initialNodes, edges: initialEdges })} nodes={initialNodes} edges={initialEdges} />
+        <DefaultFlow
+          key={`${user.uid}-${nodes.length}-${edges.length}`}
+          nodes={nodes}
+          edges={edges}
+        />
       </div>
     </section>
   )

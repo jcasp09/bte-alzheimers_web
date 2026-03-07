@@ -31,7 +31,7 @@ function Home() {
     event.preventDefault()
     setError(null)
     setIsSubmitting(true)
-
+    
     try {
       let userCredential
       if (authMode === 'signin') {
@@ -40,7 +40,7 @@ function Home() {
         userCredential = await signUpWithEmailPassword(email, password)
       }
 
-      // Store user data in Firestore
+      // Access uid from userCredential and store in Firestore
       const { user } = userCredential
       if (user?.uid != null && user.email != null) {
         await setDoc(

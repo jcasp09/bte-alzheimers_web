@@ -1,11 +1,13 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
 import './App.css'
+import { AuthProvider } from './contexts/AuthContext'
 import Home from './pages/Home'
 import Graph from './pages/Graph'
 import Profile from './pages/Profile'
 
 function App() {
   return (
+    <AuthProvider>
     <div className="app">
       <nav className="tabs">
         <NavLink
@@ -37,6 +39,7 @@ function App() {
         </Routes>
       </main>
     </div>
+    </AuthProvider>
   )
 }
 
