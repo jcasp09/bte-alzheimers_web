@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react-swc'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true, // Necessary for Android dev
     allowedHosts: ['roentgenographic-informed-chadwick.ngrok-free.dev'],
   },
 })
