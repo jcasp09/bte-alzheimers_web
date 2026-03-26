@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -8,6 +8,11 @@ import {
   type NodeDoc,
   type NodeType,
 } from '../firebase/graph'
+import {
+  connectGoogleCalendar,
+  isGoogleCalendarConnected,
+  syncGoogleCalendarTasks,
+} from '../firebase/calendar'
 
 type AddNodeStep = 'type' | 'form'
 
@@ -25,6 +30,18 @@ function Profile() {
   const [existingNodes, setExistingNodes] = useState<NodeDoc[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isCalendarConnected, setIsCalendarConnected] = useState(false)
+  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false)
+  const [isSyncingCalendar, setIsSyncingCalendar] = useState(false)
+  const [calendarStatus, setCalendarStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (user?.uid) {
+      setIsCalendarConnected(isGoogleCalendarConnected(user.uid))
+    } else {
+      setIsCalendarConnected(false)
+    }
+  }, [user?.uid])
 
   const openAddNode = () => {
     setAddNodeOpen(true)
@@ -68,13 +85,46 @@ function Profile() {
           : { type: 'place' as const, name, address }
       const newNodeId = await createNode(user.uid, data)
       if (linkToNodeId) {
-        await createEdge(user.uid, newNodeId, linkToNodeId)
+        await createEdge(user.uid, newNodeId, linkToNodeId, 'context')
       }
       closeAddNode()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add node')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleConnectCalendar = async () => {
+    if (!user?.uid) return
+    setError(null)
+    setCalendarStatus(null)
+    setIsConnectingCalendar(true)
+    try {
+      await connectGoogleCalendar(user.uid)
+      setIsCalendarConnected(true)
+      setCalendarStatus('Google Calendar connected.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to connect calendar'
+      setError(message)
+    } finally {
+      setIsConnectingCalendar(false)
+    }
+  }
+
+  const handleSyncCalendar = async () => {
+    if (!user?.uid) return
+    setError(null)
+    setCalendarStatus(null)
+    setIsSyncingCalendar(true)
+    try {
+      const imported = await syncGoogleCalendarTasks(user.uid)
+      setCalendarStatus(`Synced ${imported} task occurrences from Google Calendar.`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to sync calendar'
+      setError(message)
+    } finally {
+      setIsSyncingCalendar(false)
     }
   }
 
@@ -92,6 +142,30 @@ function Profile() {
     <section>
       <h1>Profile</h1>
       <p>Profile details and settings will live here.</p>
+
+      <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={handleConnectCalendar}
+          disabled={isConnectingCalendar}
+          className="home-auth-button"
+          style={{ marginTop: 0 }}
+        >
+          {isConnectingCalendar ? 'Connecting...' : isCalendarConnected ? 'Reconnect Google Calendar' : 'Connect Google Calendar'}
+        </button>
+        <button
+          type="button"
+          onClick={handleSyncCalendar}
+          disabled={!isCalendarConnected || isSyncingCalendar}
+          className="home-auth-toggle-button"
+          style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
+        >
+          {isSyncingCalendar ? 'Syncing...' : 'Sync calendar tasks'}
+        </button>
+      </div>
+      {calendarStatus ? (
+        <p style={{ marginTop: '0.5rem', color: '#166534' }}>{calendarStatus}</p>
+      ) : null}
 
       <div style={{ marginTop: '1rem' }}>
         <button
