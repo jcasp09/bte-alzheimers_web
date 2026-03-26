@@ -11,13 +11,9 @@ function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>):
     type: doc.type,
     data: {
       name: doc.name,
-      relationship: doc.relationship,
-      email: doc.email,
-      address: doc.address,
       title: doc.title,
       startAt: doc.startAt,
       endAt: doc.endAt,
-      calendarEventId: doc.calendarEventId,
       priority: doc.priority,
       location: doc.location,
     },
@@ -34,14 +30,13 @@ function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>):
   }))
 }
 
-function Graph() {
+function Tasks() {
   const { user } = useAuth()
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load nodes and edges from Firestore
   useEffect(() => {
     if (!user?.uid) {
       queueMicrotask(() => {
@@ -56,7 +51,7 @@ function Graph() {
       setLoading(true)
       setError(null)
     })
-    Promise.all([getNodes(user.uid, 'context'), getEdges(user.uid, 'context')])
+    Promise.all([getNodes(user.uid, 'tasks'), getEdges(user.uid, 'tasks')])
       .then(([nodesData, edgesData]) => {
         if (cancelled) return
         setNodes(firestoreNodesToReactFlow(nodesData))
@@ -64,7 +59,7 @@ function Graph() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load graph')
+          setError(err instanceof Error ? err.message : 'Failed to load tasks graph')
         }
       })
       .finally(() => {
@@ -75,38 +70,34 @@ function Graph() {
     }
   }, [user?.uid])
 
-  // If user is not logged in, send to login page
   if (!user) {
     return (
       <section>
-        <h1>Graph</h1>
-        <p>Sign in to view your graph.</p>
+        <h1>Tasks</h1>
+        <p>Sign in to view your calendar task graph.</p>
         <Link to="/">Go to Home</Link>
       </section>
     )
   }
 
-  // Loading state
   if (loading) {
     return (
       <section>
-        <h1>Graph</h1>
-        <p>Loading your graph…</p>
+        <h1>Tasks</h1>
+        <p>Loading your task graph...</p>
       </section>
     )
   }
 
-  // Error state
   if (error) {
     return (
       <section>
-        <h1>Graph</h1>
+        <h1>Tasks</h1>
         <p className="home-auth-error">{error}</p>
       </section>
     )
   }
 
-  // Render the graph
   return (
     <section>
       <div
@@ -118,7 +109,7 @@ function Graph() {
         }}
       >
         <DefaultFlow
-          key={`${user.uid}-${nodes.length}-${edges.length}`}
+          key={`${user.uid}-${nodes.length}-${edges.length}-tasks`}
           nodes={nodes}
           edges={edges}
         />
@@ -127,4 +118,4 @@ function Graph() {
   )
 }
 
-export default Graph
+export default Tasks

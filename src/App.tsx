@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import Home from './pages/Home'
 import Graph from './pages/Graph'
 import Profile from './pages/Profile'
+import Tasks from './pages/Tasks'
 
 function App() {
   return (
@@ -29,6 +30,12 @@ function App() {
         >
           Profile
         </NavLink>
+        <NavLink
+          to="/tasks"
+          className={({ isActive }) => (isActive ? 'tab tab-active' : 'tab')}
+        >
+          Tasks
+        </NavLink>
       </nav>
 
       <main className="tab-content">
@@ -36,6 +43,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/graph" element={<Graph />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/tasks" element={<Tasks />} />
         </Routes>
       </main>
     </div>
