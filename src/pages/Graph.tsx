@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Edge, Node } from '@xyflow/react'
+import type { Edge, Node, Viewport } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
-import { getEdges, getNodes } from '../firebase/graph'
+import { getEdges, getGraphViewport, getNodes, saveGraphViewport, saveNodePositions } from '../firebase/graph'
 
 function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
   return nodes.map((doc) => ({
@@ -40,6 +40,7 @@ function Graph() {
   const [edges, setEdges] = useState<Edge[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [initialViewport, setInitialViewport] = useState<Viewport | undefined>(undefined)
 
   // Load nodes and edges from Firestore
   useEffect(() => {
@@ -56,11 +57,20 @@ function Graph() {
       setLoading(true)
       setError(null)
     })
-    Promise.all([getNodes(user.uid, 'context'), getEdges(user.uid, 'context')])
-      .then(([nodesData, edgesData]) => {
+    Promise.all([
+      getNodes(user.uid, 'context'),
+      getEdges(user.uid, 'context'),
+      getGraphViewport(user.uid, 'context'),
+    ])
+      .then(([nodesData, edgesData, viewport]) => {
         if (cancelled) return
         setNodes(firestoreNodesToReactFlow(nodesData))
         setEdges(firestoreEdgesToReactFlow(edgesData))
+        if (viewport) {
+          setInitialViewport(viewport)
+        } else {
+          setInitialViewport(undefined)
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -121,6 +131,21 @@ function Graph() {
           key={`${user.uid}-${nodes.length}-${edges.length}`}
           nodes={nodes}
           edges={edges}
+          defaultViewport={initialViewport}
+          onSavePositions={(updatedNodes) => {
+            // fire-and-forget; we don't need to block unmount on this
+            void saveNodePositions(
+              user.uid,
+              updatedNodes.map((n) => ({
+                id: n.id,
+                position: n.position,
+              })),
+              'context',
+            )
+          }}
+          onSaveViewport={(viewport) => {
+            void saveGraphViewport(user.uid, viewport, 'context')
+          }}
         />
       </div>
     </section>
