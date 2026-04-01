@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDocs, setDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, query, setDoc, where } from 'firebase/firestore'
 import { db } from './firestore'
 
 export type GraphId = 'context' | 'tasks'
@@ -107,4 +107,38 @@ export async function getEdges(uid: string, graphId: GraphId = 'context'): Promi
     id: doc.id,
     ...doc.data(),
   })) as EdgeDoc[]
+}
+
+export async function deleteEdge(
+  uid: string,
+  edgeId: string,
+  graphId: GraphId = 'context',
+): Promise<void> {
+  const edgeRef = doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)
+  await deleteDoc(edgeRef)
+}
+
+export async function deleteNodeAndEdges(
+  uid: string,
+  nodeId: string,
+  graphId: GraphId = 'context',
+): Promise<void> {
+  const nodeRef = doc(db, 'users', uid, 'graphs', graphId, 'nodes', nodeId)
+  await deleteDoc(nodeRef)
+
+  const edgesCol = collection(db, 'users', uid, 'graphs', graphId, 'edges')
+  const [sourceSnap, targetSnap] = await Promise.all([
+    getDocs(query(edgesCol, where('sourceNodeId', '==', nodeId))),
+    getDocs(query(edgesCol, where('targetNodeId', '==', nodeId))),
+  ])
+
+  const edgeIds = new Set<string>()
+  sourceSnap.forEach((d) => edgeIds.add(d.id))
+  targetSnap.forEach((d) => edgeIds.add(d.id))
+
+  await Promise.all(
+    Array.from(edgeIds).map((edgeId) =>
+      deleteDoc(doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)),
+    ),
+  )
 }

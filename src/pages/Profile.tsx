@@ -4,7 +4,11 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   createEdge,
   createNode,
+  deleteNodeAndEdges,
+  deleteEdge,
+  getEdges,
   getNodes,
+  type EdgeDoc,
   type NodeDoc,
   type NodeType,
 } from '../firebase/graph'
@@ -34,6 +38,16 @@ function Profile() {
   const [isConnectingCalendar, setIsConnectingCalendar] = useState(false)
   const [isSyncingCalendar, setIsSyncingCalendar] = useState(false)
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null)
+  const [deleteNodeOpen, setDeleteNodeOpen] = useState(false)
+  const [deleteCandidates, setDeleteCandidates] = useState<NodeDoc[]>([])
+  const [nodeIdToDelete, setNodeIdToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteEdgeOpen, setDeleteEdgeOpen] = useState(false)
+  const [edgeCandidates, setEdgeCandidates] = useState<EdgeDoc[]>([])
+  const [edgeIdToDelete, setEdgeIdToDelete] = useState<string | null>(null)
+  const [addConnectionOpen, setAddConnectionOpen] = useState(false)
+  const [connectionSourceId, setConnectionSourceId] = useState<string | null>(null)
+  const [connectionTargetId, setConnectionTargetId] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.uid) {
@@ -60,6 +74,51 @@ function Profile() {
     setAddNodeOpen(false)
     setStep('type')
     setShowLinkList(false)
+  }
+
+  const openDeleteNode = async () => {
+    if (!user?.uid) return
+    setError(null)
+    setDeleteNodeOpen(true)
+    setIsDeleting(false)
+    setNodeIdToDelete(null)
+    try {
+      const nodes = await getNodes(user.uid, 'context')
+      setDeleteCandidates(nodes)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load nodes')
+    }
+  }
+
+  const openAddConnection = async () => {
+    if (!user?.uid) return
+    setError(null)
+    setAddConnectionOpen(true)
+    setConnectionSourceId(null)
+    setConnectionTargetId(null)
+    try {
+      const nodes = await getNodes(user.uid, 'context')
+      setExistingNodes(nodes)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load nodes')
+    }
+  }
+
+  const openDeleteEdge = async () => {
+    if (!user?.uid) return
+    setError(null)
+    setDeleteEdgeOpen(true)
+    setEdgeIdToDelete(null)
+    try {
+      const [nodes, edges] = await Promise.all([
+        getNodes(user.uid, 'context'),
+        getEdges(user.uid, 'context'),
+      ])
+      setExistingNodes(nodes)
+      setEdgeCandidates(edges)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load connections')
+    }
   }
 
   const openLinkList = async () => {
@@ -175,6 +234,30 @@ function Profile() {
           style={{ marginTop: 0 }}
         >
           Add node
+        </button>
+        <button
+          type="button"
+          onClick={openAddConnection}
+          className="home-auth-toggle-button"
+          style={{ marginTop: 0, marginLeft: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}
+        >
+          Add connection
+        </button>
+        <button
+          type="button"
+          onClick={openDeleteNode}
+          className="home-auth-toggle-button"
+          style={{ marginTop: 0, marginLeft: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}
+        >
+          Delete node
+        </button>
+        <button
+          type="button"
+          onClick={openDeleteEdge}
+          className="home-auth-toggle-button"
+          style={{ marginTop: 0, marginLeft: '0.5rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}
+        >
+          Delete connection
         </button>
       </div>
 
@@ -390,6 +473,350 @@ function Profile() {
               </div>
             </form>
           )}
+        </div>
+      )}
+
+      {addConnectionOpen && (
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: '0.5rem',
+            backgroundColor: '#f3f4ff',
+          }}
+        >
+          <p style={{ marginBottom: '0.25rem', fontWeight: 600 }}>Add a connection</p>
+          <p style={{ marginBottom: '0.75rem', fontSize: 12, color: '#6b7280' }}>
+            Choose a source node and a target node to connect in your context graph.
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <p style={{ marginBottom: '0.25rem', fontWeight: 600, fontSize: 12 }}>Source node</p>
+              <ul
+                style={{
+                  margin: 0,
+                  padding: 0,
+                  listStyle: 'none',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.5rem',
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  backgroundColor: '#fff',
+                }}
+              >
+                {existingNodes.length === 0 ? (
+                  <li style={{ padding: '0.5rem', color: '#6b7280' }}>No nodes yet.</li>
+                ) : (
+                  existingNodes.map((node) => (
+                    <li
+                      key={node.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setConnectionSourceId(node.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setConnectionSourceId(node.id)
+                        }
+                      }}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f3f4f6',
+                        backgroundColor:
+                          connectionSourceId === node.id ? '#e0f2fe' : 'transparent',
+                        fontSize: 12,
+                      }}
+                    >
+                      {node.name} ({node.type})
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <p style={{ marginBottom: '0.25rem', fontWeight: 600, fontSize: 12 }}>Target node</p>
+              <ul
+                style={{
+                  margin: 0,
+                  padding: 0,
+                  listStyle: 'none',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.5rem',
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  backgroundColor: '#fff',
+                }}
+              >
+                {existingNodes.length === 0 ? (
+                  <li style={{ padding: '0.5rem', color: '#6b7280' }}>No nodes yet.</li>
+                ) : (
+                  existingNodes.map((node) => (
+                    <li
+                      key={node.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setConnectionTargetId(node.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setConnectionTargetId(node.id)
+                        }
+                      }}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f3f4f6',
+                        backgroundColor:
+                          connectionTargetId === node.id ? '#e0f2fe' : 'transparent',
+                        fontSize: 12,
+                      }}
+                    >
+                      {node.name} ({node.type})
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+          {error != null && (
+            <p className="home-auth-error" style={{ marginTop: '0.5rem' }}>
+              {error}
+            </p>
+          )}
+          <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              disabled={!connectionSourceId || !connectionTargetId}
+              className="home-auth-button"
+              style={{ marginTop: 0 }}
+              onClick={async () => {
+                if (!user?.uid || !connectionSourceId || !connectionTargetId) return
+                setError(null)
+                try {
+                  await createEdge(user.uid, connectionSourceId, connectionTargetId, 'context')
+                  setAddConnectionOpen(false)
+                  setConnectionSourceId(null)
+                  setConnectionTargetId(null)
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Failed to add connection')
+                }
+              }}
+            >
+              Add connection
+            </button>
+            <button
+              type="button"
+              className="home-auth-toggle-button"
+              style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
+              onClick={() => {
+                setAddConnectionOpen(false)
+                setConnectionSourceId(null)
+                setConnectionTargetId(null)
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {deleteNodeOpen && (
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            border: '1px solid #fecaca',
+            borderRadius: '0.5rem',
+            backgroundColor: '#fef2f2',
+          }}
+        >
+          <p style={{ marginBottom: '0.25rem', fontWeight: 600 }}>Delete a node</p>
+          <p style={{ marginBottom: '0.75rem', fontSize: 12, color: '#6b7280' }}>
+            This will remove the node and any connections linked to it from your context graph.
+          </p>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: 'none',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.5rem',
+              maxHeight: 220,
+              overflowY: 'auto',
+              backgroundColor: '#fff',
+            }}
+          >
+            {deleteCandidates.length === 0 ? (
+              <li style={{ padding: '0.5rem', color: '#6b7280' }}>No nodes to delete.</li>
+            ) : (
+              deleteCandidates.map((node) => (
+                <li
+                  key={node.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setNodeIdToDelete(node.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setNodeIdToDelete(node.id)
+                    }
+                  }}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid #f3f4f6',
+                    backgroundColor: nodeIdToDelete === node.id ? '#fee2e2' : 'transparent',
+                  }}
+                >
+                  {node.name} ({node.type})
+                </li>
+              ))
+            )}
+          </ul>
+          {error != null && (
+            <p className="home-auth-error" style={{ marginTop: '0.5rem' }}>
+              {error}
+            </p>
+          )}
+          <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              disabled={!nodeIdToDelete || isDeleting}
+              className="home-auth-button"
+              style={{ marginTop: 0 }}
+              onClick={async () => {
+                if (!user?.uid || !nodeIdToDelete) return
+                setError(null)
+                setIsDeleting(true)
+                try {
+                  await deleteNodeAndEdges(user.uid, nodeIdToDelete, 'context')
+                  setDeleteCandidates((prev) => prev.filter((n) => n.id !== nodeIdToDelete))
+                  setNodeIdToDelete(null)
+                  setDeleteNodeOpen(false)
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Failed to delete node')
+                } finally {
+                  setIsDeleting(false)
+                }
+              }}
+            >
+              {isDeleting ? 'Deleting…' : 'Confirm delete'}
+            </button>
+            <button
+              type="button"
+              className="home-auth-toggle-button"
+              style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
+              onClick={() => {
+                setDeleteNodeOpen(false)
+                setNodeIdToDelete(null)
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {deleteEdgeOpen && (
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: '0.5rem',
+            backgroundColor: '#eff6ff',
+          }}
+        >
+          <p style={{ marginBottom: '0.25rem', fontWeight: 600 }}>Delete a connection</p>
+          <p style={{ marginBottom: '0.75rem', fontSize: 12, color: '#6b7280' }}>
+            Choose a connection between two nodes to remove it from your context graph.
+          </p>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: 'none',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.5rem',
+              maxHeight: 220,
+              overflowY: 'auto',
+              backgroundColor: '#fff',
+            }}
+          >
+            {edgeCandidates.length === 0 ? (
+              <li style={{ padding: '0.5rem', color: '#6b7280' }}>No connections to delete.</li>
+            ) : (
+              edgeCandidates.map((edge) => {
+                const sourceName =
+                  existingNodes.find((n) => n.id === edge.sourceNodeId)?.name ?? edge.sourceNodeId
+                const targetName =
+                  existingNodes.find((n) => n.id === edge.targetNodeId)?.name ?? edge.targetNodeId
+                return (
+                  <li
+                    key={edge.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setEdgeIdToDelete(edge.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setEdgeIdToDelete(edge.id)
+                      }
+                    }}
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #f3f4f6',
+                      backgroundColor: edgeIdToDelete === edge.id ? '#dbeafe' : 'transparent',
+                      fontSize: 12,
+                    }}
+                  >
+                    {sourceName} → {targetName}
+                  </li>
+                )
+              })
+            )}
+          </ul>
+          {error != null && (
+            <p className="home-auth-error" style={{ marginTop: '0.5rem' }}>
+              {error}
+            </p>
+          )}
+          <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              disabled={!edgeIdToDelete}
+              className="home-auth-button"
+              style={{ marginTop: 0 }}
+              onClick={async () => {
+                if (!user?.uid || !edgeIdToDelete) return
+                setError(null)
+                try {
+                  await deleteEdge(user.uid, edgeIdToDelete, 'context')
+                  setEdgeCandidates((prev) => prev.filter((e) => e.id !== edgeIdToDelete))
+                  setEdgeIdToDelete(null)
+                  setDeleteEdgeOpen(false)
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Failed to delete connection')
+                }
+              }}
+            >
+              Delete connection
+            </button>
+            <button
+              type="button"
+              className="home-auth-toggle-button"
+              style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
+              onClick={() => {
+                setDeleteEdgeOpen(false)
+                setEdgeIdToDelete(null)
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </section>
