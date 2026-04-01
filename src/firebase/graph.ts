@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, query, setDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore'
 import { db } from './firestore'
 
 export type GraphId = 'context' | 'tasks'
@@ -8,7 +8,8 @@ export type CreatePersonNodeData = {
   type: 'person'
   name: string
   relationship: string
-  email: string
+  email?: string
+  phone?: string
 }
 
 export type CreatePlaceNodeData = {
@@ -78,6 +79,7 @@ export type NodeDoc = {
   position?: { x: number; y: number }
   relationship?: string
   email?: string
+  phone?: string
   address?: string
   title?: string
   startAt?: string
@@ -91,6 +93,12 @@ export type EdgeDoc = {
   id: string
   sourceNodeId: string
   targetNodeId: string
+}
+
+export type GraphViewport = {
+  x: number
+  y: number
+  zoom: number
 }
 
 export async function getNodes(uid: string, graphId: GraphId = 'context'): Promise<NodeDoc[]> {
@@ -107,6 +115,52 @@ export async function getEdges(uid: string, graphId: GraphId = 'context'): Promi
     id: doc.id,
     ...doc.data(),
   })) as EdgeDoc[]
+}
+
+export async function saveNodePositions(
+  uid: string,
+  nodes: { id: string; position: { x: number; y: number } }[],
+  graphId: GraphId = 'context',
+): Promise<void> {
+  if (nodes.length === 0) return
+  const batch = writeBatch(db)
+  nodes.forEach((node) => {
+    const ref = doc(db, 'users', uid, 'graphs', graphId, 'nodes', node.id)
+    batch.set(
+      ref,
+      {
+        position: node.position,
+      },
+      { merge: true },
+    )
+  })
+  await batch.commit()
+}
+
+export async function saveGraphViewport(
+  uid: string,
+  viewport: GraphViewport,
+  graphId: GraphId = 'context',
+): Promise<void> {
+  const ref = doc(db, 'users', uid, 'graphs', graphId, 'meta', 'viewport')
+  await setDoc(
+    ref,
+    {
+      viewport,
+    },
+    { merge: true },
+  )
+}
+
+export async function getGraphViewport(
+  uid: string,
+  graphId: GraphId = 'context',
+): Promise<GraphViewport | null> {
+  const ref = doc(db, 'users', uid, 'graphs', graphId, 'meta', 'viewport')
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return null
+  const data = snap.data() as { viewport?: GraphViewport }
+  return data.viewport ?? null
 }
 
 export async function deleteEdge(

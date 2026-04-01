@@ -28,6 +28,7 @@ function Profile() {
   const [name, setName] = useState('')
   const [relationship, setRelationship] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [linkToNodeId, setLinkToNodeId] = useState<string | null>(null)
   const [showLinkList, setShowLinkList] = useState(false)
@@ -64,6 +65,7 @@ function Profile() {
     setName('')
     setRelationship('')
     setEmail('')
+    setPhone('')
     setAddress('')
     setLinkToNodeId(null)
     setShowLinkList(false)
@@ -140,7 +142,7 @@ function Profile() {
     try {
       const data =
         nodeType === 'person'
-          ? { type: 'person' as const, name, relationship, email }
+          ? { type: 'person' as const, name, relationship, email, phone }
           : { type: 'place' as const, name, address }
       const newNodeId = await createNode(user.uid, data)
       if (linkToNodeId) {
@@ -276,7 +278,7 @@ function Profile() {
               <p style={{ marginBottom: '0.5rem', fontWeight: 600 }}>
                 Choose node type
               </p>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -306,6 +308,18 @@ function Profile() {
                   }}
                 >
                   Place
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAddNode}
+                  className="home-auth-toggle-button"
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: '0.5rem',
+                  }}
+                >
+                  Cancel
                 </button>
               </div>
             </div>
@@ -339,11 +353,21 @@ function Profile() {
                   </div>
                   <div style={{ marginBottom: '0.75rem' }}>
                     <label className="home-auth-field">
-                      <span>Email</span>
+                      <span>Email (optional)</span>
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label className="home-auth-field">
+                      <span>Phone (optional)</span>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                       />
                     </label>
                   </div>
