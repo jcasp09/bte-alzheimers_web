@@ -75,7 +75,7 @@ function Home() {
   return (
     <section>
       <h1>Home</h1>
-      <p>Welcome to the BTE-Alzheimer&apos;s project dashboard.</p>
+      <p>Welcome to the MemoryJog dashboard.</p>
       <div className="home-layout">
         <div className="home-overview">
           <h2>Your cognitive support hub</h2>
