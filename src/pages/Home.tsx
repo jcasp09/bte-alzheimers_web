@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type SubmitEvent, useEffect, useState } from 'react'
 import { type User, onAuthStateChanged } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import {
@@ -27,7 +27,7 @@ function Home() {
   }, [])
 
   // Handle form submission (sign in / sign up)
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
     setIsSubmitting(true)
