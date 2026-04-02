@@ -11,24 +11,34 @@ import { DeleteConnectionModal } from '../components/modals/DeleteConnectionModa
 
 type OpenPanel = 'addNode' | 'addConnection' | 'deleteNode' | 'deleteConnection' | null
 
+const CONTEXT_NODE_TYPES = new Set(['person', 'place', 'task'])
+
 function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
-  return nodes.map((doc) => ({
-    id: doc.id,
-    type: doc.type,
-    data: {
-      name: doc.name,
-      relationship: doc.relationship,
-      email: doc.email,
-      address: doc.address,
-      title: doc.title,
-      startAt: doc.startAt,
-      endAt: doc.endAt,
-      calendarEventId: doc.calendarEventId,
-      priority: doc.priority,
-      location: doc.location,
-    },
-    position: doc.position ?? { x: 0, y: 0 },
-  }))
+  return nodes
+    .filter(
+      (doc) =>
+        CONTEXT_NODE_TYPES.has(doc.type) &&
+        // Drop corrupted / position-only ghosts (e.g. from stale save after delete)
+        Boolean(typeof doc.name === 'string' && doc.name.trim().length > 0 || doc.type === 'task'),
+    )
+    .map((doc) => ({
+      id: doc.id,
+      type: doc.type,
+      data: {
+        name: doc.name,
+        relationship: doc.relationship,
+        email: doc.email,
+        phone: doc.phone,
+        address: doc.address,
+        title: doc.title,
+        startAt: doc.startAt,
+        endAt: doc.endAt,
+        calendarEventId: doc.calendarEventId,
+        priority: doc.priority,
+        location: doc.location,
+      },
+      position: doc.position ?? { x: 0, y: 0 },
+    }))
 }
 
 function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>): Edge[] {

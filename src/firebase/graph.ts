@@ -123,8 +123,16 @@ export async function saveNodePositions(
   graphId: GraphId = 'context',
 ): Promise<void> {
   if (nodes.length === 0) return
+  // Only update docs that still exist. setDoc(..., { merge: true }) on a deleted id
+  // would recreate an empty node (position-only), which shows as blank "()" on the graph
+  // when DefaultFlow unmounts with stale React Flow state after a delete.
+  const col = collection(db, 'users', uid, 'graphs', graphId, 'nodes')
+  const snapshot = await getDocs(col)
+  const existingIds = new Set(snapshot.docs.map((d) => d.id))
+  const toSave = nodes.filter((n) => existingIds.has(n.id))
+  if (toSave.length === 0) return
   const batch = writeBatch(db)
-  nodes.forEach((node) => {
+  toSave.forEach((node) => {
     const ref = doc(db, 'users', uid, 'graphs', graphId, 'nodes', node.id)
     batch.set(
       ref,
