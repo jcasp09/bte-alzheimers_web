@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type SubmitEvent, useState } from 'react'
 import { createEdge, createNode, getNodes, type NodeDoc, type NodeType } from '../../firebase/graph'
 import { Modal } from './Modal'
 
@@ -43,7 +43,7 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
     setError(null)
   }
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
     setError(null)
     setIsSubmitting(true)
