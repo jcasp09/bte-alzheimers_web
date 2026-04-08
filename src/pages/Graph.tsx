@@ -1,44 +1,50 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Edge, Node, Viewport } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
-import { getEdges, getGraphViewport, getNodes, saveGraphViewport, saveNodePositions } from '../firebase/graph'
+import { getEdges, getGraphViewport, getNodes, saveGraphViewport, saveNodePositions, type NodeType } from '../firebase/graph'
 import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
-import { DeleteNodeModal } from '../components/modals/DeleteNodeModal.tsx'
-import { DeleteConnectionModal } from '../components/modals/DeleteConnectionModal.tsx'
+import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
+import { EdgeInfoModal } from '../components/modals/EdgeInfoModal.tsx'
 
-type OpenPanel = 'addNode' | 'addConnection' | 'deleteNode' | 'deleteConnection' | null
+type OpenPanel = 'addNode' | 'addConnection' | null
 
-const CONTEXT_NODE_TYPES = new Set(['person', 'place', 'task'])
+type SelectedNode = {
+  id: string
+  name: string
+  type: string
+}
+
+type SelectedEdge = {
+  id: string
+  sourceName: string
+  targetName: string
+}
+
+const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place', 'task'])
 
 function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
   return nodes
-    .filter(
-      (doc) =>
-        CONTEXT_NODE_TYPES.has(doc.type) &&
-        // Drop corrupted / position-only ghosts (e.g. from stale save after delete)
-        Boolean(typeof doc.name === 'string' && doc.name.trim().length > 0 || doc.type === 'task'),
-    )
+    .filter((doc) => VALID_NODE_TYPES.has(doc.type))
     .map((doc) => ({
-      id: doc.id,
-      type: doc.type,
-      data: {
-        name: doc.name,
-        relationship: doc.relationship,
-        email: doc.email,
-        phone: doc.phone,
-        address: doc.address,
-        title: doc.title,
-        startAt: doc.startAt,
-        endAt: doc.endAt,
-        calendarEventId: doc.calendarEventId,
-        priority: doc.priority,
-        location: doc.location,
-      },
-      position: doc.position ?? { x: 0, y: 0 },
-    }))
+    id: doc.id,
+    type: doc.type,
+    data: {
+      name: doc.name,
+      relationship: doc.relationship,
+      email: doc.email,
+      address: doc.address,
+      title: doc.title,
+      startAt: doc.startAt,
+      endAt: doc.endAt,
+      calendarEventId: doc.calendarEventId,
+      priority: doc.priority,
+      location: doc.location,
+    },
+    position: doc.position ?? { x: 0, y: 0 },
+  }))
 }
 
 function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>): Edge[] {
@@ -58,6 +64,10 @@ function Graph() {
   const [error, setError] = useState<string | null>(null)
   const [initialViewport, setInitialViewport] = useState<Viewport | undefined>(undefined)
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
+  const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null)
+  const [selectedEdge, setSelectedEdge] = useState<SelectedEdge | null>(null)
+  const flowKeyRef = useRef(0)
+  const [flowKey, setFlowKey] = useState(0)
 
   const loadGraph = useCallback(async () => {
     if (!user?.uid) {
@@ -77,6 +87,9 @@ function Graph() {
       setNodes(firestoreNodesToReactFlow(nodesData));
       setEdges(firestoreEdgesToReactFlow(edgesData));
       setInitialViewport(viewport ?? undefined)
+
+      flowKeyRef.current += 1
+      setFlowKey(flowKeyRef.current)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load graph");
     } finally {
@@ -98,6 +111,17 @@ function Graph() {
   const togglePanel = (panel: OpenPanel) => {
     setOpenPanel((prev) => (prev === panel ? null : panel))
   }
+
+  const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    const name = typeof node.data.name === 'string' ? node.data.name : ''
+    setSelectedNode({ id: node.id, name, type: node.type ?? 'unknown' })
+  }, [])
+
+  const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+    const sourceName = nodes.find((n) => n.id === edge.source)?.data?.name as string ?? edge.source
+    const targetName = nodes.find((n) => n.id === edge.target)?.data?.name as string ?? edge.target
+    setSelectedEdge({ id: edge.id, sourceName, targetName })
+  }, [nodes])
 
   // If user is not logged in, send to login page
   if (!user) {
@@ -170,28 +194,6 @@ function Graph() {
           >
             + Add Connection
           </button>
-
-          <button type="button" onClick={() => togglePanel('deleteNode')} className="home-auth-toggle-button"
-            style={{
-              border: '1px solid #e5e7eb',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '0.5rem',
-              backgroundColor: openPanel === 'deleteNode' ? '#fee2e2' : undefined,
-            }}
-          >
-            - Delete Node
-          </button>
-
-          <button type="button" onClick={() => togglePanel('deleteConnection')} className="home-auth-toggle-button"
-            style={{
-              border: '1px solid #e5e7eb',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '0.5rem',
-              backgroundColor: openPanel === 'deleteConnection' ? '#fee2e2' : undefined,
-            }}
-          >
-            - Delete Connection
-          </button>
         </div>
       </div>
 
@@ -203,11 +205,32 @@ function Graph() {
         <AddConnectionModal userId={user.uid} onClose={() => setOpenPanel(null)} onSuccess={() => void loadGraph()} />
       )}
 
-      {openPanel === 'deleteNode' && (
-        <DeleteNodeModal userId={user.uid} onClose={() => setOpenPanel(null)} onSuccess={() => void loadGraph()} />
+      {selectedNode && (
+        <NodeInfoModal
+          userId={user.uid}
+          nodeId={selectedNode.id}
+          nodeName={selectedNode.name}
+          nodeType={selectedNode.type}
+          onClose={() => setSelectedNode(null)}
+          onSuccess={() => {
+            void loadGraph();
+            setSelectedNode(null)
+          }}
+        />
       )}
-      {openPanel === 'deleteConnection' && (
-        <DeleteConnectionModal userId={user.uid} onClose={() => setOpenPanel(null)} onSuccess={() => void loadGraph()} />
+
+      {selectedEdge && (
+        <EdgeInfoModal
+          userId={user.uid}
+          edgeId={selectedEdge.id}
+          sourceName={selectedEdge.sourceName}
+          targetName={selectedEdge.targetName}
+          onClose={() => setSelectedEdge(null)}
+          onSuccess={() => {
+            void loadGraph();
+            setSelectedEdge(null)
+          }}
+        />
       )}
 
       <div
@@ -219,12 +242,13 @@ function Graph() {
         }}
       >
         <DefaultFlow
-          key={`${user.uid}-${nodes.length}-${edges.length}`}
+          key={`${user.uid}-${flowKey}`}
           nodes={nodes}
           edges={edges}
           defaultViewport={initialViewport}
+          onNodeClick={handleNodeClick}
+          onEdgeClick={handleEdgeClick}
           onSavePositions={(updatedNodes) => {
-            // fire-and-forget; we don't need to block unmount on this
             void saveNodePositions(
               user.uid,
               updatedNodes.map((n) => ({ id: n.id, position: n.position })), 'context'

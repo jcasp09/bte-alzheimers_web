@@ -1,5 +1,7 @@
 import { type SubmitEvent, useState } from 'react'
 import { createEdge, createNode, getNodes, type NodeDoc, type NodeType } from '../../firebase/graph'
+
+const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place', 'task'])
 import { Modal } from './Modal'
 
 type Props = {
@@ -25,7 +27,8 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
     setShowLinkList(true)
     try {
       const nodes = await getNodes(userId)
-      setExistingNodes(nodes)
+      // Ensure that only nodes with valid information are displayed
+      setExistingNodes(nodes.filter((n) => VALID_NODE_TYPES.has(n.type) && n.name))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load nodes')
     }
