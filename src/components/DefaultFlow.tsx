@@ -8,7 +8,7 @@ import {
   useEdgesState,
   useNodesState,
 } from '@xyflow/react'
-import type { Connection, Edge, Node, Viewport } from '@xyflow/react'
+import type { Connection, Edge, EdgeMouseHandler, Node, NodeMouseHandler, Viewport } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '../nodeTypes'
 
@@ -18,6 +18,8 @@ type DefaultFlowProps = {
   onSavePositions?: (nodes: Node[]) => void
   onSaveViewport?: (viewport: Viewport) => void
   defaultViewport?: Viewport
+  onNodeClick?: NodeMouseHandler
+  onEdgeClick?: EdgeMouseHandler
 }
 
 export function DefaultFlow({
@@ -26,6 +28,8 @@ export function DefaultFlow({
   onSavePositions,
   onSaveViewport,
   defaultViewport,
+  onNodeClick,
+  onEdgeClick,
 }: DefaultFlowProps) {
   const [nodes, , onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
@@ -59,6 +63,8 @@ export function DefaultFlow({
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       nodeTypes={nodeTypes}
+      onNodeClick={onNodeClick}
+      onEdgeClick={onEdgeClick}
       defaultViewport={defaultViewport}
       onMoveEnd={(_, viewport) => {
         viewportRef.current = viewport
