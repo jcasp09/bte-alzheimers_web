@@ -15,6 +15,10 @@ type SelectedNode = {
   id: string
   name: string
   type: string
+  relationship?: string
+  email?: string
+  phone?: string
+  address?: string
 }
 
 type SelectedEdge = {
@@ -114,7 +118,19 @@ function Graph() {
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     const name = typeof node.data.name === 'string' ? node.data.name : ''
-    setSelectedNode({ id: node.id, name, type: node.type ?? 'unknown' })
+    const relationship = typeof node.data.relationship === 'string' ? node.data.relationship : ''
+    const email = typeof node.data.email === 'string' ? node.data.email : ''
+    const phone = typeof node.data.phone === 'string' ? node.data.phone : ''
+    const address = typeof node.data.address === 'string' ? node.data.address : ''
+    setSelectedNode({
+      id: node.id,
+      name,
+      type: node.type ?? 'unknown',
+      relationship,
+      email,
+      phone,
+      address,
+    })
   }, [])
 
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
@@ -211,6 +227,10 @@ function Graph() {
           nodeId={selectedNode.id}
           nodeName={selectedNode.name}
           nodeType={selectedNode.type}
+          nodeRelationship={selectedNode.relationship ?? ''}
+          nodeEmail={selectedNode.email ?? ''}
+          nodePhone={selectedNode.phone ?? ''}
+          nodeAddress={selectedNode.address ?? ''}
           onClose={() => setSelectedNode(null)}
           onSuccess={() => {
             void loadGraph();
