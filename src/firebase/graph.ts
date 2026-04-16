@@ -1,5 +1,7 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore'
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db } from './firestore'
+import { storage } from './storage'
 
 export type GraphId = 'context' | 'tasks'
 export type NodeType = 'person' | 'place' | 'task'
@@ -10,6 +12,8 @@ export type CreatePersonNodeData = {
   relationship: string
   email?: string
   phone?: string
+  photoPath?: string
+  photoUpdatedAt?: string
 }
 
 export type CreatePlaceNodeData = {
@@ -80,6 +84,8 @@ export type NodeDoc = {
   relationship?: string
   email?: string
   phone?: string
+  photoPath?: string
+  photoUpdatedAt?: string
   address?: string
   title?: string
   startAt?: string
@@ -87,6 +93,38 @@ export type NodeDoc = {
   calendarEventId?: string
   priority?: number
   location?: string
+}
+
+type UploadNodePhotoResult = {
+  photoPath: string
+  photoUrl: string
+  photoUpdatedAt: string
+}
+
+function personPhotoPath(uid: string, graphId: GraphId, nodeId: string): string {
+  return `users/${uid}/graphs/${graphId}/nodes/${nodeId}/photo`
+}
+
+export async function uploadPersonNodePhoto(
+  uid: string,
+  nodeId: string,
+  file: File,
+  graphId: GraphId = 'context',
+): Promise<UploadNodePhotoResult> {
+  const path = personPhotoPath(uid, graphId, nodeId)
+  const photoRef = ref(storage, path)
+  await uploadBytes(photoRef, file, { contentType: file.type })
+  const photoUrl = await getDownloadURL(photoRef)
+  return {
+    photoPath: path,
+    photoUrl,
+    photoUpdatedAt: new Date().toISOString(),
+  }
+}
+
+export async function deletePersonNodePhotoByPath(photoPath: string): Promise<void> {
+  const photoRef = ref(storage, photoPath)
+  await deleteObject(photoRef)
 }
 
 export type EdgeDoc = {
@@ -185,6 +223,9 @@ export async function deleteNodeAndEdges(
   nodeId: string,
   graphId: GraphId = 'context',
 ): Promise<void> {
+  const nodeSnap = await getDoc(doc(db, 'users', uid, 'graphs', graphId, 'nodes', nodeId))
+  const nodeData = (nodeSnap.exists() ? nodeSnap.data() : null) as { photoPath?: string } | null
+
   const nodeRef = doc(db, 'users', uid, 'graphs', graphId, 'nodes', nodeId)
   await deleteDoc(nodeRef)
 
@@ -203,4 +244,13 @@ export async function deleteNodeAndEdges(
       deleteDoc(doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)),
     ),
   )
+
+  if (typeof nodeData?.photoPath === 'string' && nodeData.photoPath.length > 0) {
+    try {
+      await deletePersonNodePhotoByPath(nodeData.photoPath)
+    } catch (error) {
+      // File may already be missing; node/edge deletion should still succeed.
+      console.warn('Failed to delete person node photo from storage', error)
+    }
+  }
 }

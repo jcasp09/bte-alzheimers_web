@@ -1,12 +1,48 @@
 import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
+import { useEffect, useState } from 'react'
+import { getDownloadURL, ref } from 'firebase/storage'
+import { storage } from '../firebase/storage'
 
 export function PersonNode({ data }: NodeProps) {
   const name = typeof data.name === 'string' ? data.name : ''
   const relationship = typeof data.relationship === 'string' ? data.relationship : ''
   const email = typeof data.email === 'string' ? data.email : ''
   const phone = typeof data.phone === 'string' ? data.phone : ''
-  const image = typeof data.image === 'string' ? data.image : ''
+  const directImage = typeof data.image === 'string' ? data.image : ''
+  const photoUrl = typeof data.photoUrl === 'string' ? data.photoUrl : ''
+  const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
+  const [fetchedPhoto, setFetchedPhoto] = useState<{ path: string; url: string } | null>(null)
+
+  useEffect(() => {
+    let isCancelled = false
+
+    if (directImage || photoUrl || !photoPath) {
+      return () => {
+        isCancelled = true
+      }
+    }
+
+    void getDownloadURL(ref(storage, photoPath))
+      .then((url) => {
+        if (!isCancelled) {
+          setFetchedPhoto({ path: photoPath, url })
+        }
+      })
+      .catch(() => {
+        // Ignore lookup failures and keep placeholder fallback.
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [directImage, photoPath, photoUrl])
+
+  const resolvedImageUrl =
+    directImage
+    || photoUrl
+    || (fetchedPhoto?.path === photoPath ? fetchedPhoto.url : '')
+
   return (
     <>
       <Handle type="target" position={Position.Top} />
@@ -32,8 +68,8 @@ export function PersonNode({ data }: NodeProps) {
             width: 80,
             height: 80,
             borderRadius: '9999px',
-            backgroundImage: image
-              ? `url(${image})`
+            backgroundImage: resolvedImageUrl
+              ? `url(${resolvedImageUrl})`
               : 'url(https://via.placeholder.com/96)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',

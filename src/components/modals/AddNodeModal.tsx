@@ -1,5 +1,5 @@
 import { type SubmitEvent, useState } from 'react'
-import { createEdge, createNode, getNodes, type NodeDoc, type NodeType } from '../../firebase/graph'
+import { createEdge, createNode, getNodes, uploadPersonNodePhoto, upsertNode, type NodeDoc, type NodeType } from '../../firebase/graph'
 
 const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place', 'task'])
 import { Modal } from './Modal'
@@ -11,6 +11,7 @@ type Props = {
 }
 
 export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [nodeType, setNodeType] = useState<NodeType>('person')
   const [name, setName] = useState('')
   const [relationship, setRelationship] = useState('')
@@ -21,7 +22,10 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
   const [showLinkList, setShowLinkList] = useState(false)
   const [existingNodes, setExistingNodes] = useState<NodeDoc[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isPhotoTypeAllowed = (file: File): boolean => file.type === 'image/jpeg' || file.type === 'image/png'
 
   const openLinkList = async () => {
     setShowLinkList(true)
@@ -41,6 +45,7 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
     setEmail('')
     setPhone('')
     setAddress('')
+    setPhotoFile(null)
     setLinkToNodeId(null)
     setShowLinkList(false)
     setError(null)
@@ -58,6 +63,24 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
           : { type: 'place' as const, name, address }
       const newNodeId = await createNode(userId, data)
 
+      if (nodeType === 'person' && photoFile) {
+        if (!isPhotoTypeAllowed(photoFile)) {
+          throw new Error('Only JPEG and PNG photos are supported')
+        }
+
+        setIsUploading(true)
+        const photo = await uploadPersonNodePhoto(userId, newNodeId, photoFile, 'context')
+        await upsertNode(userId, newNodeId, {
+          type: 'person',
+          name,
+          relationship,
+          email,
+          phone,
+          photoPath: photo.photoPath,
+          photoUpdatedAt: photo.photoUpdatedAt,
+        }, 'context')
+      }
+
       if (linkToNodeId) {
         await createEdge(userId, newNodeId, linkToNodeId, 'context')
       }
@@ -67,6 +90,7 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add node')
     } finally {
+      setIsUploading(false)
       setIsSubmitting(false)
     }
   }
@@ -150,6 +174,16 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                />
+              </label>
+            </div>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label className="home-auth-field">
+                <span>Add Photo (JPEG/PNG)</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
                 />
               </label>
             </div>
@@ -250,11 +284,11 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploading}
             className="home-auth-button"
             style={{ marginTop: 0 }}
           >
-            {isSubmitting ? 'Adding…' : 'Add node'}
+            {isUploading ? 'Uploading photo…' : isSubmitting ? 'Adding…' : 'Add node'}
           </button>
         </div>
       </form>

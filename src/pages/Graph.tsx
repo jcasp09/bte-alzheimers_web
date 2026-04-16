@@ -19,6 +19,7 @@ type SelectedNode = {
   email?: string
   phone?: string
   address?: string
+  photoPath?: string
 }
 
 type SelectedEdge = {
@@ -39,7 +40,10 @@ function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>):
       name: doc.name,
       relationship: doc.relationship,
       email: doc.email,
+      phone: doc.phone,
       address: doc.address,
+      photoPath: doc.photoPath,
+      photoUpdatedAt: doc.photoUpdatedAt,
       title: doc.title,
       startAt: doc.startAt,
       endAt: doc.endAt,
@@ -122,6 +126,7 @@ function Graph() {
     const email = typeof node.data.email === 'string' ? node.data.email : ''
     const phone = typeof node.data.phone === 'string' ? node.data.phone : ''
     const address = typeof node.data.address === 'string' ? node.data.address : ''
+    const photoPath = typeof node.data.photoPath === 'string' ? node.data.photoPath : ''
     setSelectedNode({
       id: node.id,
       name,
@@ -130,6 +135,7 @@ function Graph() {
       email,
       phone,
       address,
+      photoPath,
     })
   }, [])
 
@@ -231,6 +237,7 @@ function Graph() {
           nodeEmail={selectedNode.email ?? ''}
           nodePhone={selectedNode.phone ?? ''}
           nodeAddress={selectedNode.address ?? ''}
+          nodePhotoPath={selectedNode.photoPath ?? ''}
           onClose={() => setSelectedNode(null)}
           onSuccess={() => {
             void loadGraph();

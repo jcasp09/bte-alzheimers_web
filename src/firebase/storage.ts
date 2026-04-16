@@ -1,6 +1,6 @@
-import { getStorage } from 'firebase/storage';
-import { app } from './firebaseConfig';
+import { getStorage } from 'firebase/storage'
+import { app } from './firebaseConfig'
 
-const storage = getStorage(app);
+const storage = getStorage(app)
 
-export default storage;
+export { storage }
