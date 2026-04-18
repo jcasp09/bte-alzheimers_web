@@ -11,6 +11,9 @@ import {
 import type { Connection, Edge, EdgeMouseHandler, Node, NodeMouseHandler, Viewport } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '../nodeTypes'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { createEdge } from '../firebase/graph'
 
 type DefaultFlowProps = {
   nodes: Node[]
@@ -34,10 +37,22 @@ export function DefaultFlow({
   const [nodes, , onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const viewportRef = useRef<Viewport | null>(null)
+  const { user } = useAuth()
+
+  if (!user) {
+    return (
+      <section>
+        <h1>Graph</h1>
+        <p>Sign in to view your graph.</p>
+        <Link to="/">Go to Home</Link>
+      </section>
+    )
+  }
 
   const onConnect = useCallback(
     (connection: Connection) => {
       setEdges((eds) => addEdge(connection, eds))
+      createEdge(user.uid, connection.source, connection.target, 'context')
     },
     [setEdges],
   )
