@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Edge, Node } from '@xyflow/react'
+import type { Node } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
-import { DefaultFlow } from '../components/DefaultFlow'
-import { getEdges, getNodes } from '../firebase/graph'
+import { getNodes, removePassedTaskNodes } from '../firebase/graph'
 import './Tasks.css'
 
 function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
@@ -19,15 +18,6 @@ function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>):
       location: doc.location,
     },
     position: doc.position ?? { x: 0, y: 0 },
-  }))
-}
-
-function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>): Edge[] {
-  return edges.map((doc) => ({
-    id: doc.id,
-    source: doc.sourceNodeId,
-    target: doc.targetNodeId,
-    type: 'default',
   }))
 }
 
@@ -84,6 +74,14 @@ function getTaskStart(node: Node) {
   return typeof data.startAt === 'string' ? data.startAt : undefined
 }
 
+function isNodePassed(node: Node, nowMs: number): boolean {
+  if (node.type !== 'task') return false
+  const data = node.data as Record<string, unknown>
+  if (typeof data.endAt !== 'string') return false
+  const endMs = new Date(data.endAt).getTime()
+  return !Number.isNaN(endMs) && endMs < nowMs
+}
+
 function getSortedTaskNodes(nodes: Node[]) {
   return [...nodes].sort((a, b) => {
     const aStart = getTaskStart(a)
@@ -129,16 +127,15 @@ function SummaryCard({ label, title, subtitle, detail, featured = false }: Summa
 function Tasks() {
   const { user } = useAuth()
   const [nodes, setNodes] = useState<Node[]>([])
-  const [edges, setEdges] = useState<Edge[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [renderNowMs, setRenderNowMs] = useState(0)
 
   useEffect(() => {
     if (!user?.uid) {
       queueMicrotask(() => {
         setLoading(false)
         setNodes([])
-        setEdges([])
       })
       return
     }
@@ -150,11 +147,11 @@ function Tasks() {
       setError(null)
     })
 
-    Promise.all([getNodes(user.uid, 'tasks'), getEdges(user.uid, 'tasks')])
-      .then(([nodesData, edgesData]) => {
+    Promise.resolve(removePassedTaskNodes(user.uid))
+      .then(() => getNodes(user.uid, 'tasks'))
+      .then((nodesData) => {
         if (cancelled) return
         setNodes(firestoreNodesToReactFlow(nodesData))
-        setEdges(firestoreEdgesToReactFlow(edgesData))
       })
       .catch((err) => {
         if (!cancelled) {
@@ -170,7 +167,17 @@ function Tasks() {
     }
   }, [user?.uid])
 
-  const sortedTasks = useMemo(() => getSortedTaskNodes(nodes), [nodes])
+  useEffect(() => {
+    queueMicrotask(() => {
+      setRenderNowMs(new Date().getTime())
+    })
+  }, [nodes])
+
+  const visibleNodes = useMemo(() => {
+    return nodes.filter((node) => !isNodePassed(node, renderNowMs))
+  }, [nodes, renderNowMs])
+
+  const sortedTasks = useMemo(() => getSortedTaskNodes(visibleNodes), [visibleNodes])
 
   const todayFocus = sortedTasks[0]
   const laterToday = sortedTasks[1]
@@ -212,7 +219,7 @@ function Tasks() {
 
         <div className="tasks-summary-grid">
           <SummaryCard
-            label="Today's Focus"
+            label="Up Next"
             title={todayFocus ? getTaskTitle(todayFocus) : 'No upcoming task yet'}
             subtitle={
               todayFocus
@@ -229,7 +236,7 @@ function Tasks() {
 
           <div className="tasks-secondary-grid">
             <SummaryCard
-              label="Later Today"
+              label="Coming Up"
               title={laterToday ? getTaskTitle(laterToday) : 'Nothing else scheduled'}
               subtitle={
                 laterToday ? formatTaskTime(getTaskStart(laterToday)) : 'You are all caught up'
@@ -248,21 +255,6 @@ function Tasks() {
               detail={comingUp ? getTaskLocation(comingUp) : 'Future tasks will appear here.'}
             />
           </div>
-        </div>
-      </div>
-
-      <div className="tasks-panel">
-        <h2 className="tasks-section-title">Task Connections</h2>
-        <p className="tasks-section-subtitle">
-          Visual connections between routines, reminders, and important people.
-        </p>
-
-        <div className="tasks-flow-wrapper">
-          <DefaultFlow
-            key={`${user.uid}-${nodes.length}-${edges.length}-tasks`}
-            nodes={nodes}
-            edges={edges}
-          />
         </div>
       </div>
     </section>
