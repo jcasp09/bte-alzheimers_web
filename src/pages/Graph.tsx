@@ -28,7 +28,7 @@ type SelectedEdge = {
   targetName: string
 }
 
-const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place', 'task'])
+const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place'])
 
 function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
   return nodes

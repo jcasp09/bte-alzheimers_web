@@ -1,7 +1,7 @@
 import { type SubmitEvent, useState } from 'react'
 import { createEdge, createNode, getNodes, uploadPersonNodePhoto, upsertNode, type NodeDoc, type NodeType } from '../../firebase/graph'
 
-const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place', 'task'])
+const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place'])
 import { Modal } from './Modal'
 
 type Props = {
