@@ -139,6 +139,11 @@ export type GraphViewport = {
   zoom: number
 }
 
+export type StaleTaskCleanupResult = {
+  removedTaskNodes: number
+  removedEdges: number
+}
+
 export async function getNodes(uid: string, graphId: GraphId = 'context'): Promise<NodeDoc[]> {
   const snapshot = await getDocs(collection(db, 'users', uid, 'graphs', graphId, 'nodes'))
   return snapshot.docs.map((doc) => ({
@@ -252,5 +257,51 @@ export async function deleteNodeAndEdges(
       // File may already be missing; node/edge deletion should still succeed.
       console.warn('Failed to delete person node photo from storage', error)
     }
+  }
+}
+
+export async function removePassedTaskNodes(
+  uid: string,
+  nowIso: string = new Date().toISOString(),
+): Promise<StaleTaskCleanupResult> {
+  const nowMs = new Date(nowIso).getTime()
+  if (Number.isNaN(nowMs)) {
+    return { removedTaskNodes: 0, removedEdges: 0 }
+  }
+
+  const allNodes = await getNodes(uid, 'tasks')
+  const staleTaskIds = allNodes
+    .filter((node) => {
+      if (node.type !== 'task' || typeof node.endAt !== 'string') return false
+      const endMs = new Date(node.endAt).getTime()
+      return !Number.isNaN(endMs) && endMs < nowMs
+    })
+    .map((node) => node.id)
+
+  if (staleTaskIds.length === 0) {
+    return { removedTaskNodes: 0, removedEdges: 0 }
+  }
+
+  const staleIdSet = new Set(staleTaskIds)
+  const allEdges = await getEdges(uid, 'tasks')
+  const staleEdgeIds = allEdges
+    .filter((edge) => staleIdSet.has(edge.sourceNodeId) || staleIdSet.has(edge.targetNodeId))
+    .map((edge) => edge.id)
+
+  const refsToDelete = [
+    ...staleTaskIds.map((id) => doc(db, 'users', uid, 'graphs', 'tasks', 'nodes', id)),
+    ...staleEdgeIds.map((id) => doc(db, 'users', uid, 'graphs', 'tasks', 'edges', id)),
+  ]
+
+  // Firestore batched writes allow up to 500 operations per commit.
+  for (let i = 0; i < refsToDelete.length; i += 500) {
+    const batch = writeBatch(db)
+    refsToDelete.slice(i, i + 500).forEach((ref) => batch.delete(ref))
+    await batch.commit()
+  }
+
+  return {
+    removedTaskNodes: staleTaskIds.length,
+    removedEdges: staleEdgeIds.length,
   }
 }

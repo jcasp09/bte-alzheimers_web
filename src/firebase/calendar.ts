@@ -1,4 +1,4 @@
-import { upsertNode } from './graph'
+import { removePassedTaskNodes, upsertNode } from './graph'
 
 type GoogleTokenResponse = {
   access_token?: string
@@ -159,6 +159,7 @@ async function fetchJson<T>(url: string, token: string): Promise<T> {
 export async function syncGoogleCalendarTasks(uid: string): Promise<number> {
   const token = getStoredToken(uid)
   const now = new Date()
+  await removePassedTaskNodes(uid, now.toISOString())
   const rangeEnd = new Date(
     now.getTime() +
       MS_PER_SECOND * SECONDS_PER_MINUTE * MINUTES_PER_HOUR * HOURS_PER_DAY * CALENDAR_SYNC_CONFIG.futureDaysToSync,
