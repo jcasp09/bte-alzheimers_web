@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Edge, Node } from '@xyflow/react'
+import { applyEdgeChanges } from '@xyflow/react'
+import type { Connection, Edge, Node, OnEdgesChange } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
 import { getEdges, getNodes } from '../firebase/graph'
+import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
+import { useDeferredEdgePersistence } from '../graph/useDeferredEdgePersistence'
 
 function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
   return nodes.map((doc) => ({
@@ -22,12 +25,7 @@ function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>):
 }
 
 function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>): Edge[] {
-  return edges.map((doc) => ({
-    id: doc.id,
-    source: doc.sourceNodeId,
-    target: doc.targetNodeId,
-    type: 'default',
-  }))
+  return edges.map(edgeDocToReactFlowEdge)
 }
 
 function Tasks() {
@@ -36,6 +34,34 @@ function Tasks() {
   const [edges, setEdges] = useState<Edge[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
+  const [flowKey, setFlowKey] = useState(0)
+
+  const loadGraph = useCallback(
+    async (opts?: { skipLoading?: boolean }) => {
+      if (!user?.uid) return
+      if (!opts?.skipLoading) {
+        setLoading(true)
+      }
+      setError(null)
+      try {
+        const [nodesData, edgesData] = await Promise.all([
+          getNodes(user.uid, 'tasks'),
+          getEdges(user.uid, 'tasks'),
+        ])
+        setNodes(firestoreNodesToReactFlow(nodesData))
+        setEdges(firestoreEdgesToReactFlow(edgesData))
+        setFlowKey((k) => k + 1)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load tasks graph')
+      } finally {
+        if (!opts?.skipLoading) {
+          setLoading(false)
+        }
+      }
+    },
+    [user?.uid],
+  )
 
   useEffect(() => {
     if (!user?.uid) {
@@ -46,29 +72,27 @@ function Tasks() {
       })
       return
     }
-    let cancelled = false
-    queueMicrotask(() => {
-      setLoading(true)
-      setError(null)
-    })
-    Promise.all([getNodes(user.uid, 'tasks'), getEdges(user.uid, 'tasks')])
-      .then(([nodesData, edgesData]) => {
-        if (cancelled) return
-        setNodes(firestoreNodesToReactFlow(nodesData))
-        setEdges(firestoreEdgesToReactFlow(edgesData))
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load tasks graph')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [user?.uid])
+    void loadGraph()
+  }, [user?.uid, loadGraph])
+
+  const onEdgesChange = useCallback<OnEdgesChange>((changes) => {
+    setEdges((eds) => applyEdgeChanges(changes, eds))
+  }, [])
+
+  const { queueConnection } = useDeferredEdgePersistence(
+    user?.uid,
+    'tasks',
+    setEdges,
+    setSyncEdgeError,
+  )
+
+  const handleConnectPersist = useCallback(
+    (connection: Connection) => {
+      if (!user?.uid) return
+      queueConnection(connection)
+    },
+    [user?.uid, queueConnection],
+  )
 
   if (!user) {
     return (
@@ -100,6 +124,9 @@ function Tasks() {
 
   return (
     <section>
+      {syncEdgeError ? (
+        <p className="home-auth-error" style={{ marginBottom: '0.5rem' }}>{syncEdgeError}</p>
+      ) : null}
       <div
         style={{
           height: '80vh',
@@ -109,9 +136,11 @@ function Tasks() {
         }}
       >
         <DefaultFlow
-          key={`${user.uid}-${nodes.length}-${edges.length}-tasks`}
+          key={`${user.uid}-${flowKey}-tasks`}
           nodes={nodes}
           edges={edges}
+          onEdgesChange={onEdgesChange}
+          onConnectPersist={handleConnectPersist}
         />
       </div>
     </section>

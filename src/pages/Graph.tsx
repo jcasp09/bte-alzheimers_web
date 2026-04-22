@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Edge, Node, Viewport } from '@xyflow/react'
+import { applyEdgeChanges } from '@xyflow/react'
+import type { Connection, Edge, Node, OnEdgesChange, Viewport } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
-import { getEdges, getGraphViewport, getNodes, saveGraphViewport, saveNodePositions, type NodeType } from '../firebase/graph'
+import {
+  getEdges,
+  getGraphViewport,
+  getNodes,
+  saveGraphViewport,
+  saveNodePositions,
+  type NodeType,
+} from '../firebase/graph'
+import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
+import { useDeferredEdgePersistence } from '../graph/useDeferredEdgePersistence'
 import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
 import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
@@ -20,12 +30,16 @@ type SelectedNode = {
   phone?: string
   address?: string
   photoPath?: string
+  width?: number
+  height?: number
 }
 
 type SelectedEdge = {
   id: string
   sourceName: string
   targetName: string
+  sourceHandle?: string
+  targetHandle?: string
 }
 
 const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place', 'task'])
@@ -50,18 +64,15 @@ function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>):
       calendarEventId: doc.calendarEventId,
       priority: doc.priority,
       location: doc.location,
+      width: typeof doc.width === 'number' && Number.isFinite(doc.width) ? doc.width : undefined,
+      height: typeof doc.height === 'number' && Number.isFinite(doc.height) ? doc.height : undefined,
     },
     position: doc.position ?? { x: 0, y: 0 },
   }))
 }
 
 function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>): Edge[] {
-  return edges.map((doc) => ({
-    id: doc.id,
-    source: doc.sourceNodeId,
-    target: doc.targetNodeId,
-    type: 'default',
-  }))
+  return edges.map(edgeDocToReactFlowEdge)
 }
 
 function Graph() {
@@ -70,6 +81,7 @@ function Graph() {
   const [edges, setEdges] = useState<Edge[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
   const [initialViewport, setInitialViewport] = useState<Viewport | undefined>(undefined)
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null)
@@ -77,12 +89,14 @@ function Graph() {
   const flowKeyRef = useRef(0)
   const [flowKey, setFlowKey] = useState(0)
 
-  const loadGraph = useCallback(async () => {
+  const loadGraph = useCallback(async (opts?: { skipLoading?: boolean }) => {
     if (!user?.uid) {
       return;
     }
 
-    setLoading(true);
+    if (!opts?.skipLoading) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -101,7 +115,9 @@ function Graph() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load graph");
     } finally {
-      setLoading(false);
+      if (!opts?.skipLoading) {
+        setLoading(false);
+      }
     }
   }, [user?.uid]);
 
@@ -116,6 +132,13 @@ function Graph() {
     void loadGraph();
   }, [user?.uid, loadGraph]);
 
+  const onEdgesChange = useCallback<OnEdgesChange>((changes) => {
+    setEdges((eds) => applyEdgeChanges(changes, eds))
+  }, [])
+
+  const { queueConnection, queueConnectionFromModal, flushPendingEdges, removePendingEdge } =
+    useDeferredEdgePersistence(user?.uid, 'context', setEdges, setSyncEdgeError)
+
   const togglePanel = (panel: OpenPanel) => {
     setOpenPanel((prev) => (prev === panel ? null : panel))
   }
@@ -127,6 +150,8 @@ function Graph() {
     const phone = typeof node.data.phone === 'string' ? node.data.phone : ''
     const address = typeof node.data.address === 'string' ? node.data.address : ''
     const photoPath = typeof node.data.photoPath === 'string' ? node.data.photoPath : ''
+    const w = node.data.width
+    const h = node.data.height
     setSelectedNode({
       id: node.id,
       name,
@@ -136,14 +161,30 @@ function Graph() {
       phone,
       address,
       photoPath,
+      width: typeof w === 'number' && Number.isFinite(w) ? w : undefined,
+      height: typeof h === 'number' && Number.isFinite(h) ? h : undefined,
     })
   }, [])
 
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
     const sourceName = nodes.find((n) => n.id === edge.source)?.data?.name as string ?? edge.source
     const targetName = nodes.find((n) => n.id === edge.target)?.data?.name as string ?? edge.target
-    setSelectedEdge({ id: edge.id, sourceName, targetName })
+    setSelectedEdge({
+      id: edge.id,
+      sourceName,
+      targetName,
+      sourceHandle: edge.sourceHandle ?? undefined,
+      targetHandle: edge.targetHandle ?? undefined,
+    })
   }, [nodes])
+
+  const handleConnectPersist = useCallback(
+    (connection: Connection) => {
+      if (!user?.uid) return
+      queueConnection(connection)
+    },
+    [user?.uid, queueConnection],
+  )
 
   // If user is not logged in, send to login page
   if (!user) {
@@ -174,6 +215,11 @@ function Graph() {
         <p className="home-auth-error">{error}</p>
       </section>
     )
+  }
+
+  const handleAddNodeSuccess = async () => {
+    await flushPendingEdges()
+    await loadGraph({ skipLoading: true })
   }
 
   // Render the graph
@@ -219,12 +265,47 @@ function Graph() {
         </div>
       </div>
 
+      {syncEdgeError ? (
+        <div
+          style={{
+            marginBottom: '0.75rem',
+            padding: '0.6rem 0.75rem',
+            borderRadius: '0.5rem',
+            background: '#fef3c7',
+            border: '1px solid #fcd34d',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <p className="home-auth-error" style={{ margin: 0, flex: '1 1 12rem' }}>{syncEdgeError}</p>
+          <button
+            type="button"
+            className="home-auth-toggle-button"
+            style={{ border: '1px solid #e5e7eb', padding: '0.35rem 0.65rem', borderRadius: '0.375rem' }}
+            onClick={() => setSyncEdgeError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
       {openPanel === 'addNode' && (
-        <AddNodePanel userId={user.uid} onClose={() => setOpenPanel(null)} onSuccess={() => void loadGraph()} />
+        <AddNodePanel
+          userId={user.uid}
+          onClose={() => setOpenPanel(null)}
+          onSuccess={() => void handleAddNodeSuccess()}
+        />
       )}
 
       {openPanel === 'addConnection' && (
-        <AddConnectionModal userId={user.uid} onClose={() => setOpenPanel(null)} onSuccess={() => void loadGraph()} />
+        <AddConnectionModal
+          userId={user.uid}
+          onClose={() => setOpenPanel(null)}
+          onQueueConnection={queueConnectionFromModal}
+        />
       )}
 
       {selectedNode && (
@@ -238,10 +319,15 @@ function Graph() {
           nodePhone={selectedNode.phone ?? ''}
           nodeAddress={selectedNode.address ?? ''}
           nodePhotoPath={selectedNode.photoPath ?? ''}
+          nodeWidth={selectedNode.width}
+          nodeHeight={selectedNode.height}
           onClose={() => setSelectedNode(null)}
           onSuccess={() => {
-            void loadGraph();
-            setSelectedNode(null)
+            void (async () => {
+              await flushPendingEdges()
+              await loadGraph({ skipLoading: true })
+              setSelectedNode(null)
+            })()
           }}
         />
       )}
@@ -252,9 +338,11 @@ function Graph() {
           edgeId={selectedEdge.id}
           sourceName={selectedEdge.sourceName}
           targetName={selectedEdge.targetName}
+          sourceHandle={selectedEdge.sourceHandle}
+          targetHandle={selectedEdge.targetHandle}
           onClose={() => setSelectedEdge(null)}
-          onSuccess={() => {
-            void loadGraph();
+          onEdgeDeleted={(edgeId) => {
+            removePendingEdge(edgeId)
             setSelectedEdge(null)
           }}
         />
@@ -272,9 +360,11 @@ function Graph() {
           key={`${user.uid}-${flowKey}`}
           nodes={nodes}
           edges={edges}
+          onEdgesChange={onEdgesChange}
           defaultViewport={initialViewport}
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
+          onConnectPersist={handleConnectPersist}
           onSavePositions={(updatedNodes) => {
             void saveNodePositions(
               user.uid,

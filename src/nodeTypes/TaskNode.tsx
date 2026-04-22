@@ -1,5 +1,5 @@
-import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
+import { NodeEdgeHandles } from '../components/NodeEdgeHandles'
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString([], {
@@ -72,12 +72,19 @@ export function TaskNode({ data }: NodeProps) {
   const borderColor = isToday ? '#0f172a' : '#94a3b8'
 
   return (
-    <>
-      <Handle type="target" position={Position.Top} />
+    <div
+      style={{
+        position: 'relative',
+        width: nodeWidth,
+        minHeight: nodeMinHeight,
+        boxSizing: 'border-box',
+      }}
+    >
       <div
         style={{
-          width: nodeWidth,
+          width: '100%',
           minHeight: nodeMinHeight,
+          boxSizing: 'border-box',
           borderRadius: 10,
           background: backgroundColor,
           border: `2px solid ${borderColor}`,
@@ -95,7 +102,7 @@ export function TaskNode({ data }: NodeProps) {
         {!isCompact && dateRangeLabel ? <span style={{ fontSize: 10, color: '#334155' }}>{dateRangeLabel}</span> : null}
         {!isCompact && location ? <span style={{ fontSize: 10, color: '#64748b' }}>{location}</span> : null}
       </div>
-      <Handle type="source" position={Position.Bottom} />
-    </>
+      <NodeEdgeHandles />
+    </div>
   )
 }
