@@ -1,98 +1,190 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { applyEdgeChanges } from '@xyflow/react'
-import type { Connection, Edge, Node, OnEdgesChange } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
-import { DefaultFlow } from '../components/DefaultFlow'
-import { getEdges, getNodes } from '../firebase/graph'
-import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
-import { useDeferredEdgePersistence } from '../graph/useDeferredEdgePersistence'
+import { getNodes, removePassedTaskNodes, type NodeDoc } from '../firebase/graph'
+import './Tasks.css'
 
-function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
+type TaskSummaryItem = {
+  id: string
+  type: NodeDoc['type']
+  name: string
+  title?: string
+  startAt?: string
+  endAt?: string
+  priority?: number
+  location?: string
+}
+
+function firestoreNodesToTaskItems(nodes: Awaited<ReturnType<typeof getNodes>>): TaskSummaryItem[] {
   return nodes.map((doc) => ({
     id: doc.id,
     type: doc.type,
-    data: {
-      name: doc.name,
-      title: doc.title,
-      startAt: doc.startAt,
-      endAt: doc.endAt,
-      priority: doc.priority,
-      location: doc.location,
-    },
-    position: doc.position ?? { x: 0, y: 0 },
+    name: doc.name,
+    title: doc.title,
+    startAt: doc.startAt,
+    endAt: doc.endAt,
+    priority: doc.priority,
+    location: doc.location,
   }))
 }
 
-function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>): Edge[] {
-  return edges.map(edgeDocToReactFlowEdge)
+function isValidDate(value: unknown): boolean {
+  if (typeof value !== 'string' && typeof value !== 'number') return false
+  const date = new Date(value)
+  return !Number.isNaN(date.getTime())
+}
+
+function formatTaskTime(value?: string) {
+  if (!value || !isValidDate(value)) return 'Time not set'
+
+  const date = new Date(value)
+  const now = new Date()
+
+  const isToday = date.toDateString() === now.toDateString()
+
+  const tomorrow = new Date()
+  tomorrow.setDate(now.getDate() + 1)
+  const isTomorrow = date.toDateString() === tomorrow.toDateString()
+
+  const time = date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+
+  if (isToday) return `Today · ${time}`
+  if (isTomorrow) return `Tomorrow · ${time}`
+
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function getTaskTitle(node: TaskSummaryItem) {
+  return (
+    (typeof node.title === 'string' && node.title.trim()) ||
+    (typeof node.name === 'string' && node.name.trim()) ||
+    'Untitled task'
+  )
+}
+
+function getTaskLocation(node: TaskSummaryItem) {
+  return typeof node.location === 'string' && node.location.trim() ? node.location : 'Location not set'
+}
+
+function getTaskStart(node: TaskSummaryItem) {
+  return typeof node.startAt === 'string' ? node.startAt : undefined
+}
+
+function isNodePassed(node: TaskSummaryItem, nowMs: number): boolean {
+  if (node.type !== 'task') return false
+  if (typeof node.endAt !== 'string') return false
+  const endMs = new Date(node.endAt).getTime()
+  return !Number.isNaN(endMs) && endMs < nowMs
+}
+
+function getSortedTaskNodes(nodes: TaskSummaryItem[]) {
+  return [...nodes].sort((a, b) => {
+    const aStart = getTaskStart(a)
+    const bStart = getTaskStart(b)
+
+    if (!aStart && !bStart) return 0
+    if (!aStart) return 1
+    if (!bStart) return -1
+
+    return new Date(aStart).getTime() - new Date(bStart).getTime()
+  })
+}
+
+type SummaryCardProps = {
+  label: string
+  title: string
+  subtitle: string
+  detail: string
+  featured?: boolean
+}
+
+function SummaryCard({ label, title, subtitle, detail, featured = false }: SummaryCardProps) {
+  return (
+    <div className={`tasks-summary-card ${featured ? 'tasks-summary-card-featured' : ''}`}>
+      <div className={`tasks-summary-pill ${featured ? 'tasks-summary-pill-featured' : ''}`}>
+        <span>{featured ? '●' : '○'}</span>
+        <span>{label}</span>
+      </div>
+
+      <h2 className={`tasks-summary-title ${featured ? 'tasks-summary-title-featured' : ''}`}>
+        {title}
+      </h2>
+
+      <p className={`tasks-summary-subtitle ${featured ? 'tasks-summary-subtitle-featured' : ''}`}>
+        {subtitle}
+      </p>
+
+      <p className="tasks-summary-detail">{detail}</p>
+    </div>
+  )
 }
 
 function Tasks() {
   const { user } = useAuth()
-  const [nodes, setNodes] = useState<Node[]>([])
-  const [edges, setEdges] = useState<Edge[]>([])
+  const [nodes, setNodes] = useState<TaskSummaryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
-  const [flowKey, setFlowKey] = useState(0)
-
-  const loadGraph = useCallback(
-    async (opts?: { skipLoading?: boolean }) => {
-      if (!user?.uid) return
-      if (!opts?.skipLoading) {
-        setLoading(true)
-      }
-      setError(null)
-      try {
-        const [nodesData, edgesData] = await Promise.all([
-          getNodes(user.uid, 'tasks'),
-          getEdges(user.uid, 'tasks'),
-        ])
-        setNodes(firestoreNodesToReactFlow(nodesData))
-        setEdges(firestoreEdgesToReactFlow(edgesData))
-        setFlowKey((k) => k + 1)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load tasks graph')
-      } finally {
-        if (!opts?.skipLoading) {
-          setLoading(false)
-        }
-      }
-    },
-    [user?.uid],
-  )
+  const [renderNowMs, setRenderNowMs] = useState(0)
 
   useEffect(() => {
     if (!user?.uid) {
       queueMicrotask(() => {
         setLoading(false)
         setNodes([])
-        setEdges([])
       })
       return
     }
-    void loadGraph()
-  }, [user?.uid, loadGraph])
 
-  const onEdgesChange = useCallback<OnEdgesChange>((changes) => {
-    setEdges((eds) => applyEdgeChanges(changes, eds))
-  }, [])
+    let cancelled = false
 
-  const { queueConnection } = useDeferredEdgePersistence(
-    user?.uid,
-    'tasks',
-    setEdges,
-    setSyncEdgeError,
-  )
+    queueMicrotask(() => {
+      setLoading(true)
+      setError(null)
+    })
 
-  const handleConnectPersist = useCallback(
-    (connection: Connection) => {
-      if (!user?.uid) return
-      queueConnection(connection)
-    },
-    [user?.uid, queueConnection],
-  )
+    Promise.resolve(removePassedTaskNodes(user.uid))
+      .then(() => getNodes(user.uid, 'tasks'))
+      .then((nodesData) => {
+        if (cancelled) return
+        setNodes(firestoreNodesToTaskItems(nodesData))
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load tasks graph')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.uid])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setRenderNowMs(new Date().getTime())
+    })
+  }, [nodes])
+
+  const visibleNodes = useMemo(() => {
+    return nodes.filter((node) => !isNodePassed(node, renderNowMs))
+  }, [nodes, renderNowMs])
+
+  const sortedTasks = useMemo(() => getSortedTaskNodes(visibleNodes), [visibleNodes])
+
+  const todayFocus = sortedTasks[0]
+  const laterToday = sortedTasks[1]
+  const comingUp = sortedTasks[2]
 
   if (!user) {
     return (
@@ -123,25 +215,50 @@ function Tasks() {
   }
 
   return (
-    <section>
-      {syncEdgeError ? (
-        <p className="home-auth-error" style={{ marginBottom: '0.5rem' }}>{syncEdgeError}</p>
-      ) : null}
-      <div
-        style={{
-          height: '80vh',
-          borderRadius: '0.75rem',
-          overflow: 'hidden',
-          border: '1px solid #e2e2e2',
-        }}
-      >
-        <DefaultFlow
-          key={`${user.uid}-${flowKey}-tasks`}
-          nodes={nodes}
-          edges={edges}
-          onEdgesChange={onEdgesChange}
-          onConnectPersist={handleConnectPersist}
-        />
+    <section className="tasks-page-shell">
+      <div className="tasks-panel">
+        <h1 className="tasks-page-title">Tasks</h1>
+        <p className="tasks-page-subtitle">A calm, simple view of what matters most today.</p>
+
+        <div className="tasks-summary-grid">
+          <SummaryCard
+            label="Up Next"
+            title={todayFocus ? getTaskTitle(todayFocus) : 'No upcoming task yet'}
+            subtitle={
+              todayFocus
+                ? formatTaskTime(getTaskStart(todayFocus))
+                : 'Add or sync a task to get started'
+            }
+            detail={
+              todayFocus
+                ? getTaskLocation(todayFocus)
+                : 'Your next important task will appear here.'
+            }
+            featured
+          />
+
+          <div className="tasks-secondary-grid">
+            <SummaryCard
+              label="Coming Up"
+              title={laterToday ? getTaskTitle(laterToday) : 'Nothing else scheduled'}
+              subtitle={
+                laterToday ? formatTaskTime(getTaskStart(laterToday)) : 'You are all caught up'
+              }
+              detail={laterToday ? getTaskLocation(laterToday) : 'No additional task found.'}
+            />
+
+            <SummaryCard
+              label="Coming Up"
+              title={comingUp ? getTaskTitle(comingUp) : 'No upcoming reminder'}
+              subtitle={
+                comingUp
+                  ? formatTaskTime(getTaskStart(comingUp))
+                  : 'Check back after syncing more tasks'
+              }
+              detail={comingUp ? getTaskLocation(comingUp) : 'Future tasks will appear here.'}
+            />
+          </div>
+        </div>
       </div>
     </section>
   )
