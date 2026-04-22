@@ -1,23 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Node } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
-import { getNodes, removePassedTaskNodes } from '../firebase/graph'
+import { getNodes, removePassedTaskNodes, type NodeDoc } from '../firebase/graph'
 import './Tasks.css'
 
-function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
+type TaskSummaryItem = {
+  id: string
+  type: NodeDoc['type']
+  name: string
+  title?: string
+  startAt?: string
+  endAt?: string
+  priority?: number
+  location?: string
+}
+
+function firestoreNodesToTaskItems(nodes: Awaited<ReturnType<typeof getNodes>>): TaskSummaryItem[] {
   return nodes.map((doc) => ({
     id: doc.id,
     type: doc.type,
-    data: {
-      name: doc.name,
-      title: doc.title,
-      startAt: doc.startAt,
-      endAt: doc.endAt,
-      priority: doc.priority,
-      location: doc.location,
-    },
-    position: doc.position ?? { x: 0, y: 0 },
+    name: doc.name,
+    title: doc.title,
+    startAt: doc.startAt,
+    endAt: doc.endAt,
+    priority: doc.priority,
+    location: doc.location,
   }))
 }
 
@@ -55,34 +62,30 @@ function formatTaskTime(value?: string) {
   })
 }
 
-function getTaskTitle(node: Node) {
-  const data = node.data as Record<string, unknown>
+function getTaskTitle(node: TaskSummaryItem) {
   return (
-    (typeof data.title === 'string' && data.title.trim()) ||
-    (typeof data.name === 'string' && data.name.trim()) ||
+    (typeof node.title === 'string' && node.title.trim()) ||
+    (typeof node.name === 'string' && node.name.trim()) ||
     'Untitled task'
   )
 }
 
-function getTaskLocation(node: Node) {
-  const data = node.data as Record<string, unknown>
-  return typeof data.location === 'string' && data.location.trim() ? data.location : 'Location not set'
+function getTaskLocation(node: TaskSummaryItem) {
+  return typeof node.location === 'string' && node.location.trim() ? node.location : 'Location not set'
 }
 
-function getTaskStart(node: Node) {
-  const data = node.data as Record<string, unknown>
-  return typeof data.startAt === 'string' ? data.startAt : undefined
+function getTaskStart(node: TaskSummaryItem) {
+  return typeof node.startAt === 'string' ? node.startAt : undefined
 }
 
-function isNodePassed(node: Node, nowMs: number): boolean {
+function isNodePassed(node: TaskSummaryItem, nowMs: number): boolean {
   if (node.type !== 'task') return false
-  const data = node.data as Record<string, unknown>
-  if (typeof data.endAt !== 'string') return false
-  const endMs = new Date(data.endAt).getTime()
+  if (typeof node.endAt !== 'string') return false
+  const endMs = new Date(node.endAt).getTime()
   return !Number.isNaN(endMs) && endMs < nowMs
 }
 
-function getSortedTaskNodes(nodes: Node[]) {
+function getSortedTaskNodes(nodes: TaskSummaryItem[]) {
   return [...nodes].sort((a, b) => {
     const aStart = getTaskStart(a)
     const bStart = getTaskStart(b)
@@ -126,7 +129,7 @@ function SummaryCard({ label, title, subtitle, detail, featured = false }: Summa
 
 function Tasks() {
   const { user } = useAuth()
-  const [nodes, setNodes] = useState<Node[]>([])
+  const [nodes, setNodes] = useState<TaskSummaryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [renderNowMs, setRenderNowMs] = useState(0)
@@ -151,7 +154,7 @@ function Tasks() {
       .then(() => getNodes(user.uid, 'tasks'))
       .then((nodesData) => {
         if (cancelled) return
-        setNodes(firestoreNodesToReactFlow(nodesData))
+        setNodes(firestoreNodesToTaskItems(nodesData))
       })
       .catch((err) => {
         if (!cancelled) {
