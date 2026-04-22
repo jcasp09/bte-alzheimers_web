@@ -1,7 +1,8 @@
 import { type SubmitEvent, useState } from 'react'
 import { createEdge, createNode, getNodes, uploadPersonNodePhoto, upsertNode, type NodeDoc, type NodeType } from '../../firebase/graph'
+import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
 
-const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place', 'task'])
+const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place'])
 import { Modal } from './Modal'
 
 type Props = {
@@ -82,7 +83,10 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
       }
 
       if (linkToNodeId) {
-        await createEdge(userId, newNodeId, linkToNodeId, 'context')
+        await createEdge(userId, newNodeId, linkToNodeId, 'context', {
+          sourceHandle: DEFAULT_SOURCE_HANDLE,
+          targetHandle: DEFAULT_TARGET_HANDLE,
+        })
       }
 
       onSuccess()

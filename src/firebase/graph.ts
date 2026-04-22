@@ -6,6 +6,9 @@ import { storage } from './storage'
 export type GraphId = 'context' | 'tasks'
 export type NodeType = 'person' | 'place' | 'task'
 
+export const PERSON_NODE_DEFAULT_SIZE = { width: 220, height: 100 } as const
+export const PLACE_NODE_DEFAULT_SIZE = { width: 120, height: 100 } as const
+
 export type CreatePersonNodeData = {
   type: 'person'
   name: string
@@ -14,12 +17,16 @@ export type CreatePersonNodeData = {
   phone?: string
   photoPath?: string
   photoUpdatedAt?: string
+  width?: number
+  height?: number
 }
 
 export type CreatePlaceNodeData = {
   type: 'place'
   name: string
   address: string
+  width?: number
+  height?: number
 }
 
 export type CreateTaskNodeData = {
@@ -35,6 +42,11 @@ export type CreateTaskNodeData = {
 
 export type CreateNodeData = CreatePersonNodeData | CreatePlaceNodeData | CreateTaskNodeData
 
+/** Firestore rejects `undefined` in document payloads. */
+function omitUndefinedFields(obj: object): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined))
+}
+
 function randomOffset() {
   return Math.round((Math.random() - 0.5) * 80)
 }
@@ -46,7 +58,7 @@ export async function createNode(
 ): Promise<string> {
   const position = { x: randomOffset(), y: randomOffset() }
   const docRef = await addDoc(collection(db, 'users', uid, 'graphs', graphId, 'nodes'), {
-    ...data,
+    ...omitUndefinedFields(data),
     position,
   })
   return docRef.id
@@ -59,8 +71,13 @@ export async function upsertNode(
   graphId: GraphId = 'context',
 ): Promise<string> {
   const nodeRef = doc(db, 'users', uid, 'graphs', graphId, 'nodes', nodeId)
-  await setDoc(nodeRef, data, { merge: true })
+  await setDoc(nodeRef, omitUndefinedFields(data), { merge: true })
   return nodeId
+}
+
+export type CreateEdgeOptions = {
+  sourceHandle?: string
+  targetHandle?: string
 }
 
 export async function createEdge(
@@ -68,11 +85,17 @@ export async function createEdge(
   sourceNodeId: string,
   targetNodeId: string,
   graphId: GraphId = 'context',
+  options?: CreateEdgeOptions,
 ): Promise<string> {
-  const docRef = await addDoc(collection(db, 'users', uid, 'graphs', graphId, 'edges'), {
-    sourceNodeId,
-    targetNodeId,
-  })
+  const docRef = await addDoc(
+    collection(db, 'users', uid, 'graphs', graphId, 'edges'),
+    omitUndefinedFields({
+      sourceNodeId,
+      targetNodeId,
+      sourceHandle: options?.sourceHandle,
+      targetHandle: options?.targetHandle,
+    }),
+  )
   return docRef.id
 }
 
@@ -81,6 +104,8 @@ export type NodeDoc = {
   type: NodeType
   name: string
   position?: { x: number; y: number }
+  width?: number
+  height?: number
   relationship?: string
   email?: string
   phone?: string
@@ -131,6 +156,8 @@ export type EdgeDoc = {
   id: string
   sourceNodeId: string
   targetNodeId: string
+  sourceHandle?: string
+  targetHandle?: string
 }
 
 export type GraphViewport = {

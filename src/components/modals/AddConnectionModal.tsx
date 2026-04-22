@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react'
-import { createEdge, getNodes, type NodeDoc } from '../../firebase/graph'
+import { getNodes, type NodeDoc } from '../../firebase/graph'
+import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../graph/edgeHandles'
 import { Modal } from './Modal'
 
 type Props = {
   userId: string
   onClose: () => void
-  onSuccess: () => void
+  /** Adds the edge to local graph state; Firestore write is deferred by the parent. */
+  onQueueConnection: (
+    sourceId: string,
+    targetId: string,
+    sourceHandle: string,
+    targetHandle: string,
+  ) => void
 }
 
-export function AddConnectionModal({ userId, onClose, onSuccess }: Props) {
+export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props) {
   const [existingNodes, setExistingNodes] = useState<NodeDoc[]>([])
   const [sourceId, setSourceId] = useState<string | null>(null)
   const [targetId, setTargetId] = useState<string | null>(null)
+  const [sourceSide, setSourceSide] = useState<EdgeSide>('bottom')
+  const [targetSide, setTargetSide] = useState<EdgeSide>('top')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,8 +44,12 @@ export function AddConnectionModal({ userId, onClose, onSuccess }: Props) {
     setIsSubmitting(true)
 
     try {
-      await createEdge(userId, sourceId, targetId, 'context')
-      onSuccess()
+      onQueueConnection(
+        sourceId,
+        targetId,
+        sourceHandleForSide(sourceSide),
+        targetHandleForSide(targetSide),
+      )
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add connection')
@@ -101,10 +114,43 @@ export function AddConnectionModal({ userId, onClose, onSuccess }: Props) {
     </div>
   )
 
+  const sidePicker = (
+    label: string,
+    value: EdgeSide,
+    onChange: (side: EdgeSide) => void,
+  ) => (
+    <div style={{ marginBottom: '0.75rem' }}>
+      <p style={{ margin: '0 0 0.35rem', fontWeight: 600, fontSize: '0.8rem', color: '#475569' }}>
+        {label}
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+        {EDGE_SIDES.map((side) => (
+          <button
+            key={side}
+            type="button"
+            onClick={() => onChange(side)}
+            style={{
+              padding: '0.3rem 0.55rem',
+              borderRadius: '0.35rem',
+              border: `1px solid ${value === side ? '#0284c7' : '#e5e7eb'}`,
+              background: value === side ? '#e0f2fe' : '#fff',
+              color: value === side ? '#0369a1' : '#475569',
+              fontSize: 12,
+              fontWeight: value === side ? 600 : 500,
+              cursor: 'pointer',
+            }}
+          >
+            {side.charAt(0).toUpperCase() + side.slice(1)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <Modal title="Add Connection" onClose={onClose}>
       <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
-        Select a source and target node to create a connection between them.
+        Select a source and target node, then which side of each node the link uses (same as dragging between handles on the graph).
       </p>
 
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
@@ -115,6 +161,18 @@ export function AddConnectionModal({ userId, onClose, onSuccess }: Props) {
         </div>
 
         {nodeList('To', targetId, setTargetId)}
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '0.75rem 1rem',
+          marginBottom: '1rem',
+        }}
+      >
+        {sidePicker('From side (outgoing)', sourceSide, setSourceSide)}
+        {sidePicker('To side (incoming)', targetSide, setTargetSide)}
       </div>
 
       {/* Preview of selected connection */}
