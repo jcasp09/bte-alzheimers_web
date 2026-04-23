@@ -12,6 +12,7 @@ type Props = {
     targetId: string,
     sourceHandle: string,
     targetHandle: string,
+    label?: string,
   ) => void
 }
 
@@ -23,6 +24,7 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
   const [targetSide, setTargetSide] = useState<EdgeSide>('top')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [connectionLabel, setConnectionLabel] = useState('')
 
   useEffect(() => {
     getNodes(userId, 'context')
@@ -51,6 +53,7 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
         targetId,
         sourceHandleForSide(sourceSide),
         targetHandleForSide(targetSide),
+        connectionLabel.trim() || undefined,
       )
       onClose()
     } catch (err) {
@@ -177,6 +180,18 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
       >
         {sidePicker('From side (outgoing)', sourceSide, setSourceSide)}
         {sidePicker('To side (incoming)', targetSide, setTargetSide)}
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label className="home-auth-field">
+          <span>Label (optional)</span>
+          <input
+            type="text"
+            value={connectionLabel}
+            onChange={(e) => setConnectionLabel(e.target.value)}
+            placeholder="Shown on the connection line"
+          />
+        </label>
       </div>
 
       {/* Preview of selected connection */}

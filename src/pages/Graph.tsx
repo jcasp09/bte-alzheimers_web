@@ -11,12 +11,13 @@ import {
   GROUP_NODE_DEFAULT_SIZE,
   saveGraphViewport,
   saveNodePositions,
+  updateEdgeLabel,
   type NodeDoc,
   type NodeType,
 } from '../firebase/graph'
 import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
 import { applyReparentOnDragStop } from '../graph/reparent'
-import { useDeferredEdgePersistence } from '../graph/useDeferredEdgePersistence'
+import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../graph/useDeferredEdgePersistence'
 import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
 import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'
@@ -63,6 +64,7 @@ type SelectedEdge = {
   targetName: string
   sourceHandle?: string
   targetHandle?: string
+  label?: string
 }
 
 const CONTEXT_GRAPH_NODE_TYPES = new Set<NodeType>(['person', 'place', 'group'])
@@ -259,8 +261,13 @@ function Graph() {
     return () => window.removeEventListener('keydown', onKey)
   }, [pendingGroupRect])
 
-  const { queueConnection, queueConnectionFromModal, flushPendingEdges, removePendingEdge } =
-    useDeferredEdgePersistence(user?.uid, 'context', setEdges, setSyncEdgeError)
+  const {
+    queueConnection,
+    queueConnectionFromModal,
+    updatePendingEdgeLabel,
+    flushPendingEdges,
+    removePendingEdge,
+  } = useDeferredEdgePersistence(user?.uid, 'context', setEdges, setSyncEdgeError)
 
   const togglePanel = (panel: OpenPanel) => {
     setOpenPanel((prev) => (prev === panel ? null : panel))
@@ -291,16 +298,46 @@ function Graph() {
   }, [])
 
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+    if (addGroupPlacementRef.current.status === 'picking') return
     const sourceName = nodes.find((n) => n.id === edge.source)?.data?.name as string ?? edge.source
     const targetName = nodes.find((n) => n.id === edge.target)?.data?.name as string ?? edge.target
+    const rawLabel = edge.label
+    const label =
+      typeof rawLabel === 'string' ? rawLabel : typeof rawLabel === 'number' ? String(rawLabel) : ''
     setSelectedEdge({
       id: edge.id,
       sourceName,
       targetName,
       sourceHandle: edge.sourceHandle ?? undefined,
       targetHandle: edge.targetHandle ?? undefined,
+      label,
     })
   }, [nodes])
+
+  const handleSaveEdgeLabel = useCallback(
+    async (edgeId: string, label: string) => {
+      if (!user?.uid) return
+      if (isLocalPendingEdgeId(edgeId)) {
+        updatePendingEdgeLabel(edgeId, label)
+        return
+      }
+      await updateEdgeLabel(user.uid, edgeId, label, 'context')
+      setEdges((eds) =>
+        eds.map((e) => {
+          if (e.id !== edgeId) return e
+          const next: Edge = { ...e }
+          const t = label.trim()
+          if (t.length > 0) {
+            next.label = t
+          } else {
+            delete next.label
+          }
+          return next
+        }),
+      )
+    },
+    [user?.uid, updatePendingEdgeLabel],
+  )
 
   const handleConnectPersist = useCallback(
     (connection: Connection) => {
@@ -471,7 +508,9 @@ function Graph() {
         <AddConnectionModal
           userId={user.uid}
           onClose={() => setOpenPanel(null)}
-          onQueueConnection={queueConnectionFromModal}
+          onQueueConnection={(sourceId, targetId, sourceHandle, targetHandle, label) => {
+            queueConnectionFromModal(sourceId, targetId, sourceHandle, targetHandle, label)
+          }}
         />
       )}
 
@@ -523,11 +562,13 @@ function Graph() {
           targetName={selectedEdge.targetName}
           sourceHandle={selectedEdge.sourceHandle}
           targetHandle={selectedEdge.targetHandle}
+          edgeLabel={selectedEdge.label ?? ''}
           onClose={() => setSelectedEdge(null)}
           onEdgeDeleted={(edgeId) => {
             removePendingEdge(edgeId)
             setSelectedEdge(null)
           }}
+          onSaveEdgeLabel={handleSaveEdgeLabel}
         />
       )}
 

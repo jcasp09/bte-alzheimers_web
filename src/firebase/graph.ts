@@ -118,6 +118,8 @@ export async function upsertNode(
 export type CreateEdgeOptions = {
   sourceHandle?: string
   targetHandle?: string
+  /** Optional text shown on the edge in the graph UI. */
+  label?: string
 }
 
 export async function createEdge(
@@ -127,6 +129,10 @@ export async function createEdge(
   graphId: GraphId = 'context',
   options?: CreateEdgeOptions,
 ): Promise<string> {
+  const label =
+    typeof options?.label === 'string' && options.label.trim().length > 0
+      ? options.label.trim()
+      : undefined
   const docRef = await addDoc(
     collection(db, 'users', uid, 'graphs', graphId, 'edges'),
     omitUndefinedFields({
@@ -134,6 +140,7 @@ export async function createEdge(
       targetNodeId,
       sourceHandle: options?.sourceHandle,
       targetHandle: options?.targetHandle,
+      label,
     }),
   )
   return docRef.id
@@ -200,6 +207,7 @@ export type EdgeDoc = {
   targetNodeId: string
   sourceHandle?: string
   targetHandle?: string
+  label?: string
 }
 
 export type GraphViewport = {
@@ -297,6 +305,22 @@ export async function deleteEdge(
 ): Promise<void> {
   const edgeRef = doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)
   await deleteDoc(edgeRef)
+}
+
+/** Persist or clear the edge label (`null` or empty string removes the field). */
+export async function updateEdgeLabel(
+  uid: string,
+  edgeId: string,
+  label: string | null,
+  graphId: GraphId = 'context',
+): Promise<void> {
+  const edgeRef = doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)
+  const trimmed = typeof label === 'string' ? label.trim() : ''
+  if (trimmed.length === 0) {
+    await setDoc(edgeRef, { label: deleteField() }, { merge: true })
+  } else {
+    await setDoc(edgeRef, { label: trimmed }, { merge: true })
+  }
 }
 
 export async function deleteNodeAndEdges(
