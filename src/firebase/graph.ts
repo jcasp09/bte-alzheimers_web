@@ -1,13 +1,26 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore'
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  deleteField,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore'
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db } from './firestore'
 import { storage } from './storage'
 
 export type GraphId = 'context' | 'tasks'
-export type NodeType = 'person' | 'place' | 'task'
+export type NodeType = 'person' | 'place' | 'task' | 'group'
 
 export const PERSON_NODE_DEFAULT_SIZE = { width: 220, height: 100 } as const
 export const PLACE_NODE_DEFAULT_SIZE = { width: 120, height: 100 } as const
+export const GROUP_NODE_DEFAULT_SIZE = { width: 400, height: 300 } as const
 
 export type CreatePersonNodeData = {
   type: 'person'
@@ -40,7 +53,16 @@ export type CreateTaskNodeData = {
   location?: string
 }
 
-export type CreateNodeData = CreatePersonNodeData | CreatePlaceNodeData | CreateTaskNodeData
+export type CreateGroupNodeData = {
+  type: 'group'
+  name: string
+  width?: number
+  height?: number
+  /** When set (finite coords), the new group is created at this flow position instead of a random offset. */
+  position?: { x: number; y: number }
+}
+
+export type CreateNodeData = CreatePersonNodeData | CreatePlaceNodeData | CreateTaskNodeData | CreateGroupNodeData
 
 /** Firestore rejects `undefined` in document payloads. */
 function omitUndefinedFields(obj: object): Record<string, unknown> {
@@ -56,9 +78,27 @@ export async function createNode(
   data: CreateNodeData,
   graphId: GraphId = 'context',
 ): Promise<string> {
-  const position = { x: randomOffset(), y: randomOffset() }
+  let position = { x: randomOffset(), y: randomOffset() }
+  const base = omitUndefinedFields(data) as Record<string, unknown>
+  if (data.type === 'group') {
+    const w = data.width ?? GROUP_NODE_DEFAULT_SIZE.width
+    const h = data.height ?? GROUP_NODE_DEFAULT_SIZE.height
+    base.width = w
+    base.height = h
+    const p = data.position
+    if (
+      p &&
+      typeof p.x === 'number' &&
+      typeof p.y === 'number' &&
+      Number.isFinite(p.x) &&
+      Number.isFinite(p.y)
+    ) {
+      position = { x: p.x, y: p.y }
+    }
+    delete base.position
+  }
   const docRef = await addDoc(collection(db, 'users', uid, 'graphs', graphId, 'nodes'), {
-    ...omitUndefinedFields(data),
+    ...base,
     position,
   })
   return docRef.id
@@ -78,6 +118,8 @@ export async function upsertNode(
 export type CreateEdgeOptions = {
   sourceHandle?: string
   targetHandle?: string
+  /** Optional text shown on the edge in the graph UI. */
+  label?: string
 }
 
 export async function createEdge(
@@ -87,6 +129,10 @@ export async function createEdge(
   graphId: GraphId = 'context',
   options?: CreateEdgeOptions,
 ): Promise<string> {
+  const label =
+    typeof options?.label === 'string' && options.label.trim().length > 0
+      ? options.label.trim()
+      : undefined
   const docRef = await addDoc(
     collection(db, 'users', uid, 'graphs', graphId, 'edges'),
     omitUndefinedFields({
@@ -94,6 +140,7 @@ export async function createEdge(
       targetNodeId,
       sourceHandle: options?.sourceHandle,
       targetHandle: options?.targetHandle,
+      label,
     }),
   )
   return docRef.id
@@ -104,6 +151,8 @@ export type NodeDoc = {
   type: NodeType
   name: string
   position?: { x: number; y: number }
+  /** When set, this node is laid out inside the parent group (context graph). */
+  parentId?: string
   width?: number
   height?: number
   relationship?: string
@@ -158,6 +207,7 @@ export type EdgeDoc = {
   targetNodeId: string
   sourceHandle?: string
   targetHandle?: string
+  label?: string
 }
 
 export type GraphViewport = {
@@ -187,9 +237,16 @@ export async function getEdges(uid: string, graphId: GraphId = 'context'): Promi
   })) as EdgeDoc[]
 }
 
+export type NodeLayoutRow = {
+  id: string
+  position: { x: number; y: number }
+  /** Omit to leave unchanged; `null` removes parentId in Firestore. */
+  parentId?: string | null
+}
+
 export async function saveNodePositions(
   uid: string,
-  nodes: { id: string; position: { x: number; y: number } }[],
+  nodes: NodeLayoutRow[],
   graphId: GraphId = 'context',
 ): Promise<void> {
   if (nodes.length === 0) return
@@ -204,13 +261,13 @@ export async function saveNodePositions(
   const batch = writeBatch(db)
   toSave.forEach((node) => {
     const ref = doc(db, 'users', uid, 'graphs', graphId, 'nodes', node.id)
-    batch.set(
-      ref,
-      {
-        position: node.position,
-      },
-      { merge: true },
-    )
+    const patch: Record<string, unknown> = { position: node.position }
+    if (node.parentId === null) {
+      patch.parentId = deleteField()
+    } else if (typeof node.parentId === 'string') {
+      patch.parentId = node.parentId
+    }
+    batch.set(ref, patch, { merge: true })
   })
   await batch.commit()
 }
@@ -250,15 +307,61 @@ export async function deleteEdge(
   await deleteDoc(edgeRef)
 }
 
+/** Persist or clear the edge label (`null` or empty string removes the field). */
+export async function updateEdgeLabel(
+  uid: string,
+  edgeId: string,
+  label: string | null,
+  graphId: GraphId = 'context',
+): Promise<void> {
+  const edgeRef = doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)
+  const trimmed = typeof label === 'string' ? label.trim() : ''
+  if (trimmed.length === 0) {
+    await setDoc(edgeRef, { label: deleteField() }, { merge: true })
+  } else {
+    await setDoc(edgeRef, { label: trimmed }, { merge: true })
+  }
+}
+
 export async function deleteNodeAndEdges(
   uid: string,
   nodeId: string,
   graphId: GraphId = 'context',
 ): Promise<void> {
-  const nodeSnap = await getDoc(doc(db, 'users', uid, 'graphs', graphId, 'nodes', nodeId))
-  const nodeData = (nodeSnap.exists() ? nodeSnap.data() : null) as { photoPath?: string } | null
-
   const nodeRef = doc(db, 'users', uid, 'graphs', graphId, 'nodes', nodeId)
+  const nodeSnap = await getDoc(nodeRef)
+  const nodeData = (nodeSnap.exists() ? nodeSnap.data() : null) as {
+    photoPath?: string
+    type?: NodeType
+    position?: { x: number; y: number }
+  } | null
+
+  if (nodeData?.type === 'group' && nodeSnap.exists()) {
+    const nodesCol = collection(db, 'users', uid, 'graphs', graphId, 'nodes')
+    const parentPos = nodeData.position ?? { x: 0, y: 0 }
+    const childrenSnap = await getDocs(query(nodesCol, where('parentId', '==', nodeId)))
+    if (!childrenSnap.empty) {
+      const detachBatch = writeBatch(db)
+      childrenSnap.forEach((childDoc) => {
+        const childRef = childDoc.ref
+        const rel = (childDoc.data().position as { x: number; y: number } | undefined) ?? {
+          x: 0,
+          y: 0,
+        }
+        const abs = { x: parentPos.x + rel.x, y: parentPos.y + rel.y }
+        detachBatch.set(
+          childRef,
+          {
+            parentId: deleteField(),
+            position: abs,
+          },
+          { merge: true },
+        )
+      })
+      await detachBatch.commit()
+    }
+  }
+
   await deleteDoc(nodeRef)
 
   const edgesCol = collection(db, 'users', uid, 'graphs', graphId, 'edges')

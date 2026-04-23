@@ -1,6 +1,11 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import { Modal } from './Modal'
-import { deleteNodeAndEdges, uploadPersonNodePhoto, upsertNode } from '../../firebase/graph'
+import {
+  deleteNodeAndEdges,
+  GROUP_NODE_DEFAULT_SIZE,
+  uploadPersonNodePhoto,
+  upsertNode,
+} from '../../firebase/graph'
 import {
   canDecreaseNodeSize,
   canIncreaseNodeSize,
@@ -8,6 +13,11 @@ import {
   safeNodeDimensions,
   stepNodeDimensions,
 } from '../../nodeSize'
+
+function clampGroupDimension(value: unknown, fallback: number) {
+  const v = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
+  return Math.min(2000, Math.max(200, v))
+}
 
 type Props = {
   userId: string
@@ -62,7 +72,15 @@ export function NodeInfoModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [groupW, setGroupW] = useState(() =>
+    clampGroupDimension(nodeWidth, GROUP_NODE_DEFAULT_SIZE.width),
+  )
+  const [groupH, setGroupH] = useState(() =>
+    clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height),
+  )
+
   const canEdit = nodeType === 'person' || nodeType === 'place'
+  const isGroup = nodeType === 'group'
   const sizeNodeType = nodeType === 'person' || nodeType === 'place' ? nodeType : null
   const defaultDims = sizeNodeType ? defaultNodeSize(sizeNodeType) : null
   const sizeIsAtDefault =
@@ -75,7 +93,41 @@ export function NodeInfoModal({
       setSizeH(s.height)
     }
   }, [nodeId, sizeNodeType, nodeWidth, nodeHeight])
+
+  useEffect(() => {
+    if (isGroup) {
+      setGroupW(clampGroupDimension(nodeWidth, GROUP_NODE_DEFAULT_SIZE.width))
+      setGroupH(clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height))
+    }
+  }, [nodeId, isGroup, nodeWidth, nodeHeight])
   const isPhotoTypeAllowed = (file: File): boolean => file.type === 'image/jpeg' || file.type === 'image/png'
+
+  const handleSaveGroup = async (e: SubmitEvent) => {
+    e.preventDefault()
+    if (!isGroup) return
+
+    setError(null)
+    setIsSaving(true)
+    try {
+      await upsertNode(
+        userId,
+        nodeId,
+        {
+          type: 'group',
+          name,
+          width: clampGroupDimension(groupW, GROUP_NODE_DEFAULT_SIZE.width),
+          height: clampGroupDimension(groupH, GROUP_NODE_DEFAULT_SIZE.height),
+        },
+        'context',
+      )
+      onSuccess()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save group')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleSave = async (e: SubmitEvent) => {
     e.preventDefault()
@@ -150,6 +202,68 @@ export function NodeInfoModal({
       <p style={{ fontSize: 13, color: '#6b7280', marginBottom: '1.25rem' }}>
         Type: <strong style={{ color: '#374151' }}>{nodeType}</strong>
       </p>
+
+      {isGroup && (
+        <form onSubmit={handleSaveGroup} className="home-auth-form" style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label className="home-auth-field">
+              <span>Name</span>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+          </div>
+          <div
+            style={{
+              marginBottom: '0.75rem',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.75rem',
+            }}
+          >
+            <label className="home-auth-field">
+              <span>Width (px)</span>
+              <input
+                type="number"
+                min={200}
+                max={2000}
+                step={10}
+                required
+                value={groupW}
+                onChange={(e) => setGroupW(Number(e.target.value))}
+              />
+            </label>
+            <label className="home-auth-field">
+              <span>Height (px)</span>
+              <input
+                type="number"
+                min={200}
+                max={2000}
+                step={10}
+                required
+                value={groupH}
+                onChange={(e) => setGroupH(Number(e.target.value))}
+              />
+            </label>
+          </div>
+          <p style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#6b7280' }}>
+            Frame size is clamped between 200 and 2000 px on save.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="submit"
+              disabled={isSaving || isDeleting || isUploading}
+              className="home-auth-button"
+              style={{ marginTop: 0 }}
+            >
+              {isSaving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {canEdit && (
         <form onSubmit={handleSave} className="home-auth-form" style={{ marginBottom: '1rem' }}>
@@ -365,7 +479,7 @@ export function NodeInfoModal({
             opacity: isDeleting || isSaving || isUploading ? 0.6 : 1,
           }}
         >
-          {isDeleting ? 'Deleting…' : 'Delete node'}
+          {isDeleting ? 'Deleting…' : isGroup ? 'Delete group (detach members)' : 'Delete node'}
         </button>
         <button
           type="button"

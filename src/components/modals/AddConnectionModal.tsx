@@ -12,6 +12,7 @@ type Props = {
     targetId: string,
     sourceHandle: string,
     targetHandle: string,
+    label?: string,
   ) => void
 }
 
@@ -23,12 +24,15 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
   const [targetSide, setTargetSide] = useState<EdgeSide>('top')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [connectionLabel, setConnectionLabel] = useState('')
 
   useEffect(() => {
     getNodes(userId, 'context')
       .then(setExistingNodes)
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load nodes'))
   }, [userId])
+
+  const connectableNodes = existingNodes.filter((n) => n.type === 'person' || n.type === 'place')
 
   const handleAdd = async () => {
     if (!sourceId || !targetId) {
@@ -49,6 +53,7 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
         targetId,
         sourceHandleForSide(sourceSide),
         targetHandleForSide(targetSide),
+        connectionLabel.trim() || undefined,
       )
       onClose()
     } catch (err) {
@@ -79,10 +84,12 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
           backgroundColor: '#fff',
         }}
       >
-        {existingNodes.length === 0 ? (
-          <li style={{ padding: '0.5rem', color: '#6b7280', fontSize: 13 }}>No nodes yet.</li>
+        {connectableNodes.length === 0 ? (
+          <li style={{ padding: '0.5rem', color: '#6b7280', fontSize: 13 }}>
+            {existingNodes.length === 0 ? 'No nodes yet.' : 'No people or places to connect (groups are excluded).'}
+          </li>
         ) : (
-          existingNodes.map((node) => (
+          connectableNodes.map((node) => (
             <li
               key={node.id}
               role="button"
@@ -175,6 +182,18 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
         {sidePicker('To side (incoming)', targetSide, setTargetSide)}
       </div>
 
+      <div style={{ marginBottom: '1rem' }}>
+        <label className="home-auth-field">
+          <span>Label (optional)</span>
+          <input
+            type="text"
+            value={connectionLabel}
+            onChange={(e) => setConnectionLabel(e.target.value)}
+            placeholder="Shown on the connection line"
+          />
+        </label>
+      </div>
+
       {/* Preview of selected connection */}
       {(sourceId || targetId) && (
         <div
@@ -193,13 +212,13 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
         >
           <span style={{ fontWeight: 600 }}>
             {sourceId
-              ? (existingNodes.find((n) => n.id === sourceId)?.name ?? '…')
+              ? (connectableNodes.find((n) => n.id === sourceId)?.name ?? '…')
               : '—'}
           </span>
           <span style={{ color: '#94a3b8' }}>→</span>
           <span style={{ fontWeight: 600 }}>
             {targetId
-              ? (existingNodes.find((n) => n.id === targetId)?.name ?? '…')
+              ? (connectableNodes.find((n) => n.id === targetId)?.name ?? '…')
               : '—'}
           </span>
         </div>

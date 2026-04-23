@@ -33,6 +33,8 @@ export function edgeHandleLabel(handleId: string | null | undefined): string {
 }
 
 export function edgeDocToReactFlowEdge(doc: EdgeDoc): Edge {
+  const text =
+    typeof doc.label === 'string' && doc.label.trim().length > 0 ? doc.label.trim() : undefined
   return {
     id: doc.id,
     source: doc.sourceNodeId,
@@ -40,5 +42,6 @@ export function edgeDocToReactFlowEdge(doc: EdgeDoc): Edge {
     type: 'default',
     sourceHandle: doc.sourceHandle ?? DEFAULT_SOURCE_HANDLE,
     targetHandle: doc.targetHandle ?? DEFAULT_TARGET_HANDLE,
+    ...(text ? { label: text } : {}),
   }
 }

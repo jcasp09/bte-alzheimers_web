@@ -8,6 +8,7 @@ export type PendingEdgeRow = {
   target: string
   sourceHandle?: string
   targetHandle?: string
+  label?: string
 }
 
 type SetEdges = Dispatch<SetStateAction<Edge[]>>
@@ -33,11 +34,25 @@ export function useDeferredEdgePersistence(
     const failed: PendingEdgeRow[] = []
     for (const row of queue) {
       try {
+        const label =
+          typeof row.label === 'string' && row.label.trim().length > 0 ? row.label.trim() : undefined
         const serverId = await createEdge(uid, row.source, row.target, graphId, {
           sourceHandle: row.sourceHandle,
           targetHandle: row.targetHandle,
+          label,
         })
-        setEdges((eds) => eds.map((e) => (e.id === row.localId ? { ...e, id: serverId } : e)))
+        setEdges((eds) =>
+          eds.map((e) => {
+            if (e.id !== row.localId) return e
+            const next: Edge = { ...e, id: serverId }
+            if (label) {
+              next.label = label
+            } else {
+              delete next.label
+            }
+            return next
+          }),
+        )
       } catch {
         failed.push(row)
       }
@@ -50,16 +65,20 @@ export function useDeferredEdgePersistence(
     }
   }, [uid, graphId, setEdges, setSyncError])
 
-  flushRef.current = flushPendingEdges
+  useEffect(() => {
+    flushRef.current = flushPendingEdges
+  }, [flushPendingEdges])
 
   const queueConnection = useCallback(
-    (connection: Connection) => {
+    (connection: Connection, opts?: { label?: string }) => {
       const src = connection.source
       const tgt = connection.target
-      if (!src || !tgt || src === tgt) return
+      if (!src || !tgt || src === tgt) return null
       const localId = `local-${crypto.randomUUID()}`
       const sourceHandle = connection.sourceHandle ?? undefined
       const targetHandle = connection.targetHandle ?? undefined
+      const label =
+        typeof opts?.label === 'string' && opts.label.trim().length > 0 ? opts.label.trim() : undefined
       setEdges((eds) => [
         ...eds,
         {
@@ -69,6 +88,7 @@ export function useDeferredEdgePersistence(
           sourceHandle,
           targetHandle,
           type: 'default',
+          ...(label ? { label } : {}),
         },
       ])
       pendingRef.current.push({
@@ -77,14 +97,18 @@ export function useDeferredEdgePersistence(
         target: tgt,
         sourceHandle,
         targetHandle,
+        label,
       })
+      return localId
     },
     [setEdges],
   )
 
   const queueConnectionFromModal = useCallback(
-    (sourceId: string, targetId: string, sourceHandle: string, targetHandle: string) => {
+    (sourceId: string, targetId: string, sourceHandle: string, targetHandle: string, label?: string) => {
       const localId = `local-${crypto.randomUUID()}`
+      const trimmed =
+        typeof label === 'string' && label.trim().length > 0 ? label.trim() : undefined
       setEdges((eds) => [
         ...eds,
         {
@@ -94,6 +118,7 @@ export function useDeferredEdgePersistence(
           sourceHandle,
           targetHandle,
           type: 'default',
+          ...(trimmed ? { label: trimmed } : {}),
         },
       ])
       pendingRef.current.push({
@@ -102,10 +127,32 @@ export function useDeferredEdgePersistence(
         target: targetId,
         sourceHandle,
         targetHandle,
+        label: trimmed,
       })
+      return localId
     },
     [setEdges],
   )
+
+  const updatePendingEdgeLabel = useCallback((localId: string, nextLabel: string) => {
+    const trimmed = nextLabel.trim()
+    const label = trimmed.length > 0 ? trimmed : undefined
+    pendingRef.current = pendingRef.current.map((row) =>
+      row.localId === localId ? { ...row, label } : row,
+    )
+    setEdges((eds) =>
+      eds.map((e) => {
+        if (e.id !== localId) return e
+        const next: Edge = { ...e }
+        if (label) {
+          next.label = label
+        } else {
+          delete next.label
+        }
+        return next
+      }),
+    )
+  }, [setEdges])
 
   const removePendingEdge = useCallback(
     (localId: string) => {
@@ -154,6 +201,7 @@ export function useDeferredEdgePersistence(
   return {
     queueConnection,
     queueConnectionFromModal,
+    updatePendingEdgeLabel,
     flushPendingEdges,
     removePendingEdge,
   }
