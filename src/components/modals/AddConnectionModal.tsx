@@ -30,6 +30,8 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load nodes'))
   }, [userId])
 
+  const connectableNodes = existingNodes.filter((n) => n.type === 'person' || n.type === 'place')
+
   const handleAdd = async () => {
     if (!sourceId || !targetId) {
       return
@@ -79,10 +81,12 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
           backgroundColor: '#fff',
         }}
       >
-        {existingNodes.length === 0 ? (
-          <li style={{ padding: '0.5rem', color: '#6b7280', fontSize: 13 }}>No nodes yet.</li>
+        {connectableNodes.length === 0 ? (
+          <li style={{ padding: '0.5rem', color: '#6b7280', fontSize: 13 }}>
+            {existingNodes.length === 0 ? 'No nodes yet.' : 'No people or places to connect (groups are excluded).'}
+          </li>
         ) : (
-          existingNodes.map((node) => (
+          connectableNodes.map((node) => (
             <li
               key={node.id}
               role="button"
@@ -193,13 +197,13 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
         >
           <span style={{ fontWeight: 600 }}>
             {sourceId
-              ? (existingNodes.find((n) => n.id === sourceId)?.name ?? '…')
+              ? (connectableNodes.find((n) => n.id === sourceId)?.name ?? '…')
               : '—'}
           </span>
           <span style={{ color: '#94a3b8' }}>→</span>
           <span style={{ fontWeight: 600 }}>
             {targetId
-              ? (existingNodes.find((n) => n.id === targetId)?.name ?? '…')
+              ? (connectableNodes.find((n) => n.id === targetId)?.name ?? '…')
               : '—'}
           </span>
         </div>

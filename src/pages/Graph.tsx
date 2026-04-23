@@ -1,25 +1,48 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { applyEdgeChanges } from '@xyflow/react'
-import type { Connection, Edge, Node, OnEdgesChange, Viewport } from '@xyflow/react'
+import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
+import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
 import {
   getEdges,
   getGraphViewport,
   getNodes,
+  GROUP_NODE_DEFAULT_SIZE,
   saveGraphViewport,
   saveNodePositions,
+  type NodeDoc,
   type NodeType,
 } from '../firebase/graph'
 import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
+import { applyReparentOnDragStop } from '../graph/reparent'
 import { useDeferredEdgePersistence } from '../graph/useDeferredEdgePersistence'
 import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
+import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'
 import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../components/modals/EdgeInfoModal.tsx'
 
 type OpenPanel = 'addNode' | 'addConnection' | null
+
+type XY = { x: number; y: number }
+
+type AddGroupPlacement =
+  | { status: 'idle' }
+  | { status: 'picking'; phase: 1 }
+  | { status: 'picking'; phase: 2; p1: XY }
+
+const MIN_GROUP_DRAW_W = 80
+const MIN_GROUP_DRAW_H = 60
+const MAX_GROUP_DRAW = 2000
+
+function rectFromCorners(p1: XY, p2: XY): { x: number; y: number; width: number; height: number } {
+  const x = Math.min(p1.x, p2.x)
+  const y = Math.min(p1.y, p2.y)
+  const width = Math.min(MAX_GROUP_DRAW, Math.max(MIN_GROUP_DRAW_W, Math.abs(p2.x - p1.x)))
+  const height = Math.min(MAX_GROUP_DRAW, Math.max(MIN_GROUP_DRAW_H, Math.abs(p2.y - p1.y)))
+  return { x, y, width, height }
+}
 
 type SelectedNode = {
   id: string
@@ -42,14 +65,54 @@ type SelectedEdge = {
   targetHandle?: string
 }
 
-const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place'])
+const CONTEXT_GRAPH_NODE_TYPES = new Set<NodeType>(['person', 'place', 'group'])
 
-function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>): Node[] {
-  return nodes
-    .filter((doc) => VALID_NODE_TYPES.has(doc.type))
-    .map((doc) => ({
+function sortContextGraphDocs(docs: NodeDoc[]): NodeDoc[] {
+  const inScope = docs.filter((d) => CONTEXT_GRAPH_NODE_TYPES.has(d.type))
+  const roots = inScope.filter((d) => !d.parentId)
+  const children = inScope.filter((d) => d.parentId)
+  roots.sort((a, b) => {
+    const ag = a.type === 'group' ? 0 : 1
+    const bg = b.type === 'group' ? 0 : 1
+    if (ag !== bg) return ag - bg
+    return a.id.localeCompare(b.id)
+  })
+  children.sort((a, b) => {
+    const p = (a.parentId ?? '').localeCompare(b.parentId ?? '')
+    if (p !== 0) return p
+    return a.id.localeCompare(b.id)
+  })
+  return [...roots, ...children]
+}
+
+function docToReactFlowNode(doc: NodeDoc): Node | null {
+  if (!CONTEXT_GRAPH_NODE_TYPES.has(doc.type)) return null
+
+  if (doc.type === 'group') {
+    const w =
+      typeof doc.width === 'number' && Number.isFinite(doc.width)
+        ? doc.width
+        : GROUP_NODE_DEFAULT_SIZE.width
+    const h =
+      typeof doc.height === 'number' && Number.isFinite(doc.height)
+        ? doc.height
+        : GROUP_NODE_DEFAULT_SIZE.height
+    return {
+      id: doc.id,
+      type: 'group',
+      parentId: doc.parentId,
+      position: doc.position ?? { x: 0, y: 0 },
+      width: w,
+      height: h,
+      zIndex: -1,
+      data: { name: doc.name },
+    }
+  }
+
+  return {
     id: doc.id,
     type: doc.type,
+    parentId: doc.parentId,
     data: {
       name: doc.name,
       relationship: doc.relationship,
@@ -68,7 +131,13 @@ function firestoreNodesToReactFlow(nodes: Awaited<ReturnType<typeof getNodes>>):
       height: typeof doc.height === 'number' && Number.isFinite(doc.height) ? doc.height : undefined,
     },
     position: doc.position ?? { x: 0, y: 0 },
-  }))
+  }
+}
+
+function firestoreNodesToReactFlow(nodes: NodeDoc[]): Node[] {
+  return sortContextGraphDocs(nodes)
+    .map(docToReactFlowNode)
+    .filter((n): n is Node => n != null)
 }
 
 function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>): Edge[] {
@@ -84,6 +153,14 @@ function Graph() {
   const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
   const [initialViewport, setInitialViewport] = useState<Viewport | undefined>(undefined)
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
+  const [addGroupPlacement, setAddGroupPlacement] = useState<AddGroupPlacement>({ status: 'idle' })
+  const [pendingGroupRect, setPendingGroupRect] = useState<{
+    x: number
+    y: number
+    width: number
+    height: number
+  } | null>(null)
+  const addGroupPlacementRef = useRef<AddGroupPlacement>({ status: 'idle' })
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<SelectedEdge | null>(null)
   const flowKeyRef = useRef(0)
@@ -136,6 +213,52 @@ function Graph() {
     setEdges((eds) => applyEdgeChanges(changes, eds))
   }, [])
 
+  const onNodesChange = useCallback<OnNodesChange>((changes) => {
+    setNodes((nds) => applyNodeChanges(changes, nds))
+  }, [])
+
+  const onNodeDragStop = useCallback((_e: MouseEvent, node: Node) => {
+    setNodes((nds) => {
+      const merged = nds.map((n) => (n.id === node.id ? { ...n, ...node, position: node.position } : n))
+      return applyReparentOnDragStop(merged, node.id)
+    })
+  }, [])
+
+  useEffect(() => {
+    addGroupPlacementRef.current = addGroupPlacement
+  }, [addGroupPlacement])
+
+  const handlePaneFlowClick = useCallback((point: XY) => {
+    const cur = addGroupPlacementRef.current
+    if (cur.status !== 'picking') return
+    if (cur.phase === 1) {
+      const next: AddGroupPlacement = { status: 'picking', phase: 2, p1: point }
+      addGroupPlacementRef.current = next
+      setAddGroupPlacement(next)
+      return
+    }
+    const rect = rectFromCorners(cur.p1, point)
+    setPendingGroupRect(rect)
+    addGroupPlacementRef.current = { status: 'idle' }
+    setAddGroupPlacement({ status: 'idle' })
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (addGroupPlacementRef.current.status === 'picking') {
+        addGroupPlacementRef.current = { status: 'idle' }
+        setAddGroupPlacement({ status: 'idle' })
+        return
+      }
+      if (pendingGroupRect) {
+        setPendingGroupRect(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pendingGroupRect])
+
   const { queueConnection, queueConnectionFromModal, flushPendingEdges, removePendingEdge } =
     useDeferredEdgePersistence(user?.uid, 'context', setEdges, setSyncEdgeError)
 
@@ -144,14 +267,15 @@ function Graph() {
   }
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    if (addGroupPlacementRef.current.status === 'picking') return
     const name = typeof node.data.name === 'string' ? node.data.name : ''
     const relationship = typeof node.data.relationship === 'string' ? node.data.relationship : ''
     const email = typeof node.data.email === 'string' ? node.data.email : ''
     const phone = typeof node.data.phone === 'string' ? node.data.phone : ''
     const address = typeof node.data.address === 'string' ? node.data.address : ''
     const photoPath = typeof node.data.photoPath === 'string' ? node.data.photoPath : ''
-    const w = node.data.width
-    const h = node.data.height
+    const w = node.type === 'group' ? node.width : node.data.width
+    const h = node.type === 'group' ? node.height : node.data.height
     setSelectedNode({
       id: node.id,
       name,
@@ -243,24 +367,67 @@ function Graph() {
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button type="button" onClick={() => togglePanel('addNode')} className="home-auth-button"
+          <button
+            type="button"
+            onClick={() => togglePanel('addNode')}
             style={{
               marginTop: 0,
-              opacity: openPanel === 'addNode' ? 0.7 : 1,
+              border: '1px solid #d1d5db',
+              padding: '0.45rem 0.9rem',
+              borderRadius: '0.5rem',
+              backgroundColor: openPanel === 'addNode' ? '#e5e7eb' : '#f3f4f6',
+              color: '#374151',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
             }}
           >
             + Add Node
           </button>
 
-          <button type="button" onClick={() => togglePanel('addConnection')} className="home-auth-toggle-button"
+          <button
+            type="button"
+            onClick={() => togglePanel('addConnection')}
             style={{
-              border: '1px solid #e5e7eb',
+              marginTop: 0,
+              border: '1px solid #d1d5db',
               padding: '0.45rem 0.9rem',
               borderRadius: '0.5rem',
-              backgroundColor: openPanel === 'addConnection' ? '#e0f2fe' : undefined,
+              backgroundColor: openPanel === 'addConnection' ? '#e5e7eb' : '#f3f4f6',
+              color: '#374151',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
             }}
           >
             + Add Connection
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (addGroupPlacement.status === 'picking') {
+                addGroupPlacementRef.current = { status: 'idle' }
+                setAddGroupPlacement({ status: 'idle' })
+                setPendingGroupRect(null)
+                return
+              }
+              addGroupPlacementRef.current = { status: 'picking', phase: 1 }
+              setAddGroupPlacement({ status: 'picking', phase: 1 })
+            }}
+            style={{
+              marginTop: 0,
+              border: '1px solid #d1d5db',
+              padding: '0.45rem 0.9rem',
+              borderRadius: '0.5rem',
+              backgroundColor: addGroupPlacement.status === 'picking' ? '#e5e7eb' : '#f3f4f6',
+              color: '#374151',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            + Add group
           </button>
         </div>
       </div>
@@ -308,6 +475,22 @@ function Graph() {
         />
       )}
 
+      {pendingGroupRect && (
+        <AddGroupModal
+          userId={user.uid}
+          draftRect={pendingGroupRect}
+          onClose={() => {
+            setPendingGroupRect(null)
+            addGroupPlacementRef.current = { status: 'idle' }
+            setAddGroupPlacement({ status: 'idle' })
+          }}
+          onSuccess={() => {
+            setPendingGroupRect(null)
+            void handleAddNodeSuccess()
+          }}
+        />
+      )}
+
       {selectedNode && (
         <NodeInfoModal
           userId={user.uid}
@@ -348,6 +531,24 @@ function Graph() {
         />
       )}
 
+      {addGroupPlacement.status === 'picking' ? (
+        <p
+          style={{
+            margin: '0 0 0.5rem',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '0.5rem',
+            background: '#e0f2fe',
+            border: '1px solid #7dd3fc',
+            color: '#0c4a6e',
+            fontSize: 14,
+          }}
+        >
+          {addGroupPlacement.phase === 1
+            ? 'Click the top-left corner of the new group on the graph, then the bottom-right. Pan with middle or right mouse drag, or the scroll wheel. Press Esc to cancel.'
+            : 'Now click the bottom-right corner. Esc to cancel.'}
+        </p>
+      ) : null}
+
       <div
         style={{
           height: '75vh',
@@ -360,7 +561,11 @@ function Graph() {
           key={`${user.uid}-${flowKey}`}
           nodes={nodes}
           edges={edges}
+          onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeDragStop={onNodeDragStop}
+          onPaneFlowClick={addGroupPlacement.status === 'picking' ? handlePaneFlowClick : undefined}
+          groupPlacementPanMode={addGroupPlacement.status === 'picking'}
           defaultViewport={initialViewport}
           onNodeClick={handleNodeClick}
           onEdgeClick={handleEdgeClick}
@@ -368,8 +573,13 @@ function Graph() {
           onSavePositions={(updatedNodes) => {
             void saveNodePositions(
               user.uid,
-              updatedNodes.map((n) => ({ id: n.id, position: n.position })), 'context'
-            );
+              updatedNodes.map((n) => ({
+                id: n.id,
+                position: n.position,
+                parentId: n.parentId ?? null,
+              })),
+              'context',
+            )
           }}
           onSaveViewport={(viewport) => {
             void saveGraphViewport(user.uid, viewport, 'context')
