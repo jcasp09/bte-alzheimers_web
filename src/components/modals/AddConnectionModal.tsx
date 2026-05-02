@@ -1,23 +1,20 @@
-import { useEffect, useState } from 'react'
-import { getNodes, type NodeDoc } from '../../firebase/graph'
+import { useState } from 'react'
+import type { Connection } from '@xyflow/react'
+import { type PickableNode } from '../../firebase/graph'
 import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../graph/edgeHandles'
 import { Modal } from './Modal'
 
 type Props = {
-  userId: string
+  pickableNodes: PickableNode[]
   onClose: () => void
   /** Adds the edge to local graph state; Firestore write is deferred by the parent. */
   onQueueConnection: (
-    sourceId: string,
-    targetId: string,
-    sourceHandle: string,
-    targetHandle: string,
-    label?: string,
-  ) => void
+    connection: Connection,
+    opts?: { label?: string },
+  ) => string | null
 }
 
-export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props) {
-  const [existingNodes, setExistingNodes] = useState<NodeDoc[]>([])
+export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }: Props) {
   const [sourceId, setSourceId] = useState<string | null>(null)
   const [targetId, setTargetId] = useState<string | null>(null)
   const [sourceSide, setSourceSide] = useState<EdgeSide>('bottom')
@@ -26,13 +23,7 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
   const [error, setError] = useState<string | null>(null)
   const [connectionLabel, setConnectionLabel] = useState('')
 
-  useEffect(() => {
-    getNodes(userId, 'context')
-      .then(setExistingNodes)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load nodes'))
-  }, [userId])
-
-  const connectableNodes = existingNodes.filter((n) => n.type === 'person' || n.type === 'place')
+  const connectableNodes = pickableNodes
 
   const handleAdd = async () => {
     if (!sourceId || !targetId) {
@@ -49,11 +40,13 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
 
     try {
       onQueueConnection(
-        sourceId,
-        targetId,
-        sourceHandleForSide(sourceSide),
-        targetHandleForSide(targetSide),
-        connectionLabel.trim() || undefined,
+        {
+          source: sourceId,
+          target: targetId,
+          sourceHandle: sourceHandleForSide(sourceSide),
+          targetHandle: targetHandleForSide(targetSide),
+        },
+        { label: connectionLabel.trim() || undefined },
       )
       onClose()
     } catch (err) {
@@ -86,7 +79,7 @@ export function AddConnectionModal({ userId, onClose, onQueueConnection }: Props
       >
         {connectableNodes.length === 0 ? (
           <li style={{ padding: '0.5rem', color: '#6b7280', fontSize: 13 }}>
-            {existingNodes.length === 0 ? 'No nodes yet.' : 'No people or places to connect (groups are excluded).'}
+            No people or places to connect yet.
           </li>
         ) : (
           connectableNodes.map((node) => (

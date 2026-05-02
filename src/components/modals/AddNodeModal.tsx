@@ -1,17 +1,23 @@
 import { type SubmitEvent, useState } from 'react'
-import { createEdge, createNode, getNodes, uploadPersonNodePhoto, upsertNode, type NodeDoc, type NodeType } from '../../firebase/graph'
+import {
+  createEdge,
+  createNode,
+  uploadPersonNodePhoto,
+  upsertNode,
+  type NodeType,
+  type PickableNode,
+} from '../../firebase/graph'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
-
-const VALID_NODE_TYPES = new Set<NodeType>(['person', 'place'])
 import { Modal } from './Modal'
 
 type Props = {
   userId: string
+  pickableNodes: PickableNode[]
   onClose: () => void
   onSuccess: () => void
 }
 
-export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
+export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Props) {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [nodeType, setNodeType] = useState<NodeType>('person')
   const [name, setName] = useState('')
@@ -21,23 +27,11 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
   const [address, setAddress] = useState('')
   const [linkToNodeId, setLinkToNodeId] = useState<string | null>(null)
   const [showLinkList, setShowLinkList] = useState(false)
-  const [existingNodes, setExistingNodes] = useState<NodeDoc[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const isPhotoTypeAllowed = (file: File): boolean => file.type === 'image/jpeg' || file.type === 'image/png'
-
-  const openLinkList = async () => {
-    setShowLinkList(true)
-    try {
-      const nodes = await getNodes(userId)
-      // Ensure that only nodes with valid information are displayed
-      setExistingNodes(nodes.filter((n) => VALID_NODE_TYPES.has(n.type) && n.name))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load nodes')
-    }
-  }
 
   const handleTypeChange = (type: NodeType) => {
     setNodeType(type)
@@ -58,17 +52,17 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
     setIsSubmitting(true)
 
     try {
-      const data =
-        nodeType === 'person'
-          ? { type: 'person' as const, name, relationship, email, phone }
-          : { type: 'place' as const, name, address }
+      if (nodeType === 'person' && photoFile && !isPhotoTypeAllowed(photoFile)) {
+        setError('Only JPEG and PNG photos are supported');
+        return;
+      }
+
+      const data = nodeType === 'person'
+        ? { type: 'person' as const, name, relationship, email, phone }
+        : { type: 'place' as const, name, address }
       const newNodeId = await createNode(userId, data)
 
       if (nodeType === 'person' && photoFile) {
-        if (!isPhotoTypeAllowed(photoFile)) {
-          throw new Error('Only JPEG and PNG photos are supported')
-        }
-
         setIsUploading(true)
         const photo = await uploadPersonNodePhoto(userId, newNodeId, photoFile, 'context')
         await upsertNode(userId, newNodeId, {
@@ -214,7 +208,7 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
           </p>
           <button
             type="button"
-            onClick={openLinkList}
+            onClick={() => setShowLinkList((prev) => !prev)}
             className="home-auth-toggle-button"
             style={{
               border: '1px solid #e5e7eb',
@@ -224,7 +218,7 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
             }}
           >
             {linkToNodeId
-              ? (existingNodes.find((n) => n.id === linkToNodeId)?.name ?? 'Change link')
+              ? (pickableNodes.find((n) => n.id === linkToNodeId)?.name ?? 'Change link')
               : 'Choose node to link to'}
           </button>
           {showLinkList && (
@@ -240,12 +234,12 @@ export function AddNodePanel({ userId, onClose, onSuccess }: Props) {
                 overflowY: 'auto',
               }}
             >
-              {existingNodes.length === 0 ? (
+              {pickableNodes.length === 0 ? (
                 <li style={{ padding: '0.5rem', color: '#6b7280', fontSize: 13 }}>
                   No nodes yet. Add one first.
                 </li>
               ) : (
-                existingNodes.map((node) => (
+                pickableNodes.map((node) => (
                   <li
                     key={node.id}
                     role="button"

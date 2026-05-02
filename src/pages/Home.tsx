@@ -1,30 +1,20 @@
-import { type SubmitEvent, useEffect, useState } from 'react'
-import { type User, onAuthStateChanged } from 'firebase/auth'
+import { type SubmitEvent, useState } from 'react'
 import { doc, setDoc } from 'firebase/firestore'
-import {
-  signInWithEmailPassword,
-  signOutUser,
-  signUpWithEmailPassword,
-  auth,
-} from '../firebase/auth'
 import { db } from '../firebase/firestore'
+import { useAuth } from '../contexts/AuthContext'
+import { signInWithEmailPassword, signOutUser, signUpWithEmailPassword } from '../firebase/auth'
 
 type AuthMode = 'signin' | 'signup'
 
 // Handle user authentication and authorization
 function Home() {
+  const { user } = useAuth()
   const [authMode, setAuthMode] = useState<AuthMode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, setUser)
-    return () => unsubscribe()
-  }, [])
 
   // Handle form submission (sign in / sign up)
   const handleSubmit = async (event: SubmitEvent) => {
@@ -33,20 +23,17 @@ function Home() {
     setIsSubmitting(true)
     
     try {
-      let userCredential
-      if (authMode === 'signin') {
-        userCredential = await signInWithEmailPassword(email, password)
-      } else {
-        userCredential = await signUpWithEmailPassword(email, password)
-      }
+      const userCredential = authMode === 'signin'
+        ? await signInWithEmailPassword(email, password)
+        : await signUpWithEmailPassword(email, password)
 
       // Access uid from userCredential and store in Firestore
-      const { user } = userCredential
-      if (user?.uid != null && user.email != null) {
+      const credentialUser = userCredential.user
+      if (credentialUser?.uid != null && credentialUser.email != null) {
         await setDoc(
-          doc(db, 'users', user.uid),
+          doc(db, 'users', credentialUser.uid),
           {
-            email: user.email,
+            email: credentialUser.email,
           },
           { merge: true },
         )

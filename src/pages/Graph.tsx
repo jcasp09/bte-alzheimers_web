@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
@@ -14,6 +14,7 @@ import {
   updateEdgeLabel,
   type NodeDoc,
   type NodeType,
+  type PickableNode,
 } from '../firebase/graph'
 import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
 import { applyReparentOnDragStop } from '../graph/reparent'
@@ -263,18 +264,35 @@ function Graph() {
 
   const {
     queueConnection,
-    queueConnectionFromModal,
     updatePendingEdgeLabel,
     flushPendingEdges,
     removePendingEdge,
   } = useDeferredEdgePersistence(user?.uid, 'context', setEdges, setSyncEdgeError)
+
+  // Derive the pickable nodes from the graph state
+  const pickableNodes = useMemo<PickableNode[]>(() => {
+    const out: PickableNode[] = []
+    for (const n of nodes) {
+      if (n.type !== 'person' && n.type !== 'place')
+        continue
+
+      const name = typeof n.data?.name === 'string' ? n.data.name : ''
+      if (!name)
+        continue
+
+      out.push({ id: n.id, type: n.type, name })
+    }
+    return out
+  }, [nodes])
 
   const togglePanel = (panel: OpenPanel) => {
     setOpenPanel((prev) => (prev === panel ? null : panel))
   }
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    if (addGroupPlacementRef.current.status === 'picking') return
+    if (addGroupPlacementRef.current.status === 'picking')
+      return
+
     const name = typeof node.data.name === 'string' ? node.data.name : ''
     const relationship = typeof node.data.relationship === 'string' ? node.data.relationship : ''
     const email = typeof node.data.email === 'string' ? node.data.email : ''
@@ -283,6 +301,7 @@ function Graph() {
     const photoPath = typeof node.data.photoPath === 'string' ? node.data.photoPath : ''
     const w = node.type === 'group' ? node.width : node.data.width
     const h = node.type === 'group' ? node.height : node.data.height
+
     setSelectedNode({
       id: node.id,
       name,
@@ -298,12 +317,14 @@ function Graph() {
   }, [])
 
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
-    if (addGroupPlacementRef.current.status === 'picking') return
+    if (addGroupPlacementRef.current.status === 'picking')
+      return
+
     const sourceName = nodes.find((n) => n.id === edge.source)?.data?.name as string ?? edge.source
     const targetName = nodes.find((n) => n.id === edge.target)?.data?.name as string ?? edge.target
     const rawLabel = edge.label
-    const label =
-      typeof rawLabel === 'string' ? rawLabel : typeof rawLabel === 'number' ? String(rawLabel) : ''
+    const label = typeof rawLabel === 'string' ? rawLabel : typeof rawLabel === 'number' ? String(rawLabel) : ''
+
     setSelectedEdge({
       id: edge.id,
       sourceName,
@@ -316,17 +337,23 @@ function Graph() {
 
   const handleSaveEdgeLabel = useCallback(
     async (edgeId: string, label: string) => {
-      if (!user?.uid) return
+      if (!user?.uid)
+        return
+
       if (isLocalPendingEdgeId(edgeId)) {
         updatePendingEdgeLabel(edgeId, label)
         return
       }
+
       await updateEdgeLabel(user.uid, edgeId, label, 'context')
       setEdges((eds) =>
         eds.map((e) => {
-          if (e.id !== edgeId) return e
+          if (e.id !== edgeId)
+            return e
+          
           const next: Edge = { ...e }
           const t = label.trim()
+
           if (t.length > 0) {
             next.label = t
           } else {
@@ -499,6 +526,7 @@ function Graph() {
       {openPanel === 'addNode' && (
         <AddNodePanel
           userId={user.uid}
+          pickableNodes={pickableNodes}
           onClose={() => setOpenPanel(null)}
           onSuccess={() => void handleAddNodeSuccess()}
         />
@@ -506,11 +534,9 @@ function Graph() {
 
       {openPanel === 'addConnection' && (
         <AddConnectionModal
-          userId={user.uid}
+          pickableNodes={pickableNodes}
           onClose={() => setOpenPanel(null)}
-          onQueueConnection={(sourceId, targetId, sourceHandle, targetHandle, label) => {
-            queueConnectionFromModal(sourceId, targetId, sourceHandle, targetHandle, label)
-          }}
+          onQueueConnection={queueConnection}
         />
       )}
 
