@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { deleteEdge } from '../../firebase/graph'
+import { GRAPH_IDS, deleteEdge } from '../../firebase/graph'
 import { edgeHandleLabel } from '../../graph/edgeHandles'
 import { isLocalPendingEdgeId } from '../../graph/useDeferredEdgePersistence'
 import { Modal } from './Modal'
@@ -66,7 +66,7 @@ export function EdgeInfoModal({
     setIsDeleting(true)
 
     try {
-      await deleteEdge(userId, edgeId, 'context')
+      await deleteEdge(userId, edgeId, GRAPH_IDS.context)
       onEdgeDeleted(edgeId)
       onClose()
     } catch (err) {

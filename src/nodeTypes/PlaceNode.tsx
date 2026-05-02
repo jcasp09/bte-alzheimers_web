@@ -1,7 +1,6 @@
 import type { NodeProps } from '@xyflow/react'
 import { NodeEdgeHandles } from '../components/NodeEdgeHandles'
-import { PLACE_NODE_DEFAULT_SIZE } from '../firebase/graph'
-import { safeNodeDimensions } from '../nodeSize'
+import { PLACE_NODE_DEFAULT_SIZE, safeNodeDimensions } from '../graph/dimensions'
 
 function placeScale(width: number, height: number) {
   return Math.min(

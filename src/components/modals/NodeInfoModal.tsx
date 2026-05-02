@@ -1,23 +1,24 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import {
+  GRAPH_IDS,
+  PHOTO_ACCEPT_ATTR,
+  PHOTO_TYPE_LABEL,
   deleteNodeAndEdges,
-  GROUP_NODE_DEFAULT_SIZE,
+  isAllowedPhotoType,
   uploadPersonNodePhoto,
   upsertNode,
 } from '../../firebase/graph'
 import {
+  GROUP_DIMENSION_BOUNDS,
+  GROUP_NODE_DEFAULT_SIZE,
   canDecreaseNodeSize,
   canIncreaseNodeSize,
+  clampGroupDimension,
   defaultNodeSize,
   safeNodeDimensions,
   stepNodeDimensions,
-} from '../../nodeSize'
-
-function clampGroupDimension(value: unknown, fallback: number) {
-  const v = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
-  return Math.min(2000, Math.max(200, v))
-}
+} from '../../graph/dimensions'
 
 type Props = {
   userId: string
@@ -100,7 +101,6 @@ export function NodeInfoModal({
       setGroupH(clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height))
     }
   }, [nodeId, isGroup, nodeWidth, nodeHeight])
-  const isPhotoTypeAllowed = (file: File): boolean => file.type === 'image/jpeg' || file.type === 'image/png'
 
   const handleSaveGroup = async (e: SubmitEvent) => {
     e.preventDefault()
@@ -118,7 +118,7 @@ export function NodeInfoModal({
           width: clampGroupDimension(groupW, GROUP_NODE_DEFAULT_SIZE.width),
           height: clampGroupDimension(groupH, GROUP_NODE_DEFAULT_SIZE.height),
         },
-        'context',
+        GRAPH_IDS.context,
       )
       onSuccess()
       onClose()
@@ -142,11 +142,13 @@ export function NodeInfoModal({
         let nextPhotoUpdatedAt: string | undefined
 
         if (photoFile) {
-          if (!isPhotoTypeAllowed(photoFile)) {
-            throw new Error('Only JPEG and PNG photos are supported')
+          if (!isAllowedPhotoType(photoFile)) {
+            setError(`Only ${PHOTO_TYPE_LABEL} photos are supported`)
+            return
           }
+
           setIsUploading(true)
-          const uploadedPhoto = await uploadPersonNodePhoto(userId, nodeId, photoFile, 'context')
+          const uploadedPhoto = await uploadPersonNodePhoto(userId, nodeId, photoFile, GRAPH_IDS.context)
           nextPhotoPath = uploadedPhoto.photoPath
           nextPhotoUpdatedAt = uploadedPhoto.photoUpdatedAt
           setPhotoPath(uploadedPhoto.photoPath)
@@ -162,7 +164,7 @@ export function NodeInfoModal({
           photoUpdatedAt: nextPhotoUpdatedAt ?? undefined,
           width: sizeW,
           height: sizeH,
-        }, 'context')
+        }, GRAPH_IDS.context)
       } else {
         await upsertNode(userId, nodeId, {
           type: 'place',
@@ -170,7 +172,7 @@ export function NodeInfoModal({
           address,
           width: sizeW,
           height: sizeH,
-        }, 'context')
+        }, GRAPH_IDS.context)
       }
 
       onSuccess()
@@ -188,7 +190,7 @@ export function NodeInfoModal({
     setIsDeleting(true)
 
     try {
-      await deleteNodeAndEdges(userId, nodeId, 'context')
+      await deleteNodeAndEdges(userId, nodeId, GRAPH_IDS.context)
       onSuccess()
       onClose()
     } catch (err) {
@@ -228,8 +230,8 @@ export function NodeInfoModal({
               <span>Width (px)</span>
               <input
                 type="number"
-                min={200}
-                max={2000}
+                min={GROUP_DIMENSION_BOUNDS.min}
+                max={GROUP_DIMENSION_BOUNDS.max}
                 step={10}
                 required
                 value={groupW}
@@ -240,8 +242,8 @@ export function NodeInfoModal({
               <span>Height (px)</span>
               <input
                 type="number"
-                min={200}
-                max={2000}
+                min={GROUP_DIMENSION_BOUNDS.min}
+                max={GROUP_DIMENSION_BOUNDS.max}
                 step={10}
                 required
                 value={groupH}
@@ -250,7 +252,7 @@ export function NodeInfoModal({
             </label>
           </div>
           <p style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#6b7280' }}>
-            Frame size is clamped between 200 and 2000 px on save.
+            {`Frame size is clamped between ${GROUP_DIMENSION_BOUNDS.min} and ${GROUP_DIMENSION_BOUNDS.max} px on save.`}
           </p>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
@@ -313,10 +315,10 @@ export function NodeInfoModal({
               </div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label className="home-auth-field">
-                  <span>{photoPath ? 'Replace Photo (JPEG/PNG)' : 'Add Photo (JPEG/PNG)'}</span>
+                  <span>{photoPath ? `Replace Photo (${PHOTO_TYPE_LABEL})` : `Add Photo (${PHOTO_TYPE_LABEL})`}</span>
                   <input
                     type="file"
-                    accept="image/jpeg,image/png"
+                    accept={PHOTO_ACCEPT_ATTR}
                     onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
                   />
                 </label>

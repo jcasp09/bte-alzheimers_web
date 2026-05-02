@@ -1,4 +1,4 @@
-import { removePassedTaskNodes, upsertNode } from './graph'
+import { GRAPH_IDS, removePassedTaskNodes, upsertNode } from './graph'
 
 type GoogleTokenResponse = {
   access_token?: string
@@ -43,10 +43,7 @@ declare global {
 
 const GOOGLE_OAUTH_SCRIPT = 'https://accounts.google.com/gsi/client'
 const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
-const HOURS_PER_DAY = 24
-const MINUTES_PER_HOUR = 60
-const SECONDS_PER_MINUTE = 60
-const MS_PER_SECOND = 1000
+const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 // Centralized calendar sync settings for easy tuning.
 export const CALENDAR_SYNC_CONFIG = {
@@ -140,10 +137,9 @@ function clamp(value: number, min: number, max: number) {
 function computePriority(startAtIso: string): number {
   const startAtMs = new Date(startAtIso).getTime()
   if (Number.isNaN(startAtMs)) return 0
-  const deltaHours =
-    (startAtMs - Date.now()) / (MS_PER_SECOND * SECONDS_PER_MINUTE * MINUTES_PER_HOUR)
-  const windowHours = HOURS_PER_DAY * CALENDAR_SYNC_CONFIG.prioritizeWithinDays
-  return clamp(1 - deltaHours / windowHours, 0, 1)
+  const deltaMs = startAtMs - Date.now()
+  const windowMs = MS_PER_DAY * CALENDAR_SYNC_CONFIG.prioritizeWithinDays
+  return clamp(1 - deltaMs / windowMs, 0, 1)
 }
 
 async function fetchJson<T>(url: string, token: string): Promise<T> {
@@ -160,10 +156,7 @@ export async function syncGoogleCalendarTasks(uid: string): Promise<number> {
   const token = getStoredToken(uid)
   const now = new Date()
   await removePassedTaskNodes(uid, now.toISOString())
-  const rangeEnd = new Date(
-    now.getTime() +
-      MS_PER_SECOND * SECONDS_PER_MINUTE * MINUTES_PER_HOUR * HOURS_PER_DAY * CALENDAR_SYNC_CONFIG.futureDaysToSync,
-  )
+  const rangeEnd = new Date(now.getTime() + MS_PER_DAY * CALENDAR_SYNC_CONFIG.futureDaysToSync)
   const calendarId = CALENDAR_SYNC_CONFIG.calendarId
   const eventsUrl = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`)
   eventsUrl.searchParams.set('singleEvents', String(CALENDAR_SYNC_CONFIG.expandRecurringEvents))
@@ -195,7 +188,7 @@ export async function syncGoogleCalendarTasks(uid: string): Promise<number> {
       calendarEventId: eventId,
       priority,
       location: event.location ?? '',
-    }, 'tasks')
+    }, GRAPH_IDS.tasks)
     importedCount += 1
   }))
   return importedCount

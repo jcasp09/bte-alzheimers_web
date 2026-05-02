@@ -10,13 +10,18 @@ import {
   setDoc,
   where,
   writeBatch,
+  type CollectionReference,
+  type DocumentReference,
 } from 'firebase/firestore'
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db } from './firestore'
 import { storage } from './storage'
+import { GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 
 export type GraphId = 'context' | 'tasks'
 export type NodeType = 'person' | 'place' | 'task' | 'group'
+
+export const GRAPH_IDS = { context: 'context', tasks: 'tasks' } as const
 
 export type PickableNode = {
   id: string
@@ -24,9 +29,34 @@ export type PickableNode = {
   name: string
 }
 
-export const PERSON_NODE_DEFAULT_SIZE = { width: 220, height: 100 } as const
-export const PLACE_NODE_DEFAULT_SIZE = { width: 120, height: 100 } as const
-export const GROUP_NODE_DEFAULT_SIZE = { width: 400, height: 300 } as const
+// Allowed photo MIME types for person nodes
+export const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png'] as const
+export const PHOTO_ACCEPT_ATTR = PHOTO_MIME_TYPES.join(',')
+export const PHOTO_TYPE_LABEL = 'JPEG/PNG'
+
+export function isAllowedPhotoType(file: File): boolean {
+  return (PHOTO_MIME_TYPES as readonly string[]).includes(file.type)
+}
+
+// Firestore path builders
+function nodesCollection(uid: string, graphId: GraphId): CollectionReference {
+  return collection(db, 'users', uid, 'graphs', graphId, 'nodes')
+}
+function edgesCollection(uid: string, graphId: GraphId): CollectionReference {
+  return collection(db, 'users', uid, 'graphs', graphId, 'edges')
+}
+function nodeDocRef(uid: string, graphId: GraphId, nodeId: string): DocumentReference {
+  return doc(nodesCollection(uid, graphId), nodeId)
+}
+function edgeDocRef(uid: string, graphId: GraphId, edgeId: string): DocumentReference {
+  return doc(edgesCollection(uid, graphId), edgeId)
+}
+function viewportDocRef(uid: string, graphId: GraphId): DocumentReference {
+  return doc(db, 'users', uid, 'graphs', graphId, 'meta', 'viewport')
+}
+function nodePhotoStoragePath(uid: string, graphId: GraphId, nodeId: string): string {
+  return `users/${uid}/graphs/${graphId}/nodes/${nodeId}/photo`
+}
 
 export type CreatePersonNodeData = {
   type: 'person'
@@ -75,14 +105,16 @@ function omitUndefinedFields(obj: object): Record<string, unknown> {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined))
 }
 
-function randomOffset() {
-  return Math.round((Math.random() - 0.5) * 80)
+/** Random spread (in flow units) used for new-node placement when no position is given. */
+const RANDOM_PLACEMENT_SPREAD_PX = 80
+function randomOffset(): number {
+  return Math.round((Math.random() - 0.5) * RANDOM_PLACEMENT_SPREAD_PX)
 }
 
 export async function createNode(
   uid: string,
   data: CreateNodeData,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<string> {
   let position = { x: randomOffset(), y: randomOffset() }
   const base = omitUndefinedFields(data) as Record<string, unknown>
@@ -92,18 +124,12 @@ export async function createNode(
     base.width = w
     base.height = h
     const p = data.position
-    if (
-      p &&
-      typeof p.x === 'number' &&
-      typeof p.y === 'number' &&
-      Number.isFinite(p.x) &&
-      Number.isFinite(p.y)
-    ) {
+    if (p && typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y)) {
       position = { x: p.x, y: p.y }
     }
     delete base.position
   }
-  const docRef = await addDoc(collection(db, 'users', uid, 'graphs', graphId, 'nodes'), {
+  const docRef = await addDoc(nodesCollection(uid, graphId), {
     ...base,
     position,
   })
@@ -114,10 +140,9 @@ export async function upsertNode(
   uid: string,
   nodeId: string,
   data: CreateNodeData,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<string> {
-  const nodeRef = doc(db, 'users', uid, 'graphs', graphId, 'nodes', nodeId)
-  await setDoc(nodeRef, omitUndefinedFields(data), { merge: true })
+  await setDoc(nodeDocRef(uid, graphId, nodeId), omitUndefinedFields(data), { merge: true })
   return nodeId
 }
 
@@ -132,7 +157,7 @@ export async function createEdge(
   uid: string,
   sourceNodeId: string,
   targetNodeId: string,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
   options?: CreateEdgeOptions,
 ): Promise<string> {
   const label =
@@ -140,7 +165,7 @@ export async function createEdge(
       ? options.label.trim()
       : undefined
   const docRef = await addDoc(
-    collection(db, 'users', uid, 'graphs', graphId, 'edges'),
+    edgesCollection(uid, graphId),
     omitUndefinedFields({
       sourceNodeId,
       targetNodeId,
@@ -181,17 +206,13 @@ type UploadNodePhotoResult = {
   photoUpdatedAt: string
 }
 
-function personPhotoPath(uid: string, graphId: GraphId, nodeId: string): string {
-  return `users/${uid}/graphs/${graphId}/nodes/${nodeId}/photo`
-}
-
 export async function uploadPersonNodePhoto(
   uid: string,
   nodeId: string,
   file: File,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<UploadNodePhotoResult> {
-  const path = personPhotoPath(uid, graphId, nodeId)
+  const path = nodePhotoStoragePath(uid, graphId, nodeId)
   const photoRef = ref(storage, path)
   await uploadBytes(photoRef, file, { contentType: file.type })
   const photoUrl = await getDownloadURL(photoRef)
@@ -227,16 +248,16 @@ export type StaleTaskCleanupResult = {
   removedEdges: number
 }
 
-export async function getNodes(uid: string, graphId: GraphId = 'context'): Promise<NodeDoc[]> {
-  const snapshot = await getDocs(collection(db, 'users', uid, 'graphs', graphId, 'nodes'))
+export async function getNodes(uid: string, graphId: GraphId = GRAPH_IDS.context): Promise<NodeDoc[]> {
+  const snapshot = await getDocs(nodesCollection(uid, graphId))
   return snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
   })) as NodeDoc[]
 }
 
-export async function getEdges(uid: string, graphId: GraphId = 'context'): Promise<EdgeDoc[]> {
-  const snapshot = await getDocs(collection(db, 'users', uid, 'graphs', graphId, 'edges'))
+export async function getEdges(uid: string, graphId: GraphId = GRAPH_IDS.context): Promise<EdgeDoc[]> {
+  const snapshot = await getDocs(edgesCollection(uid, graphId))
   return snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
@@ -250,30 +271,33 @@ export type NodeLayoutRow = {
   parentId?: string | null
 }
 
+/** Firestore batched writes allow up to this many operations per commit. */
+const FIRESTORE_BATCH_LIMIT = 500
+
 export async function saveNodePositions(
   uid: string,
   nodes: NodeLayoutRow[],
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<void> {
   if (nodes.length === 0) return
   // Only update docs that still exist. setDoc(..., { merge: true }) on a deleted id
   // would recreate an empty node (position-only), which shows as blank "()" on the graph
   // when DefaultFlow unmounts with stale React Flow state after a delete.
-  const col = collection(db, 'users', uid, 'graphs', graphId, 'nodes')
-  const snapshot = await getDocs(col)
+  const snapshot = await getDocs(nodesCollection(uid, graphId))
   const existingIds = new Set(snapshot.docs.map((d) => d.id))
   const toSave = nodes.filter((n) => existingIds.has(n.id))
-  if (toSave.length === 0) return
+  if (toSave.length === 0)
+    return
+
   const batch = writeBatch(db)
   toSave.forEach((node) => {
-    const ref = doc(db, 'users', uid, 'graphs', graphId, 'nodes', node.id)
     const patch: Record<string, unknown> = { position: node.position }
     if (node.parentId === null) {
       patch.parentId = deleteField()
     } else if (typeof node.parentId === 'string') {
       patch.parentId = node.parentId
     }
-    batch.set(ref, patch, { merge: true })
+    batch.set(nodeDocRef(uid, graphId, node.id), patch, { merge: true })
   })
   await batch.commit()
 }
@@ -281,25 +305,19 @@ export async function saveNodePositions(
 export async function saveGraphViewport(
   uid: string,
   viewport: GraphViewport,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<void> {
-  const ref = doc(db, 'users', uid, 'graphs', graphId, 'meta', 'viewport')
-  await setDoc(
-    ref,
-    {
-      viewport,
-    },
-    { merge: true },
-  )
+  await setDoc(viewportDocRef(uid, graphId), { viewport }, { merge: true })
 }
 
 export async function getGraphViewport(
   uid: string,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<GraphViewport | null> {
-  const ref = doc(db, 'users', uid, 'graphs', graphId, 'meta', 'viewport')
-  const snap = await getDoc(ref)
-  if (!snap.exists()) return null
+  const snap = await getDoc(viewportDocRef(uid, graphId))
+  if (!snap.exists())
+    return null
+
   const data = snap.data() as { viewport?: GraphViewport }
   return data.viewport ?? null
 }
@@ -307,10 +325,9 @@ export async function getGraphViewport(
 export async function deleteEdge(
   uid: string,
   edgeId: string,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<void> {
-  const edgeRef = doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)
-  await deleteDoc(edgeRef)
+  await deleteDoc(edgeDocRef(uid, graphId, edgeId))
 }
 
 /** Persist or clear the edge label (`null` or empty string removes the field). */
@@ -318,23 +335,20 @@ export async function updateEdgeLabel(
   uid: string,
   edgeId: string,
   label: string | null,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<void> {
-  const edgeRef = doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)
+  const ref = edgeDocRef(uid, graphId, edgeId)
   const trimmed = typeof label === 'string' ? label.trim() : ''
-  if (trimmed.length === 0) {
-    await setDoc(edgeRef, { label: deleteField() }, { merge: true })
-  } else {
-    await setDoc(edgeRef, { label: trimmed }, { merge: true })
-  }
+  const labelObj = { label: trimmed.length === 0 ? deleteField() : trimmed }
+  await setDoc(ref, labelObj, { merge: true })
 }
 
 export async function deleteNodeAndEdges(
   uid: string,
   nodeId: string,
-  graphId: GraphId = 'context',
+  graphId: GraphId = GRAPH_IDS.context,
 ): Promise<void> {
-  const nodeRef = doc(db, 'users', uid, 'graphs', graphId, 'nodes', nodeId)
+  const nodeRef = nodeDocRef(uid, graphId, nodeId)
   const nodeSnap = await getDoc(nodeRef)
   const nodeData = (nodeSnap.exists() ? nodeSnap.data() : null) as {
     photoPath?: string
@@ -343,20 +357,20 @@ export async function deleteNodeAndEdges(
   } | null
 
   if (nodeData?.type === 'group' && nodeSnap.exists()) {
-    const nodesCol = collection(db, 'users', uid, 'graphs', graphId, 'nodes')
     const parentPos = nodeData.position ?? { x: 0, y: 0 }
-    const childrenSnap = await getDocs(query(nodesCol, where('parentId', '==', nodeId)))
+    const childrenSnap = await getDocs(
+      query(nodesCollection(uid, graphId), where('parentId', '==', nodeId)),
+    )
     if (!childrenSnap.empty) {
       const detachBatch = writeBatch(db)
       childrenSnap.forEach((childDoc) => {
-        const childRef = childDoc.ref
         const rel = (childDoc.data().position as { x: number; y: number } | undefined) ?? {
           x: 0,
           y: 0,
         }
         const abs = { x: parentPos.x + rel.x, y: parentPos.y + rel.y }
         detachBatch.set(
-          childRef,
+          childDoc.ref,
           {
             parentId: deleteField(),
             position: abs,
@@ -370,10 +384,9 @@ export async function deleteNodeAndEdges(
 
   await deleteDoc(nodeRef)
 
-  const edgesCol = collection(db, 'users', uid, 'graphs', graphId, 'edges')
   const [sourceSnap, targetSnap] = await Promise.all([
-    getDocs(query(edgesCol, where('sourceNodeId', '==', nodeId))),
-    getDocs(query(edgesCol, where('targetNodeId', '==', nodeId))),
+    getDocs(query(edgesCollection(uid, graphId), where('sourceNodeId', '==', nodeId))),
+    getDocs(query(edgesCollection(uid, graphId), where('targetNodeId', '==', nodeId))),
   ])
 
   const edgeIds = new Set<string>()
@@ -381,9 +394,7 @@ export async function deleteNodeAndEdges(
   targetSnap.forEach((d) => edgeIds.add(d.id))
 
   await Promise.all(
-    Array.from(edgeIds).map((edgeId) =>
-      deleteDoc(doc(db, 'users', uid, 'graphs', graphId, 'edges', edgeId)),
-    ),
+    Array.from(edgeIds).map((edgeId) => deleteDoc(edgeDocRef(uid, graphId, edgeId))),
   )
 
   if (typeof nodeData?.photoPath === 'string' && nodeData.photoPath.length > 0) {
@@ -405,7 +416,7 @@ export async function removePassedTaskNodes(
     return { removedTaskNodes: 0, removedEdges: 0 }
   }
 
-  const allNodes = await getNodes(uid, 'tasks')
+  const allNodes = await getNodes(uid, GRAPH_IDS.tasks)
   const staleTaskIds = allNodes
     .filter((node) => {
       if (node.type !== 'task' || typeof node.endAt !== 'string') return false
@@ -419,20 +430,19 @@ export async function removePassedTaskNodes(
   }
 
   const staleIdSet = new Set(staleTaskIds)
-  const allEdges = await getEdges(uid, 'tasks')
+  const allEdges = await getEdges(uid, GRAPH_IDS.tasks)
   const staleEdgeIds = allEdges
     .filter((edge) => staleIdSet.has(edge.sourceNodeId) || staleIdSet.has(edge.targetNodeId))
     .map((edge) => edge.id)
 
   const refsToDelete = [
-    ...staleTaskIds.map((id) => doc(db, 'users', uid, 'graphs', 'tasks', 'nodes', id)),
-    ...staleEdgeIds.map((id) => doc(db, 'users', uid, 'graphs', 'tasks', 'edges', id)),
+    ...staleTaskIds.map((id) => nodeDocRef(uid, GRAPH_IDS.tasks, id)),
+    ...staleEdgeIds.map((id) => edgeDocRef(uid, GRAPH_IDS.tasks, id)),
   ]
 
-  // Firestore batched writes allow up to 500 operations per commit.
-  for (let i = 0; i < refsToDelete.length; i += 500) {
+  for (let i = 0; i < refsToDelete.length; i += FIRESTORE_BATCH_LIMIT) {
     const batch = writeBatch(db)
-    refsToDelete.slice(i, i + 500).forEach((ref) => batch.delete(ref))
+    refsToDelete.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach((ref) => batch.delete(ref))
     await batch.commit()
   }
 

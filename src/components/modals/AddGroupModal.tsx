@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { createNode } from '../../firebase/graph'
+import { GRAPH_IDS, createNode } from '../../firebase/graph'
 import { Modal } from './Modal'
 
 type DraftRect = { x: number; y: number; width: number; height: number }
@@ -35,7 +35,7 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
           width: draftRect.width,
           height: draftRect.height,
         },
-        'context',
+        GRAPH_IDS.context,
       )
       onSuccess()
       onClose()

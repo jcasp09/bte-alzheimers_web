@@ -5,10 +5,10 @@ import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } f
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
 import {
+  GRAPH_IDS,
   getEdges,
   getGraphViewport,
   getNodes,
-  GROUP_NODE_DEFAULT_SIZE,
   saveGraphViewport,
   saveNodePositions,
   updateEdgeLabel,
@@ -16,6 +16,7 @@ import {
   type NodeType,
   type PickableNode,
 } from '../firebase/graph'
+import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
 import { applyReparentOnDragStop } from '../graph/reparent'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../graph/useDeferredEdgePersistence'
@@ -34,15 +35,11 @@ type AddGroupPlacement =
   | { status: 'picking'; phase: 1 }
   | { status: 'picking'; phase: 2; p1: XY }
 
-const MIN_GROUP_DRAW_W = 80
-const MIN_GROUP_DRAW_H = 60
-const MAX_GROUP_DRAW = 2000
-
 function rectFromCorners(p1: XY, p2: XY): { x: number; y: number; width: number; height: number } {
   const x = Math.min(p1.x, p2.x)
   const y = Math.min(p1.y, p2.y)
-  const width = Math.min(MAX_GROUP_DRAW, Math.max(MIN_GROUP_DRAW_W, Math.abs(p2.x - p1.x)))
-  const height = Math.min(MAX_GROUP_DRAW, Math.max(MIN_GROUP_DRAW_H, Math.abs(p2.y - p1.y)))
+  const width = Math.min(GROUP_DRAW_BOUNDS.max, Math.max(GROUP_DRAW_BOUNDS.minW, Math.abs(p2.x - p1.x)))
+  const height = Math.min(GROUP_DRAW_BOUNDS.max, Math.max(GROUP_DRAW_BOUNDS.minH, Math.abs(p2.y - p1.y)))
   return { x, y, width, height }
 }
 
@@ -181,9 +178,9 @@ function Graph() {
 
     try {
       const [nodesData, edgesData, viewport] = await Promise.all([
-        getNodes(user.uid, 'context'),
-        getEdges(user.uid, 'context'),
-        getGraphViewport(user.uid, 'context')
+        getNodes(user.uid, GRAPH_IDS.context),
+        getEdges(user.uid, GRAPH_IDS.context),
+        getGraphViewport(user.uid, GRAPH_IDS.context)
       ]);
 
       setNodes(firestoreNodesToReactFlow(nodesData));
@@ -267,7 +264,7 @@ function Graph() {
     updatePendingEdgeLabel,
     flushPendingEdges,
     removePendingEdge,
-  } = useDeferredEdgePersistence(user?.uid, 'context', setEdges, setSyncEdgeError)
+  } = useDeferredEdgePersistence(user?.uid, GRAPH_IDS.context, setEdges, setSyncEdgeError)
 
   // Derive the pickable nodes from the graph state
   const pickableNodes = useMemo<PickableNode[]>(() => {
@@ -345,7 +342,7 @@ function Graph() {
         return
       }
 
-      await updateEdgeLabel(user.uid, edgeId, label, 'context')
+      await updateEdgeLabel(user.uid, edgeId, label, GRAPH_IDS.context)
       setEdges((eds) =>
         eds.map((e) => {
           if (e.id !== edgeId)
@@ -645,11 +642,11 @@ function Graph() {
                 position: n.position,
                 parentId: n.parentId ?? null,
               })),
-              'context',
+              GRAPH_IDS.context,
             )
           }}
           onSaveViewport={(viewport) => {
-            void saveGraphViewport(user.uid, viewport, 'context')
+            void saveGraphViewport(user.uid, viewport, GRAPH_IDS.context)
           }}
         />
       </div>

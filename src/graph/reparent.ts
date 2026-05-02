@@ -1,6 +1,5 @@
 import type { Node } from '@xyflow/react'
-import { GROUP_NODE_DEFAULT_SIZE } from '../firebase/graph'
-import { safeNodeDimensions } from '../nodeSize'
+import { GROUP_NODE_DEFAULT_SIZE, safeNodeDimensions } from './dimensions'
 
 /** Top-left of `node` in flow coordinates (sums parent chain positions). */
 export function getFlowAbsolutePosition(node: Node, all: Node[]): { x: number; y: number } {

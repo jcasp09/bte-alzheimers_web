@@ -2,8 +2,7 @@ import type { NodeProps } from '@xyflow/react'
 import { useEffect, useState } from 'react'
 import { getDownloadURL, ref } from 'firebase/storage'
 import { NodeEdgeHandles } from '../components/NodeEdgeHandles'
-import { PERSON_NODE_DEFAULT_SIZE } from '../firebase/graph'
-import { safeNodeDimensions } from '../nodeSize'
+import { PERSON_NODE_DEFAULT_SIZE, safeNodeDimensions } from '../graph/dimensions'
 import { storage } from '../firebase/storage'
 
 function personScale(width: number, height: number) {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { getNodes, removePassedTaskNodes, type NodeDoc } from '../firebase/graph'
+import { GRAPH_IDS, getNodes, removePassedTaskNodes, type NodeDoc } from '../firebase/graph'
 import './Tasks.css'
 
 type TaskSummaryItem = {
@@ -140,7 +140,7 @@ function Tasks() {
     let cancelled = false
 
     Promise.resolve(removePassedTaskNodes(uid))
-      .then(() => getNodes(uid, 'tasks'))
+      .then(() => getNodes(uid, GRAPH_IDS.tasks))
       .then((nodesData) => {
         if (cancelled)
           return

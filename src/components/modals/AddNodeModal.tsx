@@ -1,7 +1,11 @@
 import { type SubmitEvent, useState } from 'react'
 import {
+  GRAPH_IDS,
+  PHOTO_ACCEPT_ATTR,
+  PHOTO_TYPE_LABEL,
   createEdge,
   createNode,
+  isAllowedPhotoType,
   uploadPersonNodePhoto,
   upsertNode,
   type NodeType,
@@ -31,8 +35,6 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isPhotoTypeAllowed = (file: File): boolean => file.type === 'image/jpeg' || file.type === 'image/png'
-
   const handleTypeChange = (type: NodeType) => {
     setNodeType(type)
     setName('')
@@ -52,8 +54,8 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
     setIsSubmitting(true)
 
     try {
-      if (nodeType === 'person' && photoFile && !isPhotoTypeAllowed(photoFile)) {
-        setError('Only JPEG and PNG photos are supported');
+      if (nodeType === 'person' && photoFile && !isAllowedPhotoType(photoFile)) {
+        setError(`Only ${PHOTO_TYPE_LABEL} photos are supported`);
         return;
       }
 
@@ -64,7 +66,7 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
 
       if (nodeType === 'person' && photoFile) {
         setIsUploading(true)
-        const photo = await uploadPersonNodePhoto(userId, newNodeId, photoFile, 'context')
+        const photo = await uploadPersonNodePhoto(userId, newNodeId, photoFile, GRAPH_IDS.context)
         await upsertNode(userId, newNodeId, {
           type: 'person',
           name,
@@ -73,11 +75,11 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
           phone,
           photoPath: photo.photoPath,
           photoUpdatedAt: photo.photoUpdatedAt,
-        }, 'context')
+        }, GRAPH_IDS.context)
       }
 
       if (linkToNodeId) {
-        await createEdge(userId, newNodeId, linkToNodeId, 'context', {
+        await createEdge(userId, newNodeId, linkToNodeId, GRAPH_IDS.context, {
           sourceHandle: DEFAULT_SOURCE_HANDLE,
           targetHandle: DEFAULT_TARGET_HANDLE,
         })
@@ -129,7 +131,7 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
         ))}
       </div>
 
-      {/* ── Form fields ── */}
+      {/* Form fields */}
       <form onSubmit={handleSubmit} className="home-auth-form">
         <div style={{ marginBottom: '0.75rem' }}>
           <label className="home-auth-field">
@@ -177,10 +179,10 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
             </div>
             <div style={{ marginBottom: '0.75rem' }}>
               <label className="home-auth-field">
-                <span>Add Photo (JPEG/PNG)</span>
+                <span>{`Add Photo (${PHOTO_TYPE_LABEL})`}</span>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png"
+                  accept={PHOTO_ACCEPT_ATTR}
                   onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
                 />
               </label>
@@ -201,7 +203,7 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
           </div>
         )}
 
-        {/* ── Link to existing node ── */}
+        {/* Link to existing node */}
         <div style={{ marginBottom: '1rem' }}>
           <p style={{ marginBottom: '0.25rem', fontWeight: 600, fontSize: '0.875rem' }}>
             Link to existing node (optional)
