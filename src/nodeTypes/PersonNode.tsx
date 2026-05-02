@@ -13,13 +13,24 @@ function personScale(width: number, height: number) {
   )
 }
 
+/** Up to two letters from a person's name; falls back to '?' for blank names. */
+function getInitials(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed)
+    return '?'
+
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 1)
+    return parts[0].charAt(0).toUpperCase()
+
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+}
+
 export function PersonNode({ data }: NodeProps) {
   const name = typeof data.name === 'string' ? data.name : ''
   const relationship = typeof data.relationship === 'string' ? data.relationship : ''
   const email = typeof data.email === 'string' ? data.email : ''
   const phone = typeof data.phone === 'string' ? data.phone : ''
-  const directImage = typeof data.image === 'string' ? data.image : ''
-  const photoUrl = typeof data.photoUrl === 'string' ? data.photoUrl : ''
   const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
   const [fetchedPhoto, setFetchedPhoto] = useState<{ path: string; url: string } | null>(null)
 
@@ -37,14 +48,10 @@ export function PersonNode({ data }: NodeProps) {
   const showEmailPhone = w >= 205 && h >= 72
 
   useEffect(() => {
+    if (!photoPath)
+      return
+
     let isCancelled = false
-
-    if (directImage || photoUrl || !photoPath) {
-      return () => {
-        isCancelled = true
-      }
-    }
-
     void getDownloadURL(ref(storage, photoPath))
       .then((url) => {
         if (!isCancelled) {
@@ -52,18 +59,15 @@ export function PersonNode({ data }: NodeProps) {
         }
       })
       .catch(() => {
-        // Ignore lookup failures and keep placeholder fallback.
+        // Ignore lookup failures and use initials fallback.
       })
 
     return () => {
       isCancelled = true
     }
-  }, [directImage, photoPath, photoUrl])
+  }, [photoPath])
 
-  const resolvedImageUrl =
-    directImage
-    || photoUrl
-    || (fetchedPhoto?.path === photoPath ? fetchedPhoto.url : '')
+  const resolvedImageUrl = fetchedPhoto?.path === photoPath ? fetchedPhoto.url : ''
 
   return (
     <div
@@ -97,15 +101,24 @@ export function PersonNode({ data }: NodeProps) {
             width: avatar,
             height: avatar,
             borderRadius: '9999px',
-            backgroundImage: resolvedImageUrl
-              ? `url(${resolvedImageUrl})`
-              : 'url(https://via.placeholder.com/96)',
+            backgroundImage: resolvedImageUrl ? `url(${resolvedImageUrl})` : undefined,
+            backgroundColor: resolvedImageUrl ? undefined : '#e5e7eb',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             border: '2px solid #9ca3af',
             flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#4b5563',
+            fontSize: Math.round(avatar * 0.4),
+            fontWeight: 600,
+            userSelect: 'none',
           }}
-        />
+          aria-label={name ? `${name} avatar` : 'Person avatar'}
+        >
+          {resolvedImageUrl ? null : getInitials(name)}
+        </div>
         <div
           style={{
             display: 'flex',

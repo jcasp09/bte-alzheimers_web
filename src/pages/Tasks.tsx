@@ -126,43 +126,34 @@ function SummaryCard({ label, title, subtitle, detail, featured = false }: Summa
     </div>
   )
 }
-
 function Tasks() {
   const { user } = useAuth()
-  const [nodes, setNodes] = useState<TaskSummaryItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [nodes, setNodes] = useState<TaskSummaryItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [renderNowMs, setRenderNowMs] = useState(0)
+  const [loadedUid, setLoadedUid] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user?.uid) {
-      queueMicrotask(() => {
-        setLoading(false)
-        setNodes([])
-      })
+    if (!user?.uid)
       return
-    }
 
+    const uid = user.uid
     let cancelled = false
 
-    queueMicrotask(() => {
-      setLoading(true)
-      setError(null)
-    })
-
-    Promise.resolve(removePassedTaskNodes(user.uid))
-      .then(() => getNodes(user.uid, 'tasks'))
+    Promise.resolve(removePassedTaskNodes(uid))
+      .then(() => getNodes(uid, 'tasks'))
       .then((nodesData) => {
-        if (cancelled) return
-        setNodes(firestoreNodesToTaskItems(nodesData))
+        if (cancelled)
+          return
+
+        const nowMs = Date.now()
+        const items = firestoreNodesToTaskItems(nodesData).filter((node) => !isNodePassed(node, nowMs))
+        setError(null)
+        setNodes(items)
+        setLoadedUid(uid)
       })
       .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load tasks graph')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Failed to load tasks graph')
       })
 
     return () => {
@@ -170,17 +161,9 @@ function Tasks() {
     }
   }, [user?.uid])
 
-  useEffect(() => {
-    queueMicrotask(() => {
-      setRenderNowMs(new Date().getTime())
-    })
-  }, [nodes])
+  const loading = user?.uid != null && loadedUid !== user.uid && error === null
 
-  const visibleNodes = useMemo(() => {
-    return nodes.filter((node) => !isNodePassed(node, renderNowMs))
-  }, [nodes, renderNowMs])
-
-  const sortedTasks = useMemo(() => getSortedTaskNodes(visibleNodes), [visibleNodes])
+  const sortedTasks = useMemo(() => getSortedTaskNodes(nodes ?? []), [nodes])
 
   const todayFocus = sortedTasks[0]
   const laterToday = sortedTasks[1]
