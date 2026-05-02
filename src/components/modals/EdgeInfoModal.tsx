@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { GRAPH_IDS, deleteEdge } from '../../services/graph'
 import { edgeHandleLabel } from '../../graph/edgeHandles'
@@ -43,7 +43,7 @@ export function EdgeInfoModal({
     setLabel(edgeLabel)
   }, [edgeId, edgeLabel])
 
-  const handleSaveLabel = async (e: FormEvent) => {
+  const handleSaveLabel = async (e: SubmitEvent) => {
     e.preventDefault()
     setError(null)
     setIsSavingLabel(true)

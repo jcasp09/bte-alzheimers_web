@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type SubmitEvent, useState } from 'react'
 import clsx from 'clsx'
 import { GRAPH_IDS, createNode } from '../../services/graph'
 import { Modal } from '../ui/Modal'
@@ -18,7 +18,7 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) {

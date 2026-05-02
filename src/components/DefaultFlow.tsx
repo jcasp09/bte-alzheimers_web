@@ -4,7 +4,7 @@ import {
   useLayoutEffect,
   useRef,
   type MouseEvent,
-  type MutableRefObject,
+  type RefObject,
 } from 'react'
 import {
   Background,
@@ -57,7 +57,7 @@ function PaneFlowClickBridge({
   invokerRef,
   onPaneFlowClick,
 }: {
-  invokerRef: MutableRefObject<((e: MouseEvent) => void) | null>
+  invokerRef: RefObject<((e: MouseEvent) => void) | null>
   onPaneFlowClick: (point: XY) => void
 }) {
   const { screenToFlowPosition } = useReactFlow()
