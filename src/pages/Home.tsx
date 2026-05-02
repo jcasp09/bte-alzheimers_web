@@ -1,12 +1,13 @@
 import { type SubmitEvent, useState } from 'react'
+import clsx from 'clsx'
 import { doc, setDoc } from 'firebase/firestore'
 import { db } from '../services/firestore'
 import { useAuth } from '../contexts/AuthContext'
 import { signInWithEmailPassword, signOutUser, signUpWithEmailPassword } from '../services/auth'
+import styles from './Home.module.css'
 
 type AuthMode = 'signin' | 'signup'
 
-// Handle user authentication and authorization
 function Home() {
   const { user } = useAuth()
   const [authMode, setAuthMode] = useState<AuthMode>('signin')
@@ -16,25 +17,21 @@ function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Handle form submission (sign in / sign up)
   const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
     setIsSubmitting(true)
-    
+
     try {
       const userCredential = authMode === 'signin'
         ? await signInWithEmailPassword(email, password)
         : await signUpWithEmailPassword(email, password)
 
-      // Access uid from userCredential and store in Firestore
       const credentialUser = userCredential.user
       if (credentialUser?.uid != null && credentialUser.email != null) {
         await setDoc(
           doc(db, 'users', credentialUser.uid),
-          {
-            email: credentialUser.email,
-          },
+          { email: credentialUser.email },
           { merge: true },
         )
       }
@@ -62,38 +59,35 @@ function Home() {
   return (
     <section>
       <h1>Home</h1>
-      <p>Welcome to the MemoryJog dashboard.</p>
-      <div className="home-layout">
-        <div className="home-overview">
+      <p className={styles.pageIntro}>Welcome to the MemoryJog dashboard.</p>
+      <div className={styles.layout}>
+        <div className={styles.overview}>
           <h2>Your cognitive support hub</h2>
           <p>
             Use your account to save personalized relationship graphs, routines, and memory connections. Signing in lets
             you access your graph across devices and keeps your data safely associated with your profile.
           </p>
         </div>
-        
-        {/* Auth card */}
-        <div className="home-auth-card" aria-live="polite">
+
+        <div className={styles.authCard} aria-live="polite">
           {user ? (
             <div>
-              {/* Signed in view */}
-              <h2>Signed in</h2>
-              <p className="home-auth-subtitle">
-                You&apos;re signed in as <span className="home-auth-email">{user.email}</span>.
+              <h2 className={styles.signedInTitle}>Signed in</h2>
+              <p className={styles.authSubtitle}>
+                You&apos;re signed in as <span className={styles.authEmail}>{user.email}</span>.
               </p>
-              <button type="button" onClick={handleSignOut} className="home-auth-button">
+              <button type="button" onClick={handleSignOut} className={clsx('btn-primary', styles.signOutButton)}>
                 Sign out
               </button>
             </div>
           ) : (
             <div>
-              {/* Login/Sign up toggle */}
-              <div className="home-auth-toggle" role="tablist" aria-label="Authentication mode">
+              <div className={styles.authToggle} role="tablist" aria-label="Authentication mode">
                 <button
                   type="button"
                   role="tab"
                   aria-selected={authMode === 'signin'}
-                  className={authMode === 'signin' ? 'home-auth-toggle-button active' : 'home-auth-toggle-button'}
+                  className={clsx(styles.authToggleButton, authMode === 'signin' && styles.authToggleButtonActive)}
                   onClick={() => {
                     setAuthMode('signin')
                     setError(null)
@@ -105,7 +99,7 @@ function Home() {
                   type="button"
                   role="tab"
                   aria-selected={authMode === 'signup'}
-                  className={authMode === 'signup' ? 'home-auth-toggle-button active' : 'home-auth-toggle-button'}
+                  className={clsx(styles.authToggleButton, authMode === 'signup' && styles.authToggleButtonActive)}
                   onClick={() => {
                     setAuthMode('signup')
                     setError(null)
@@ -115,9 +109,8 @@ function Home() {
                 </button>
               </div>
 
-              {/* Sign in form - Email and Password */}
-              <form className="home-auth-form" onSubmit={handleSubmit}>
-                <label className="home-auth-field">
+              <form className="form-stack" onSubmit={handleSubmit}>
+                <label className="field">
                   <span>Email</span>
                   <input
                     type="email"
@@ -128,9 +121,9 @@ function Home() {
                   />
                 </label>
 
-                <label className="home-auth-field">
+                <label className="field">
                   <span>Password</span>
-                  <div className="home-auth-password-row">
+                  <div className={styles.passwordRow}>
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
@@ -140,7 +133,7 @@ function Home() {
                     />
                     <button
                       type="button"
-                      className="home-auth-password-toggle"
+                      className={styles.passwordToggle}
                       onClick={() => setShowPassword((prev) => !prev)}
                       aria-pressed={showPassword}
                     >
@@ -148,10 +141,8 @@ function Home() {
                     </button>
                   </div>
                 </label>
-                {/* Error message */}
-                {error != null && <p className="home-auth-error">{error}</p>}
-                {/* Submit button */}
-                <button type="submit" disabled={isSubmitting} className="home-auth-button">
+                {error != null && <p className="text-error">{error}</p>}
+                <button type="submit" disabled={isSubmitting} className={clsx('btn-primary', styles.submitButton)}>
                   {isSubmitting ? 'Please wait…' : authMode === 'signin' ? 'Log in' : 'Create account'}
                 </button>
               </form>

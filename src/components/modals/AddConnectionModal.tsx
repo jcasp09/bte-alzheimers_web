@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import clsx from 'clsx'
 import type { Connection } from '@xyflow/react'
 import type { PickableNode } from '../../types/graph'
 import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../graph/edgeHandles'
 import { Modal } from '../ui/Modal'
+import modalStyles from '../ui/Modal.module.css'
+import styles from './AddConnectionModal.module.css'
 
 type Props = {
   pickableNodes: PickableNode[]
@@ -61,24 +64,11 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
     selectedId: string | null,
     onSelect: (id: string) => void,
   ) => (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <p style={{ marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.8rem', color: '#475569' }}>
-        {label}
-      </p>
-      <ul
-        style={{
-          margin: 0,
-          padding: 0,
-          listStyle: 'none',
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.5rem',
-          maxHeight: 200,
-          overflowY: 'auto',
-          backgroundColor: '#fff',
-        }}
-      >
+    <div className={styles.pickerColumn}>
+      <p className={styles.pickerLabel}>{label}</p>
+      <ul className={styles.pickerList}>
         {connectableNodes.length === 0 ? (
-          <li style={{ padding: '0.5rem', color: '#6b7280', fontSize: 13 }}>
+          <li className={styles.pickerEmpty}>
             No people or places to connect yet.
           </li>
         ) : (
@@ -94,17 +84,10 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
                   onSelect(node.id)
                 }
               }}
-              style={{
-                padding: '0.5rem 0.75rem',
-                cursor: 'pointer',
-                borderBottom: '1px solid #f3f4f6',
-                fontSize: 13,
-                backgroundColor: selectedId === node.id ? '#e0f2fe' : 'transparent',
-                transition: 'background-color 0.1s',
-              }}
+              className={clsx(styles.pickerItem, selectedId === node.id && styles.pickerItemSelected)}
             >
               {node.name}
-              <span style={{ color: '#94a3b8', marginLeft: '0.4rem', fontSize: 11 }}>
+              <span className={styles.pickerItemTypeLabel}>
                 {node.type}
               </span>
             </li>
@@ -119,26 +102,15 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
     value: EdgeSide,
     onChange: (side: EdgeSide) => void,
   ) => (
-    <div style={{ marginBottom: '0.75rem' }}>
-      <p style={{ margin: '0 0 0.35rem', fontWeight: 600, fontSize: '0.8rem', color: '#475569' }}>
-        {label}
-      </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+    <div className={styles.sidePicker}>
+      <p className={styles.sidePickerLabel}>{label}</p>
+      <div className={styles.sideOptionRow}>
         {EDGE_SIDES.map((side) => (
           <button
             key={side}
             type="button"
             onClick={() => onChange(side)}
-            style={{
-              padding: '0.3rem 0.55rem',
-              borderRadius: '0.35rem',
-              border: `1px solid ${value === side ? '#0284c7' : '#e5e7eb'}`,
-              background: value === side ? '#e0f2fe' : '#fff',
-              color: value === side ? '#0369a1' : '#475569',
-              fontSize: 12,
-              fontWeight: value === side ? 600 : 500,
-              cursor: 'pointer',
-            }}
+            className={clsx(styles.sideOption, value === side && styles.sideOptionSelected)}
           >
             {side.charAt(0).toUpperCase() + side.slice(1)}
           </button>
@@ -149,34 +121,25 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
 
   return (
     <Modal title="Add Connection" onClose={onClose}>
-      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+      <p className={modalStyles.leadText}>
         Select a source and target node, then which side of each node the link uses (same as dragging between handles on the graph).
       </p>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+      <div className={styles.pickerRow}>
         {nodeList('From', sourceId, setSourceId)}
 
-        <div style={{ display: 'flex', alignItems: 'center', paddingTop: '1.5rem', color: '#94a3b8', fontSize: '1.1rem' }}>
-          →
-        </div>
+        <div className={styles.arrowSeparator}>→</div>
 
         {nodeList('To', targetId, setTargetId)}
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '0.75rem 1rem',
-          marginBottom: '1rem',
-        }}
-      >
+      <div className={styles.sidePickerGrid}>
         {sidePicker('From side (outgoing)', sourceSide, setSourceSide)}
         {sidePicker('To side (incoming)', targetSide, setTargetSide)}
       </div>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <label className="home-auth-field">
+      <div className={styles.labelField}>
+        <label className="field">
           <span>Label (optional)</span>
           <input
             type="text"
@@ -189,27 +152,14 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
 
       {/* Preview of selected connection */}
       {(sourceId || targetId) && (
-        <div
-          style={{
-            padding: '0.5rem 0.75rem',
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: '0.5rem',
-            fontSize: '0.8rem',
-            color: '#475569',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-          }}
-        >
-          <span style={{ fontWeight: 600 }}>
+        <div className={styles.preview}>
+          <span className={styles.previewName}>
             {sourceId
               ? (connectableNodes.find((n) => n.id === sourceId)?.name ?? '…')
               : '—'}
           </span>
-          <span style={{ color: '#94a3b8' }}>→</span>
-          <span style={{ fontWeight: 600 }}>
+          <span className={styles.previewArrow}>→</span>
+          <span className={styles.previewName}>
             {targetId
               ? (connectableNodes.find((n) => n.id === targetId)?.name ?? '…')
               : '—'}
@@ -218,23 +168,17 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
       )}
 
       {error != null && (
-        <p className="home-auth-error" style={{ marginBottom: '0.75rem' }}>{error}</p>
+        <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
       )}
 
-      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-        <button
-          type="button"
-          onClick={onClose}
-          className="home-auth-toggle-button"
-          style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
-        >
+      <div className={modalStyles.actions}>
+        <button type="button" onClick={onClose} className="btn-ghost">
           Cancel
         </button>
         <button
           type="button"
           disabled={!sourceId || !targetId || isSubmitting}
-          className="home-auth-button"
-          style={{ marginTop: 0 }}
+          className="btn-primary"
           onClick={handleAdd}
         >
           {isSubmitting ? 'Adding…' : 'Add connection'}

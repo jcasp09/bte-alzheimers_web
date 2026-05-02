@@ -1,6 +1,8 @@
 import { type FormEvent, useState } from 'react'
+import clsx from 'clsx'
 import { GRAPH_IDS, createNode } from '../../services/graph'
 import { Modal } from '../ui/Modal'
+import modalStyles from '../ui/Modal.module.css'
 
 type DraftRect = { x: number; y: number; width: number; height: number }
 
@@ -48,13 +50,13 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
 
   return (
     <Modal title="Name your group" onClose={onClose}>
-      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+      <p className={modalStyles.leadText}>
         Frame: {Math.round(draftRect.width)} × {Math.round(draftRect.height)} px at (
         {Math.round(draftRect.x)}, {Math.round(draftRect.y)}). Drag people and places into the group after you
         create it; deleting the group leaves members on the canvas.
       </p>
-      <form onSubmit={(e) => { void handleSubmit(e) }} className="home-auth-form">
-        <label className="home-auth-field" style={{ marginBottom: '1rem' }}>
+      <form onSubmit={(e) => { void handleSubmit(e) }} className="form-stack">
+        <label className={clsx('field', modalStyles.spacedField)}>
           <span>Name</span>
           <input
             type="text"
@@ -65,18 +67,13 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
           />
         </label>
         {error ? (
-          <p className="home-auth-error" style={{ marginBottom: '0.75rem' }}>{error}</p>
+          <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
         ) : null}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            className="home-auth-toggle-button"
-            style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
-          >
+        <div className={modalStyles.actions}>
+          <button type="button" onClick={onClose} className="btn-ghost">
             Cancel
           </button>
-          <button type="submit" disabled={isSubmitting} className="home-auth-button" style={{ marginTop: 0 }}>
+          <button type="submit" disabled={isSubmitting} className="btn-primary">
             {isSubmitting ? 'Creating…' : 'Create group'}
           </button>
         </div>

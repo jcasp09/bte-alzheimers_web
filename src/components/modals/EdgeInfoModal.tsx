@@ -1,8 +1,11 @@
 import { type FormEvent, useEffect, useState } from 'react'
+import clsx from 'clsx'
 import { GRAPH_IDS, deleteEdge } from '../../services/graph'
 import { edgeHandleLabel } from '../../graph/edgeHandles'
 import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
 import { Modal } from '../ui/Modal'
+import modalStyles from '../ui/Modal.module.css'
+import styles from './EdgeInfoModal.module.css'
 
 type Props = {
   userId: string
@@ -75,30 +78,35 @@ export function EdgeInfoModal({
     }
   }
 
+  const busy = isDeleting || isSavingLabel
+
   return (
     <Modal title="Connection" onClose={onClose}>
-      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: '0.75rem' }}>
-        <strong style={{ color: '#374151' }}>{sourceName}</strong>
+      <p className={styles.summary}>
+        <strong>{sourceName}</strong>
         {' → '}
-        <strong style={{ color: '#374151' }}>{targetName}</strong>
+        <strong>{targetName}</strong>
       </p>
       {(sourceHandle || targetHandle) ? (
-        <p style={{ fontSize: 12, color: '#6b7280', marginBottom: '1rem' }}>
+        <p className={styles.meta}>
           Sides:{' '}
-          <span style={{ color: '#374151' }}>{edgeHandleLabel(sourceHandle)}</span>
+          <span>{edgeHandleLabel(sourceHandle)}</span>
           {' → '}
-          <span style={{ color: '#374151' }}>{edgeHandleLabel(targetHandle)}</span>
+          <span>{edgeHandleLabel(targetHandle)}</span>
         </p>
       ) : null}
 
       {isLocalPendingEdgeId(edgeId) ? (
-        <p style={{ fontSize: 12, color: '#92400e', marginBottom: '1rem' }}>
+        <p className={styles.pendingWarning}>
           This connection is not saved to the server yet. It will be saved when you leave this page, switch tabs, or hide this window.
         </p>
       ) : null}
 
-      <form onSubmit={(ev) => void handleSaveLabel(ev)} className="home-auth-form" style={{ marginBottom: '1rem' }}>
-        <label className="home-auth-field">
+      <form
+        onSubmit={(ev) => void handleSaveLabel(ev)}
+        className={clsx('form-stack', styles.labelForm)}
+      >
+        <label className="field">
           <span>Label (optional)</span>
           <input
             type="text"
@@ -107,50 +115,28 @@ export function EdgeInfoModal({
             placeholder="e.g. visits weekly"
           />
         </label>
-        <p style={{ margin: '0.35rem 0 0.75rem', fontSize: 12, color: '#6b7280' }}>
+        <p className={styles.helpText}>
           Shown on the line between the two nodes. Leave blank to remove the label.
         </p>
-        <button
-          type="submit"
-          disabled={isSavingLabel || isDeleting}
-          className="home-auth-button"
-          style={{ marginTop: 0 }}
-        >
+        <button type="submit" disabled={busy} className="btn-primary">
           {isSavingLabel ? 'Saving…' : 'Save label'}
         </button>
       </form>
 
       {error && (
-        <p className="home-auth-error" style={{ marginBottom: '0.75rem' }}>{error}</p>
+        <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
       )}
 
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className={modalStyles.actionsLeftAligned}>
         <button
           type="button"
-          disabled={isDeleting || isSavingLabel}
-          onClick={() => {
-            void handleDelete()
-          }}
-          style={{
-            padding: '0.45rem 0.9rem',
-            borderRadius: '0.5rem',
-            border: '1px solid #fca5a5',
-            backgroundColor: '#fee2e2',
-            color: '#b91c1c',
-            cursor: isDeleting || isSavingLabel ? 'not-allowed' : 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            opacity: isDeleting || isSavingLabel ? 0.6 : 1,
-          }}
+          disabled={busy}
+          onClick={() => { void handleDelete() }}
+          className={modalStyles.dangerButton}
         >
           {isDeleting ? 'Deleting…' : 'Delete connection'}
         </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="home-auth-toggle-button"
-          style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
-        >
+        <button type="button" onClick={onClose} className="btn-ghost">
           Close
         </button>
       </div>

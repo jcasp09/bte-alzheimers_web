@@ -1,0 +1,93 @@
+.intro {
+  margin-bottom: 1.5rem;
+}
+
+.card {
+  padding: 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background-color: #f9fafb;
+}
+
+.cardWithGap {
+  margin-bottom: 1rem;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.cardTitleTight {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+
+.cardSubtitle {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
+}
+
+.field {
+  margin-bottom: 0.75rem;
+}
+
+.fieldLabel {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.fieldValue {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.serviceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: #fff;
+}
+
+.serviceName {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.15rem;
+}
+
+.serviceStatus {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.serviceStatusConnected {
+  color: #16a34a;
+}
+
+.serviceActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.statusMessage {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #16a34a;
+}
+
+.pageError {
+  margin-top: 0.75rem;
+  font-size: 1rem;
+}

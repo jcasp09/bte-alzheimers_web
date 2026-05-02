@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import clsx from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
 import { GRAPH_IDS, getNodes, removePassedTaskNodes } from '../services/graph'
 import type { NodeDoc } from '../types/graph'
-import './Tasks.css'
+import styles from './Tasks.module.css'
 
 type TaskSummaryItem = {
   id: string
@@ -109,21 +110,21 @@ type SummaryCardProps = {
 
 function SummaryCard({ label, title, subtitle, detail, featured = false }: SummaryCardProps) {
   return (
-    <div className={`tasks-summary-card ${featured ? 'tasks-summary-card-featured' : ''}`}>
-      <div className={`tasks-summary-pill ${featured ? 'tasks-summary-pill-featured' : ''}`}>
+    <div className={clsx(styles.summaryCard, featured && styles.summaryCardFeatured)}>
+      <div className={clsx(styles.summaryPill, featured && styles.summaryPillFeatured)}>
         <span>{featured ? '●' : '○'}</span>
         <span>{label}</span>
       </div>
 
-      <h2 className={`tasks-summary-title ${featured ? 'tasks-summary-title-featured' : ''}`}>
+      <h2 className={clsx(styles.summaryTitle, featured && styles.summaryTitleFeatured)}>
         {title}
       </h2>
 
-      <p className={`tasks-summary-subtitle ${featured ? 'tasks-summary-subtitle-featured' : ''}`}>
+      <p className={clsx(styles.summarySubtitle, featured && styles.summarySubtitleFeatured)}>
         {subtitle}
       </p>
 
-      <p className="tasks-summary-detail">{detail}</p>
+      <p className={styles.summaryDetail}>{detail}</p>
     </div>
   )
 }
@@ -193,18 +194,18 @@ function Tasks() {
     return (
       <section>
         <h1>Tasks</h1>
-        <p className="home-auth-error">{error}</p>
+        <p className="text-error">{error}</p>
       </section>
     )
   }
 
   return (
-    <section className="tasks-page-shell">
-      <div className="tasks-panel">
-        <h1 className="tasks-page-title">Tasks</h1>
-        <p className="tasks-page-subtitle">A calm, simple view of what matters most today.</p>
+    <section className={styles.pageShell}>
+      <div className={styles.panel}>
+        <h1 className={styles.pageTitle}>Tasks</h1>
+        <p className={styles.pageSubtitle}>A calm, simple view of what matters most today.</p>
 
-        <div className="tasks-summary-grid">
+        <div className={styles.summaryGrid}>
           <SummaryCard
             label="Up Next"
             title={todayFocus ? getTaskTitle(todayFocus) : 'No upcoming task yet'}
@@ -221,7 +222,7 @@ function Tasks() {
             featured
           />
 
-          <div className="tasks-secondary-grid">
+          <div className={styles.secondaryGrid}>
             <SummaryCard
               label="Coming Up"
               title={laterToday ? getTaskTitle(laterToday) : 'Nothing else scheduled'}

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
+import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
+import styles from './Graph.module.css'
 import {
   GRAPH_IDS,
   getEdges,
@@ -395,7 +397,7 @@ function Graph() {
     return (
       <section>
         <h1>Graph</h1>
-        <p className="home-auth-error">{error}</p>
+        <p className="text-error">{error}</p>
       </section>
     )
   }
@@ -408,38 +410,19 @@ function Graph() {
   // Render the graph
   return (
     <section>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          marginBottom: '1rem',
-        }}
-      >
+      <div className={styles.headerRow}>
         <div>
-          <h1 style={{ marginBottom: '0.25rem' }}>Relationship Graph</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          <h1 className={styles.pageTitle}>Relationship Graph</h1>
+          <p className={styles.pageSubtitle}>
             Your personal map of the people and places around you.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className={styles.toolbar}>
           <button
             type="button"
             onClick={() => togglePanel('addNode')}
-            style={{
-              marginTop: 0,
-              border: '1px solid #d1d5db',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '0.5rem',
-              backgroundColor: openPanel === 'addNode' ? '#e5e7eb' : '#f3f4f6',
-              color: '#374151',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-            }}
+            className={clsx(styles.toolbarButton, openPanel === 'addNode' && styles.toolbarButtonActive)}
           >
             + Add Node
           </button>
@@ -447,17 +430,7 @@ function Graph() {
           <button
             type="button"
             onClick={() => togglePanel('addConnection')}
-            style={{
-              marginTop: 0,
-              border: '1px solid #d1d5db',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '0.5rem',
-              backgroundColor: openPanel === 'addConnection' ? '#e5e7eb' : '#f3f4f6',
-              color: '#374151',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-            }}
+            className={clsx(styles.toolbarButton, openPanel === 'addConnection' && styles.toolbarButtonActive)}
           >
             + Add Connection
           </button>
@@ -474,17 +447,7 @@ function Graph() {
               addGroupPlacementRef.current = { status: 'picking', phase: 1 }
               setAddGroupPlacement({ status: 'picking', phase: 1 })
             }}
-            style={{
-              marginTop: 0,
-              border: '1px solid #d1d5db',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '0.5rem',
-              backgroundColor: addGroupPlacement.status === 'picking' ? '#e5e7eb' : '#f3f4f6',
-              color: '#374151',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-            }}
+            className={clsx(styles.toolbarButton, addGroupPlacement.status === 'picking' && styles.toolbarButtonActive)}
           >
             + Add group
           </button>
@@ -492,25 +455,11 @@ function Graph() {
       </div>
 
       {syncEdgeError ? (
-        <div
-          style={{
-            marginBottom: '0.75rem',
-            padding: '0.6rem 0.75rem',
-            borderRadius: '0.5rem',
-            background: '#fef3c7',
-            border: '1px solid #fcd34d',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.75rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <p className="home-auth-error" style={{ margin: 0, flex: '1 1 12rem' }}>{syncEdgeError}</p>
+        <div className={styles.syncBanner}>
+          <p className={clsx('text-error', styles.syncBannerError)}>{syncEdgeError}</p>
           <button
             type="button"
-            className="home-auth-toggle-button"
-            style={{ border: '1px solid #e5e7eb', padding: '0.35rem 0.65rem', borderRadius: '0.375rem' }}
+            className={clsx('btn-ghost', styles.syncBannerDismiss)}
             onClick={() => setSyncEdgeError(null)}
           >
             Dismiss
@@ -594,31 +543,14 @@ function Graph() {
       )}
 
       {addGroupPlacement.status === 'picking' ? (
-        <p
-          style={{
-            margin: '0 0 0.5rem',
-            padding: '0.5rem 0.75rem',
-            borderRadius: '0.5rem',
-            background: '#e0f2fe',
-            border: '1px solid #7dd3fc',
-            color: '#0c4a6e',
-            fontSize: 14,
-          }}
-        >
+        <p className={styles.placementHint}>
           {addGroupPlacement.phase === 1
             ? 'Click the top-left corner of the new group on the graph, then the bottom-right. Pan with middle or right mouse drag, or the scroll wheel. Press Esc to cancel.'
             : 'Now click the bottom-right corner. Esc to cancel.'}
         </p>
       ) : null}
 
-      <div
-        style={{
-          height: '75vh',
-          borderRadius: '0.75rem',
-          overflow: 'hidden',
-          border: '1px solid #e2e2e2',
-        }}
-      >
+      <div className={styles.flowContainer}>
         <DefaultFlow
           key={`${user.uid}-${flowKey}`}
           nodes={nodes}

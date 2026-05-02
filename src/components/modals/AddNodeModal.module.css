@@ -1,0 +1,71 @@
+.typeToggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  background: #f1f5f9;
+  border-radius: 0.5rem;
+}
+
+.typeOption {
+  flex: 1;
+  padding: 0.4rem 0;
+  border: none;
+  border-radius: 0.35rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  background: transparent;
+  color: #64748b;
+  box-shadow: none;
+  transition: all 0.15s;
+}
+
+.typeOptionActive {
+  background: #fff;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.formRow {
+  margin-bottom: 0.75rem;
+}
+
+.linkSectionLabel {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.linkSection {
+  margin-bottom: 1rem;
+}
+
+.linkPickerToggle {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.linkPickerList {
+  margin-top: 0.5rem;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: #fff;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.linkPickerEmpty {
+  padding: 0.5rem;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.linkPickerItem {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+}

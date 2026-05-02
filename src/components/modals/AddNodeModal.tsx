@@ -1,4 +1,5 @@
 import { type SubmitEvent, useState } from 'react'
+import clsx from 'clsx'
 import {
   GRAPH_IDS,
   PHOTO_ACCEPT_ATTR,
@@ -12,6 +13,8 @@ import {
 import type { NodeType, PickableNode } from '../../types/graph'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
 import { Modal } from '../ui/Modal'
+import modalStyles from '../ui/Modal.module.css'
+import styles from './AddNodeModal.module.css'
 
 type Props = {
   userId: string
@@ -96,34 +99,13 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
 
   return (
     <Modal title="Add Node" onClose={onClose}>
-      <div
-        style={{
-          display: 'flex',
-          gap: '0.5rem',
-          marginBottom: '1.25rem',
-          padding: '0.25rem',
-          background: '#f1f5f9',
-          borderRadius: '0.5rem',
-        }}
-      >
+      <div className={styles.typeToggle}>
         {(['person', 'place'] as NodeType[]).map((type) => (
           <button
             key={type}
             type="button"
             onClick={() => handleTypeChange(type)}
-            style={{
-              flex: 1,
-              padding: '0.4rem 0',
-              border: 'none',
-              borderRadius: '0.35rem',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              background: nodeType === type ? '#fff' : 'transparent',
-              color: nodeType === type ? '#1e293b' : '#64748b',
-              boxShadow: nodeType === type ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s',
-            }}
+            className={clsx(styles.typeOption, nodeType === type && styles.typeOptionActive)}
           >
             {type === 'person' ? 'Person' : 'Place'}
           </button>
@@ -131,9 +113,9 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
       </div>
 
       {/* Form fields */}
-      <form onSubmit={handleSubmit} className="home-auth-form">
-        <div style={{ marginBottom: '0.75rem' }}>
-          <label className="home-auth-field">
+      <form onSubmit={handleSubmit} className="form-stack">
+        <div className={styles.formRow}>
+          <label className="field">
             <span>Name</span>
             <input
               type="text"
@@ -146,8 +128,8 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
 
         {nodeType === 'person' && (
           <>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label className="home-auth-field">
+            <div className={styles.formRow}>
+              <label className="field">
                 <span>Relationship</span>
                 <input
                   type="text"
@@ -156,8 +138,8 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
                 />
               </label>
             </div>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label className="home-auth-field">
+            <div className={styles.formRow}>
+              <label className="field">
                 <span>Email (optional)</span>
                 <input
                   type="email"
@@ -166,8 +148,8 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
                 />
               </label>
             </div>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label className="home-auth-field">
+            <div className={styles.formRow}>
+              <label className="field">
                 <span>Phone (optional)</span>
                 <input
                   type="tel"
@@ -176,8 +158,8 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
                 />
               </label>
             </div>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label className="home-auth-field">
+            <div className={styles.formRow}>
+              <label className="field">
                 <span>{`Add Photo (${PHOTO_TYPE_LABEL})`}</span>
                 <input
                   type="file"
@@ -190,8 +172,8 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
         )}
 
         {nodeType === 'place' && (
-          <div style={{ marginBottom: '0.75rem' }}>
-            <label className="home-auth-field">
+          <div className={styles.formRow}>
+            <label className="field">
               <span>Address</span>
               <input
                 type="text"
@@ -203,40 +185,23 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
         )}
 
         {/* Link to existing node */}
-        <div style={{ marginBottom: '1rem' }}>
-          <p style={{ marginBottom: '0.25rem', fontWeight: 600, fontSize: '0.875rem' }}>
+        <div className={styles.linkSection}>
+          <p className={styles.linkSectionLabel}>
             Link to existing node (optional)
           </p>
           <button
             type="button"
             onClick={() => setShowLinkList((prev) => !prev)}
-            className="home-auth-toggle-button"
-            style={{
-              border: '1px solid #e5e7eb',
-              padding: '0.35rem 0.75rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.85rem',
-            }}
+            className={clsx('btn-ghost', styles.linkPickerToggle)}
           >
             {linkToNodeId
               ? (pickableNodes.find((n) => n.id === linkToNodeId)?.name ?? 'Change link')
               : 'Choose node to link to'}
           </button>
           {showLinkList && (
-            <ul
-              style={{
-                marginTop: '0.5rem',
-                padding: 0,
-                listStyle: 'none',
-                border: '1px solid #e5e7eb',
-                borderRadius: '0.5rem',
-                backgroundColor: '#fff',
-                maxHeight: 160,
-                overflowY: 'auto',
-              }}
-            >
+            <ul className={styles.linkPickerList}>
               {pickableNodes.length === 0 ? (
-                <li style={{ padding: '0.5rem', color: '#6b7280', fontSize: 13 }}>
+                <li className={styles.linkPickerEmpty}>
                   No nodes yet. Add one first.
                 </li>
               ) : (
@@ -253,12 +218,7 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
                         setShowLinkList(false)
                       }
                     }}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #f3f4f6',
-                      fontSize: 13,
-                    }}
+                    className={styles.linkPickerItem}
                   >
                     {node.name} ({node.type})
                   </li>
@@ -269,24 +229,14 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
         </div>
 
         {error != null && (
-          <p className="home-auth-error" style={{ marginBottom: '0.75rem' }}>{error}</p>
+          <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
         )}
 
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            className="home-auth-toggle-button"
-            style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
-          >
+        <div className={modalStyles.actions}>
+          <button type="button" onClick={onClose} className="btn-ghost">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting || isUploading}
-            className="home-auth-button"
-            style={{ marginTop: 0 }}
-          >
+          <button type="submit" disabled={isSubmitting || isUploading} className="btn-primary">
             {isUploading ? 'Uploading photo…' : isSubmitting ? 'Adding…' : 'Add node'}
           </button>
         </div>

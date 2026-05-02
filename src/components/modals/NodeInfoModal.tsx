@@ -1,4 +1,5 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
+import clsx from 'clsx'
 import { Modal } from '../ui/Modal'
 import {
   GRAPH_IDS,
@@ -19,6 +20,8 @@ import {
   safeNodeDimensions,
   stepNodeDimensions,
 } from '../../graph/dimensions'
+import modalStyles from '../ui/Modal.module.css'
+import styles from './NodeInfoModal.module.css'
 
 type Props = {
   userId: string
@@ -199,16 +202,20 @@ export function NodeInfoModal({
     }
   }
 
+  const busy = isSaving || isDeleting || isUploading
+  const canDecrease = sizeNodeType ? canDecreaseNodeSize(sizeNodeType, sizeW, sizeH) : false
+  const canIncrease = sizeNodeType ? canIncreaseNodeSize(sizeNodeType, sizeW, sizeH) : false
+
   return (
     <Modal title={nodeName || 'Node'} onClose={onClose}>
-      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: '1.25rem' }}>
-        Type: <strong style={{ color: '#374151' }}>{nodeType}</strong>
+      <p className={styles.typeRow}>
+        Type: <strong>{nodeType}</strong>
       </p>
 
       {isGroup && (
-        <form onSubmit={handleSaveGroup} className="home-auth-form" style={{ marginBottom: '1rem' }}>
-          <div style={{ marginBottom: '0.75rem' }}>
-            <label className="home-auth-field">
+        <form onSubmit={handleSaveGroup} className={clsx('form-stack', styles.editForm)}>
+          <div className={styles.formRow}>
+            <label className="field">
               <span>Name</span>
               <input
                 type="text"
@@ -218,15 +225,8 @@ export function NodeInfoModal({
               />
             </label>
           </div>
-          <div
-            style={{
-              marginBottom: '0.75rem',
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.75rem',
-            }}
-          >
-            <label className="home-auth-field">
+          <div className={styles.dimensionsGrid}>
+            <label className="field">
               <span>Width (px)</span>
               <input
                 type="number"
@@ -238,7 +238,7 @@ export function NodeInfoModal({
                 onChange={(e) => setGroupW(Number(e.target.value))}
               />
             </label>
-            <label className="home-auth-field">
+            <label className="field">
               <span>Height (px)</span>
               <input
                 type="number"
@@ -251,16 +251,11 @@ export function NodeInfoModal({
               />
             </label>
           </div>
-          <p style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#6b7280' }}>
+          <p className={styles.helpText}>
             {`Frame size is clamped between ${GROUP_DIMENSION_BOUNDS.min} and ${GROUP_DIMENSION_BOUNDS.max} px on save.`}
           </p>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="submit"
-              disabled={isSaving || isDeleting || isUploading}
-              className="home-auth-button"
-              style={{ marginTop: 0 }}
-            >
+          <div className={styles.formFooter}>
+            <button type="submit" disabled={busy} className="btn-primary">
               {isSaving ? 'Saving…' : 'Save changes'}
             </button>
           </div>
@@ -268,9 +263,9 @@ export function NodeInfoModal({
       )}
 
       {canEdit && (
-        <form onSubmit={handleSave} className="home-auth-form" style={{ marginBottom: '1rem' }}>
-          <div style={{ marginBottom: '0.75rem' }}>
-            <label className="home-auth-field">
+        <form onSubmit={handleSave} className={clsx('form-stack', styles.editForm)}>
+          <div className={styles.formRow}>
+            <label className="field">
               <span>Name</span>
               <input
                 type="text"
@@ -283,8 +278,8 @@ export function NodeInfoModal({
 
           {nodeType === 'person' && (
             <>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label className="home-auth-field">
+              <div className={styles.formRow}>
+                <label className="field">
                   <span>Relationship</span>
                   <input
                     type="text"
@@ -293,8 +288,8 @@ export function NodeInfoModal({
                   />
                 </label>
               </div>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label className="home-auth-field">
+              <div className={styles.formRow}>
+                <label className="field">
                   <span>Email (optional)</span>
                   <input
                     type="email"
@@ -303,8 +298,8 @@ export function NodeInfoModal({
                   />
                 </label>
               </div>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label className="home-auth-field">
+              <div className={styles.formRow}>
+                <label className="field">
                   <span>Phone (optional)</span>
                   <input
                     type="tel"
@@ -313,8 +308,8 @@ export function NodeInfoModal({
                   />
                 </label>
               </div>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label className="home-auth-field">
+              <div className={styles.formRow}>
+                <label className="field">
                   <span>{photoPath ? `Replace Photo (${PHOTO_TYPE_LABEL})` : `Add Photo (${PHOTO_TYPE_LABEL})`}</span>
                   <input
                     type="file"
@@ -323,12 +318,12 @@ export function NodeInfoModal({
                   />
                 </label>
                 {photoFile && (
-                  <p style={{ margin: '0.35rem 0 0', color: '#6b7280', fontSize: 12 }}>
+                  <p className={styles.photoHint}>
                     Selected: {photoFile.name}
                   </p>
                 )}
                 {!photoFile && photoPath && (
-                  <p style={{ margin: '0.35rem 0 0', color: '#6b7280', fontSize: 12 }}>
+                  <p className={styles.photoHint}>
                     A photo is currently attached.
                   </p>
                 )}
@@ -337,8 +332,8 @@ export function NodeInfoModal({
           )}
 
           {nodeType === 'place' && (
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label className="home-auth-field">
+            <div className={styles.formRow}>
+              <label className="field">
                 <span>Address</span>
                 <input
                   type="text"
@@ -350,42 +345,17 @@ export function NodeInfoModal({
           )}
 
           {sizeNodeType && (
-            <div
-              style={{
-                marginBottom: '0.75rem',
-                padding: '0.75rem',
-                borderRadius: '0.5rem',
-                background: '#f3f4f6',
-                border: '1px solid #e5e7eb',
-              }}
-            >
-              <p style={{ margin: '0 0 0.5rem', fontSize: 13, fontWeight: 600, color: '#374151' }}>
-                Node size
-              </p>
-              <p style={{ margin: '0 0 0.5rem', fontSize: 12, color: '#6b7280' }}>
+            <div className={styles.sizeBox}>
+              <p className={styles.sizeBoxTitle}>Node size</p>
+              <p className={styles.sizeBoxStatus}>
                 Each step changes width and height by 10%. Current:{' '}
-                <strong style={{ color: '#374151' }}>{sizeW} × {sizeH} px</strong>
+                <strong>{sizeW} × {sizeH} px</strong>
               </p>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div className={styles.sizeButtonRow}>
                 <button
                   type="button"
-                  className="home-auth-toggle-button"
-                  style={{
-                    minWidth: '2.25rem',
-                    padding: '0.35rem 0.65rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.375rem',
-                    fontSize: 16,
-                    lineHeight: 1,
-                    fontWeight: 600,
-                    cursor: canDecreaseNodeSize(sizeNodeType, sizeW, sizeH) && !isSaving && !isUploading
-                      ? 'pointer'
-                      : 'not-allowed',
-                    opacity: canDecreaseNodeSize(sizeNodeType, sizeW, sizeH) && !isSaving && !isUploading
-                      ? 1
-                      : 0.5,
-                  }}
-                  disabled={!canDecreaseNodeSize(sizeNodeType, sizeW, sizeH) || isSaving || isUploading}
+                  className={styles.sizeStepButton}
+                  disabled={!canDecrease || isSaving || isUploading}
                   onClick={() => {
                     const next = stepNodeDimensions(sizeNodeType, sizeW, sizeH, -1)
                     setSizeW(next.width)
@@ -396,23 +366,8 @@ export function NodeInfoModal({
                 </button>
                 <button
                   type="button"
-                  className="home-auth-toggle-button"
-                  style={{
-                    minWidth: '2.25rem',
-                    padding: '0.35rem 0.65rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.375rem',
-                    fontSize: 16,
-                    lineHeight: 1,
-                    fontWeight: 600,
-                    cursor: canIncreaseNodeSize(sizeNodeType, sizeW, sizeH) && !isSaving && !isUploading
-                      ? 'pointer'
-                      : 'not-allowed',
-                    opacity: canIncreaseNodeSize(sizeNodeType, sizeW, sizeH) && !isSaving && !isUploading
-                      ? 1
-                      : 0.5,
-                  }}
-                  disabled={!canIncreaseNodeSize(sizeNodeType, sizeW, sizeH) || isSaving || isUploading}
+                  className={styles.sizeStepButton}
+                  disabled={!canIncrease || isSaving || isUploading}
                   onClick={() => {
                     const next = stepNodeDimensions(sizeNodeType, sizeW, sizeH, 1)
                     setSizeW(next.width)
@@ -424,16 +379,7 @@ export function NodeInfoModal({
                 {defaultDims ? (
                   <button
                     type="button"
-                    className="home-auth-toggle-button"
-                    style={{
-                      padding: '0.35rem 0.65rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: !sizeIsAtDefault && !isSaving && !isUploading ? 'pointer' : 'not-allowed',
-                      opacity: !sizeIsAtDefault && !isSaving && !isUploading ? 1 : 0.5,
-                    }}
+                    className={styles.sizeResetButton}
                     disabled={sizeIsAtDefault || isSaving || isUploading}
                     onClick={() => {
                       setSizeW(defaultDims.width)
@@ -447,13 +393,8 @@ export function NodeInfoModal({
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="submit"
-              disabled={isSaving || isDeleting || isUploading}
-              className="home-auth-button"
-              style={{ marginTop: 0 }}
-            >
+          <div className={styles.formFooter}>
+            <button type="submit" disabled={busy} className="btn-primary">
               {isUploading ? 'Uploading photo…' : isSaving ? 'Saving…' : 'Save changes'}
             </button>
           </div>
@@ -461,34 +402,19 @@ export function NodeInfoModal({
       )}
 
       {error && (
-        <p className="home-auth-error" style={{ marginBottom: '0.75rem' }}>{error}</p>
+        <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
       )}
 
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className={modalStyles.actionsLeftAligned}>
         <button
           type="button"
-          disabled={isDeleting || isSaving || isUploading}
+          disabled={busy}
           onClick={handleDelete}
-          style={{
-            padding: '0.45rem 0.9rem',
-            borderRadius: '0.5rem',
-            border: '1px solid #fca5a5',
-            backgroundColor: '#fee2e2',
-            color: '#b91c1c',
-            cursor: isDeleting || isSaving || isUploading ? 'not-allowed' : 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            opacity: isDeleting || isSaving || isUploading ? 0.6 : 1,
-          }}
+          className={modalStyles.dangerButton}
         >
           {isDeleting ? 'Deleting…' : isGroup ? 'Delete group (detach members)' : 'Delete node'}
         </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="home-auth-toggle-button"
-          style={{ border: '1px solid #e5e7eb', padding: '0.45rem 0.9rem', borderRadius: '0.5rem' }}
-        >
+        <button type="button" onClick={onClose} className="btn-ghost">
           Close
         </button>
       </div>

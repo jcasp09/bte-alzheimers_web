@@ -1,0 +1,105 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr);
+  gap: 2rem;
+  margin-top: 1.5rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.overview h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.overview p {
+  margin: 0;
+  color: #4b5563;
+}
+
+.authCard {
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  padding: 1.25rem 1.5rem;
+  background-color: #f9fafb;
+}
+
+.authSubtitle {
+  margin: 0 0 1rem 0;
+  color: #4b5563;
+}
+
+.authEmail {
+  font-weight: 600;
+}
+
+.authToggle {
+  display: inline-flex;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  padding: 0.12rem;
+  background-color: #f9fafb;
+  margin-bottom: 1rem;
+}
+
+.authToggleButton {
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.9rem;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.authToggleButtonActive {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+.passwordRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.passwordRow input {
+  flex: 1 1 auto;
+}
+
+.passwordToggle {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  background-color: #e5e7eb;
+  color: #111827;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.passwordToggle:hover {
+  border-color: #9ca3af;
+}
+
+.signedInTitle {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.signOutButton {
+  margin-top: 0.5rem;
+}
+
+.submitButton {
+  margin-top: 1rem;
+}
+
+.pageIntro {
+  margin: 0;
+  color: #555;
+}
