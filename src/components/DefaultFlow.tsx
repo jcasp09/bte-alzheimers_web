@@ -28,7 +28,7 @@ import type {
   Viewport,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { nodeTypes } from '../nodeTypes'
+import { nodeTypes } from '../graph/nodeTypes'
 
 type XY = { x: number; y: number }
 

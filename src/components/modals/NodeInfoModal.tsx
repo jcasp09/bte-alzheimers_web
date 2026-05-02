@@ -1,5 +1,5 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
-import { Modal } from './Modal'
+import { Modal } from '../ui/Modal'
 import {
   GRAPH_IDS,
   PHOTO_ACCEPT_ATTR,
@@ -8,7 +8,7 @@ import {
   isAllowedPhotoType,
   uploadPersonNodePhoto,
   upsertNode,
-} from '../../firebase/graph'
+} from '../../services/graph'
 import {
   GROUP_DIMENSION_BOUNDS,
   GROUP_NODE_DEFAULT_SIZE,

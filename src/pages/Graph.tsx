@@ -12,14 +12,12 @@ import {
   saveGraphViewport,
   saveNodePositions,
   updateEdgeLabel,
-  type NodeDoc,
-  type NodeType,
-  type PickableNode,
-} from '../firebase/graph'
+} from '../services/graph'
+import type { NodeDoc, NodeType, PickableNode } from '../types/graph'
 import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
 import { applyReparentOnDragStop } from '../graph/reparent'
-import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../graph/useDeferredEdgePersistence'
+import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../hooks/useDeferredEdgePersistence'
 import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
 import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'

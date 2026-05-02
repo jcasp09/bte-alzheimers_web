@@ -8,11 +8,10 @@ import {
   isAllowedPhotoType,
   uploadPersonNodePhoto,
   upsertNode,
-  type NodeType,
-  type PickableNode,
-} from '../../firebase/graph'
+} from '../../services/graph'
+import type { NodeType, PickableNode } from '../../types/graph'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
-import { Modal } from './Modal'
+import { Modal } from '../ui/Modal'
 
 type Props = {
   userId: string

@@ -17,17 +17,15 @@ import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage
 import { db } from './firestore'
 import { storage } from './storage'
 import { GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
-
-export type GraphId = 'context' | 'tasks'
-export type NodeType = 'person' | 'place' | 'task' | 'group'
+import type {
+  EdgeDoc,
+  GraphId,
+  GraphViewport,
+  NodeDoc,
+  NodeType,
+} from '../types/graph'
 
 export const GRAPH_IDS = { context: 'context', tasks: 'tasks' } as const
-
-export type PickableNode = {
-  id: string
-  type: NodeType
-  name: string
-}
 
 // Allowed photo MIME types for person nodes
 export const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png'] as const
@@ -177,29 +175,6 @@ export async function createEdge(
   return docRef.id
 }
 
-export type NodeDoc = {
-  id: string
-  type: NodeType
-  name: string
-  position?: { x: number; y: number }
-  /** When set, this node is laid out inside the parent group (context graph). */
-  parentId?: string
-  width?: number
-  height?: number
-  relationship?: string
-  email?: string
-  phone?: string
-  photoPath?: string
-  photoUpdatedAt?: string
-  address?: string
-  title?: string
-  startAt?: string
-  endAt?: string
-  calendarEventId?: string
-  priority?: number
-  location?: string
-}
-
 type UploadNodePhotoResult = {
   photoPath: string
   photoUrl: string
@@ -226,21 +201,6 @@ export async function uploadPersonNodePhoto(
 export async function deletePersonNodePhotoByPath(photoPath: string): Promise<void> {
   const photoRef = ref(storage, photoPath)
   await deleteObject(photoRef)
-}
-
-export type EdgeDoc = {
-  id: string
-  sourceNodeId: string
-  targetNodeId: string
-  sourceHandle?: string
-  targetHandle?: string
-  label?: string
-}
-
-export type GraphViewport = {
-  x: number
-  y: number
-  zoom: number
 }
 
 export type StaleTaskCleanupResult = {

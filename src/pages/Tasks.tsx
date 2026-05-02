@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { GRAPH_IDS, getNodes, removePassedTaskNodes, type NodeDoc } from '../firebase/graph'
+import { GRAPH_IDS, getNodes, removePassedTaskNodes } from '../services/graph'
+import type { NodeDoc } from '../types/graph'
 import './Tasks.css'
 
 type TaskSummaryItem = {

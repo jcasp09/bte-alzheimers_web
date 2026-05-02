@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarTasks } from '../firebase/calendar'
+import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarTasks } from '../services/calendar'
 
 function Profile() {
   const { user } = useAuth()

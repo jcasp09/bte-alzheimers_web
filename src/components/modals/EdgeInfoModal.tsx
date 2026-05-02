@@ -1,8 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { GRAPH_IDS, deleteEdge } from '../../firebase/graph'
+import { GRAPH_IDS, deleteEdge } from '../../services/graph'
 import { edgeHandleLabel } from '../../graph/edgeHandles'
-import { isLocalPendingEdgeId } from '../../graph/useDeferredEdgePersistence'
-import { Modal } from './Modal'
+import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
+import { Modal } from '../ui/Modal'
 
 type Props = {
   userId: string

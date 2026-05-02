@@ -1,5 +1,5 @@
 import type { NodeProps } from '@xyflow/react'
-import { GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
+import { GROUP_NODE_DEFAULT_SIZE } from '../dimensions'
 
 export function GroupNode({ data, width, height }: NodeProps) {
   const w = typeof width === 'number' && Number.isFinite(width) ? width : GROUP_NODE_DEFAULT_SIZE.width

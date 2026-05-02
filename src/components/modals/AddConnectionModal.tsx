@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { Connection } from '@xyflow/react'
-import { type PickableNode } from '../../firebase/graph'
+import type { PickableNode } from '../../types/graph'
 import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../graph/edgeHandles'
-import { Modal } from './Modal'
+import { Modal } from '../ui/Modal'
 
 type Props = {
   pickableNodes: PickableNode[]

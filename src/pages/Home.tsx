@@ -1,8 +1,8 @@
 import { type SubmitEvent, useState } from 'react'
 import { doc, setDoc } from 'firebase/firestore'
-import { db } from '../firebase/firestore'
+import { db } from '../services/firestore'
 import { useAuth } from '../contexts/AuthContext'
-import { signInWithEmailPassword, signOutUser, signUpWithEmailPassword } from '../firebase/auth'
+import { signInWithEmailPassword, signOutUser, signUpWithEmailPassword } from '../services/auth'
 
 type AuthMode = 'signin' | 'signup'
 

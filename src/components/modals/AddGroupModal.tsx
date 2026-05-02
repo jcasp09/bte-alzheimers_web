@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
-import { GRAPH_IDS, createNode } from '../../firebase/graph'
-import { Modal } from './Modal'
+import { GRAPH_IDS, createNode } from '../../services/graph'
+import { Modal } from '../ui/Modal'
 
 type DraftRect = { x: number; y: number; width: number; height: number }
 

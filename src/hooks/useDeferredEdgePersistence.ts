@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import type { Connection, Edge } from '@xyflow/react'
-import { createEdge, type GraphId } from '../firebase/graph'
+import { createEdge } from '../services/graph'
+import type { GraphId } from '../types/graph'
 
 export type PendingEdgeRow = {
   localId: string
