@@ -1,6 +1,6 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
 import './App.css'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider } from './contexts/AuthProvider'
 import Home from './pages/Home'
 import Graph from './pages/Graph'
 import Profile from './pages/Profile'
