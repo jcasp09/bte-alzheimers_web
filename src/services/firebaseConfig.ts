@@ -1,14 +1,24 @@
 import { initializeApp } from 'firebase/app'
 import { type Analytics, getAnalytics } from 'firebase/analytics'
 
+const env = import.meta.env
+
+function requireEnv(name: string): string {
+  const value = env[name as keyof typeof env] as string | undefined
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`)
+  }
+  return value
+}
+
 const firebaseConfig = {
-  apiKey: 'AIzaSyBP4B21NEeZpk9uTUJozdSNExgk4NX-O0o',
-  authDomain: 'bte-alzheimers-fb.firebaseapp.com',
-  projectId: 'bte-alzheimers-fb',
-  storageBucket: 'bte-alzheimers-fb.firebasestorage.app',
-  messagingSenderId: '604521649949',
-  appId: '1:604521649949:web:c32d185e3bc241cff073f4',
-  measurementId: 'G-16BHST8M14',
+  apiKey: requireEnv('VITE_FIREBASE_API_KEY'),
+  authDomain: requireEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: requireEnv('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: requireEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: requireEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: requireEnv('VITE_FIREBASE_APP_ID'),
+  measurementId: requireEnv('VITE_FIREBASE_MEASUREMENT_ID'),
 } as const
 
 const app = initializeApp(firebaseConfig)
@@ -18,4 +28,4 @@ if (typeof window !== 'undefined') {
   analytics = getAnalytics(app)
 }
 
-export { app, analytics}
+export { app, analytics }
