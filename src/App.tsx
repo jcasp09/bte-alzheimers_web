@@ -1,6 +1,6 @@
-import { NavLink, Route, Routes } from 'react-router-dom'
-import clsx from 'clsx'
+import { Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthProvider'
+import Header from './components/Header'
 import Home from './pages/Home'
 import Graph from './pages/Graph'
 import Profile from './pages/Profile'
@@ -11,33 +11,7 @@ function App() {
   return (
     <AuthProvider>
       <div className={styles.app}>
-        <nav className={styles.tabs}>
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) => clsx(styles.tab, isActive && styles.tabActive)}
-          >
-            Home
-          </NavLink>
-          <NavLink
-            to="/graph"
-            className={({ isActive }) => clsx(styles.tab, isActive && styles.tabActive)}
-          >
-            Graph
-          </NavLink>
-          <NavLink
-            to="/profile"
-            className={({ isActive }) => clsx(styles.tab, isActive && styles.tabActive)}
-          >
-            Profile
-          </NavLink>
-          <NavLink
-            to="/tasks"
-            className={({ isActive }) => clsx(styles.tab, isActive && styles.tabActive)}
-          >
-            Tasks
-          </NavLink>
-        </nav>
+        <Header />
 
         <main className={styles.tabContent}>
           <Routes>

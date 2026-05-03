@@ -411,12 +411,7 @@ function Graph() {
   return (
     <section>
       <div className={styles.headerRow}>
-        <div>
-          <h1 className={styles.pageTitle}>Relationship Graph</h1>
-          <p className={styles.pageSubtitle}>
-            Your personal map of the people and places around you.
-          </p>
-        </div>
+        <h1 className={styles.pageTitle}>Relationship Graph</h1>
 
         <div className={styles.toolbar}>
           <button
@@ -453,6 +448,10 @@ function Graph() {
           </button>
         </div>
       </div>
+
+      <p className={styles.pageSubtitle}>
+        Your personal map of the people and places around you.
+      </p>
 
       {syncEdgeError ? (
         <div className={styles.syncBanner}>

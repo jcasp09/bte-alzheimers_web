@@ -1,19 +1,20 @@
 .headerRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
 }
 
 .pageTitle {
-  margin-bottom: 0.25rem;
+  margin: 0;
 }
 
 .pageSubtitle {
   color: #6b7280;
   font-size: 0.875rem;
+  margin: 0 0 1rem;
 }
 
 .toolbar {
