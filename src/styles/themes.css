@@ -1,0 +1,41 @@
+:root,
+[data-theme='soft'] {
+  /* Every theme block must define the following tokens: */
+  --color-page: #e8ede2;
+  --color-page-elev: #dde4d3;
+  --color-surface: #f7f9f3;
+  --color-surface-raised: #ffffff;
+
+  --color-border: #d4dccb;
+  --color-border-strong: #b8c2ab;
+
+  --color-text: #1f2c19;
+  --color-text-muted: #5a6b4d;
+  --color-text-subtle: #8a9580;
+  --color-text-inverse: #f7f9f3;
+
+  --color-accent: #6e8b5a;
+  --color-accent-hover: #5a7a48;
+  --color-accent-soft: #dde4d3;
+
+  --color-focus: #5a7a48;
+  --color-focus-ring-rgb: 110, 139, 90;
+
+  --color-error: #b91c1c;
+  --color-error-bg: #fbeaea;
+  --color-error-border: #f0baba;
+  --color-success: #3b6d11;
+  --color-warning: #854f0b;
+  --color-warning-bg: #f5ecd6;
+  --color-warning-border: #d6c08a;
+
+  --color-overlay: rgba(31, 44, 25, 0.45);
+  --color-shadow-rgb: 31, 44, 25;
+
+  --color-featured-grad-start: #dde4d3;
+  --color-featured-grad-end: #cdd6c1;
+  --color-featured-pill-bg: rgba(110, 139, 90, 0.18);
+
+  --color-group-fill: rgba(221, 228, 211, 0.55);
+  --color-grid-dot: #cdd6c1;
+}

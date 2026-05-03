@@ -37,8 +37,8 @@ export function PlaceNode({ data }: NodeProps) {
           minHeight: h,
           boxSizing: 'border-box',
           borderRadius,
-          background: '#f3f4f6',
-          border: '2px solid #9ca3af',
+          background: 'var(--color-surface)',
+          border: '2px solid var(--color-border-strong)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -53,7 +53,7 @@ export function PlaceNode({ data }: NodeProps) {
           <span
             style={{
               fontSize: addrFont,
-              color: '#6b7280',
+              color: 'var(--color-text-muted)',
               marginTop: Math.max(2, Math.round(4 * sc)),
               lineHeight: 1.35,
               maxWidth: '100%',

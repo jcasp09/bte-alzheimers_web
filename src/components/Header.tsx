@@ -34,50 +34,52 @@ function Header() {
 
   return (
     <header className={styles.header}>
-      <Link to="/" className={styles.brand} aria-label={`${PRODUCT_NAME} home`}>
-        <img
-          src="/logo.png"
-          alt=""
-          aria-hidden="true"
-          className={styles.brandLogo}
-          width={36}
-          height={36}
-        />
-        <span className={styles.brandName}>{PRODUCT_NAME}</span>
-      </Link>
-
-      <nav className={styles.nav} aria-label="Primary">
-        <NavLink
-          to="/graph"
-          className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
-        >
-          Graph
-        </NavLink>
-        <NavLink
-          to="/tasks"
-          className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
-        >
-          Tasks
-        </NavLink>
-      </nav>
-
-      {user ? (
-        <NavLink
-          to="/profile"
-          className={({ isActive }) => clsx(styles.profile, isActive && styles.profileActive)}
-          aria-label={`Open profile for ${label}`}
-        >
-          <span className={styles.avatar} aria-hidden="true">
-            {/* Replace this span with an <img> once profile photos exist. */}
-            {initial}
-          </span>
-          <span className={styles.profileName}>{label}</span>
-        </NavLink>
-      ) : (
-        <Link to="/" className={styles.signIn}>
-          Sign in
+      <div className={styles.headerInner}>
+        <Link to="/" className={styles.brand} aria-label={`${PRODUCT_NAME} home`}>
+          <img
+            src="/logo.png"
+            alt=""
+            aria-hidden="true"
+            className={styles.brandLogo}
+            width={36}
+            height={36}
+          />
+          <span className={styles.brandName}>{PRODUCT_NAME}</span>
         </Link>
-      )}
+
+        <nav className={styles.nav} aria-label="Primary">
+          <NavLink
+            to="/graph"
+            className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
+          >
+            Graph
+          </NavLink>
+          <NavLink
+            to="/tasks"
+            className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
+          >
+            Tasks
+          </NavLink>
+        </nav>
+
+        {user ? (
+          <NavLink
+            to="/profile"
+            className={({ isActive }) => clsx(styles.profile, isActive && styles.profileActive)}
+            aria-label={`Open profile for ${label}`}
+          >
+            <span className={styles.avatar} aria-hidden="true">
+              {/* Replace this span with an <img> once profile photos exist. */}
+              {initial}
+            </span>
+            <span className={styles.profileName}>{label}</span>
+          </NavLink>
+        ) : (
+          <Link to="/" className={styles.signIn}>
+            Sign in
+          </Link>
+        )}
+      </div>
     </header>
   )
 }

@@ -13,13 +13,15 @@ function App() {
       <div className={styles.app}>
         <Header />
 
-        <main className={styles.tabContent}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/graph" element={<Graph />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/tasks" element={<Tasks />} />
-          </Routes>
+        <main className={styles.main}>
+          <div className={styles.mainInner}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/graph" element={<Graph />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/tasks" element={<Tasks />} />
+            </Routes>
+          </div>
         </main>
       </div>
     </AuthProvider>

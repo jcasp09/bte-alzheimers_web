@@ -13,8 +13,8 @@ export function GroupNode({ data, width, height }: NodeProps) {
         height: h,
         boxSizing: 'border-box',
         borderRadius: 12,
-        border: '2px dashed #94a3b8',
-        background: 'rgba(243, 244, 246, 0.65)',
+        border: '2px dashed var(--color-border-strong)',
+        background: 'var(--color-group-fill)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'flex-start',
@@ -26,7 +26,7 @@ export function GroupNode({ data, width, height }: NodeProps) {
         style={{
           fontSize: 13,
           fontWeight: 600,
-          color: '#475569',
+          color: 'var(--color-text-muted)',
           userSelect: 'none',
         }}
       >
