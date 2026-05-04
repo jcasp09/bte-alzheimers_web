@@ -1,19 +1,37 @@
 import { NavLink, Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
+import type { Profile } from '../contexts/AuthContext'
 import styles from './Header.module.css'
 
 const PRODUCT_NAME = 'Memory Jog'
 
-function displayLabelFor(user: { displayName?: string | null; email?: string | null } | null): string {
+type LabelSource = {
+  displayName?: string | null
+  email?: string | null
+}
+
+/**
+ * Build the profile pill's display label, preferring the live Firestore name,
+ * then the cached Firebase Auth displayName, then the email's local part.
+ */
+function displayLabelFor(user: LabelSource | null, profile: Profile | null): string {
   if (user == null)
     return 'Sign in'
+
+  if (profile != null) {
+    const fullName = [profile.firstName, profile.lastName]
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0)
+      .join(' ')
+    if (fullName.length > 0)
+      return fullName
+  }
 
   if (user.displayName != null && user.displayName.trim() !== '')
     return user.displayName
 
   if (user.email != null && user.email.length > 0) {
-    // Later, this will be a first and last name
     const [localPart] = user.email.split('@')
     return localPart
   }
@@ -24,13 +42,14 @@ function displayLabelFor(user: { displayName?: string | null; email?: string | n
 /** First visible character of the label, uppercased. Falls back to '?'. */
 function initialFor(label: string): string {
   const trimmed = label.trim()
-  return trimmed.length === 0 ? '?' : trimmed.charAt(0).toUpperCase();
+  return trimmed.length === 0 ? '?' : trimmed.charAt(0).toUpperCase()
 }
 
 function Header() {
-  const { user } = useAuth()
-  const label = displayLabelFor(user)
+  const { user, profile } = useAuth()
+  const label = displayLabelFor(user, profile)
   const initial = initialFor(label)
+  const photoURL = profile?.photoURL ?? null
 
   return (
     <header className={styles.header}>
@@ -72,8 +91,11 @@ function Header() {
           >
             <span className={styles.profileName}>{label}</span>
             <span className={styles.avatar} aria-hidden="true">
-              {/* Replace this span with an <img> once profile photos exist. */}
-              {initial}
+              {photoURL != null ? (
+                <img src={photoURL} alt="" className={styles.avatarImage} />
+              ) : (
+                initial
+              )}
             </span>
           </NavLink>
         ) : (

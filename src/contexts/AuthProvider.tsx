@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { type User, onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth } from '../services/auth'
 import { db } from '../services/firestore'
-import { AuthContext } from './AuthContext'
+import { AuthContext, type Profile } from './AuthContext'
 import { DEFAULT_THEME, THEMES, type Theme, getTheme, setTheme, subscribeToThemeChange } from '../services/theme'
 
 function isTheme(value: unknown): value is Theme {
@@ -48,8 +48,26 @@ async function hydrateThemeForUser(uid: string, isCancelled: () => boolean): Pro
   }
 }
 
+/** Coerce a raw Firestore snapshot into a Profile, tolerating missing fields. */
+function profileFromSnapshot(data: Record<string, unknown> | undefined): Profile {
+  return {
+    firstName: typeof data?.firstName === 'string' ? data.firstName : '',
+    lastName: typeof data?.lastName === 'string' ? data.lastName : '',
+    birthday: typeof data?.birthday === 'string' ? data.birthday : '',
+    photoURL: typeof data?.photoURL === 'string' ? data.photoURL : null,
+  }
+}
+
+/**
+ * Latest profile snapshot tagged with the uid it came from. Tagging lets us
+ * derive the public `profile` value safely: while a snapshot is in-flight after
+ * a user switch, the stale data is hidden until the new uid's snapshot arrives.
+ */
+type ProfileSnapshot = { uid: string; data: Profile }
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [profileSnapshot, setProfileSnapshot] = useState<ProfileSnapshot | null>(null)
 
   const userRef = useRef<User | null>(null)
   useEffect(() => {
@@ -72,6 +90,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
+  // Subscribe to the user's Firestore profile doc so name/photo changes propagate.
+  useEffect(() => {
+    const uid = user?.uid
+    if (uid == null)
+      return
+
+    const ref = doc(db, 'users', uid)
+    const unsubscribe = onSnapshot(
+      ref,
+      (snap) => {
+        const data = snap.data() as Record<string, unknown> | undefined
+        setProfileSnapshot({ uid, data: profileFromSnapshot(data) })
+      },
+      (err) => {
+        console.warn('[profile] failed to subscribe to user doc:', err)
+      },
+    )
+    return () => unsubscribe()
+  }, [user?.uid])
+
   // Mirror every theme change to Firestore while a user is signed in.
   useEffect(() => {
     return subscribeToThemeChange((theme) => {
@@ -81,5 +119,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  return <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>
+  const profile: Profile | null =
+    user != null && profileSnapshot != null && profileSnapshot.uid === user.uid
+      ? profileSnapshot.data
+      : null
+
+  return <AuthContext.Provider value={{ user, profile }}>{children}</AuthContext.Provider>
 }
