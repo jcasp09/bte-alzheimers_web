@@ -47,9 +47,9 @@ function Accessibility() {
         subtitle="Adjust motion and other accessibility preferences to suit you."
       />
 
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Motion</h3>
-        <p className={styles.sectionSubtitle}>
+      <div className="card">
+        <h3 className="card-title">Motion</h3>
+        <p className="card-subtitle">
           Animation can be disorienting for some people.
           This controls whether the app reduces motion, such as the gentle floating of graph nodes.
         </p>

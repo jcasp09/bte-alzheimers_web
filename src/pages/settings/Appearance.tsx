@@ -56,9 +56,9 @@ function Appearance() {
         subtitle="Choose how the app looks. Changes apply immediately."
       />
 
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Theme</h3>
-        <p className={styles.sectionSubtitle}>
+      <div className="card">
+        <h3 className="card-title">Theme</h3>
+        <p className="card-subtitle">
           Choose a color palette. Your selection is saved to your account and follows you across devices.
         </p>
 
