@@ -6,14 +6,14 @@ const TABS: { to: string; label: string }[] = [
   { to: 'account', label: 'Account' },
   { to: 'appearance', label: 'Appearance' },
   { to: 'accessibility', label: 'Accessibility' },
+  { to: 'integrations', label: 'Integrations' },
 ]
 
 function Settings() {
   return (
     <section className={styles.shell}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Account settings</h1>
-        <p className={styles.subtitle}>Manage your account and how the app looks.</p>
+      <header className={styles.globalHeader}>
+        <h1 className={styles.globalTitle}>Settings</h1>
       </header>
 
       <nav className={styles.tabs} aria-label="Settings sections">
