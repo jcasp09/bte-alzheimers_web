@@ -1,16 +1,16 @@
 import clsx from 'clsx'
-import styles from './SettingsBanner.module.css'
+import styles from './Banner.module.css'
 
 export type BannerKind = 'success' | 'error'
 
-type SettingsBannerProps = {
+type BannerProps = {
   kind: BannerKind
   message: string
   onDismiss?: () => void
 }
 
-/** Inline success/error banner used at the top of Settings sub-pages. */
-function SettingsBanner({ kind, message, onDismiss }: SettingsBannerProps) {
+/** Inline success/error banner. Used for status feedback across the app. */
+function Banner({ kind, message, onDismiss }: BannerProps) {
   return (
     <div
       className={clsx(styles.banner, kind === 'success' ? styles.bannerSuccess : styles.bannerError)}
@@ -48,4 +48,4 @@ function SettingsBanner({ kind, message, onDismiss }: SettingsBannerProps) {
   )
 }
 
-export default SettingsBanner
+export default Banner

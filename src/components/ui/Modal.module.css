@@ -12,12 +12,16 @@
   transform: translate(-50%, -50%);
   z-index: 1001;
   background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   width: 100%;
   max-width: 460px;
-  box-shadow: 0 12px 40px rgba(var(--color-shadow-rgb), 0.18);
+  /* Two-layer shadow gives the dialog more definition against the dark overlay
+     in dark mode, while still looking gentle in the light/warm themes. */
+  box-shadow:
+    0 18px 48px rgba(var(--color-shadow-rgb), 0.32),
+    0 4px 12px rgba(var(--color-shadow-rgb), 0.18);
   color: var(--color-text);
 }
 
@@ -85,18 +89,21 @@
 .dangerButton {
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-error-border);
-  background-color: var(--color-error-bg);
-  color: var(--color-error);
+  border: 1px solid var(--color-error);
+  /* Solid-fill destructive style: foreground red as background with the inverse
+     text color. This stays clearly red against any theme's dialog surface — the
+     soft tinted-bg variant blended into the dialog in dark mode. */
+  background-color: var(--color-error);
+  color: var(--color-text-inverse);
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
   font-family: inherit;
-  transition: background-color 0.15s ease;
+  transition: filter 0.15s ease;
 }
 
 .dangerButton:hover {
-  filter: brightness(0.96);
+  filter: brightness(0.92);
 }
 
 .dangerButton:focus-visible {

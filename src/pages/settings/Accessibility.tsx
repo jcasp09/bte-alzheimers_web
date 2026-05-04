@@ -8,7 +8,7 @@ import {
   subscribeToMotionChange,
 } from '../../services/motion'
 import { useRadioGroupKeyboard } from '../../hooks/useRadioGroupKeyboard'
-import SettingsPageHeader from '../../components/SettingsPageHeader'
+import PageHeader from '../../components/PageHeader'
 import styles from './Accessibility.module.css'
 
 type MotionOption = {
@@ -42,7 +42,7 @@ function Accessibility() {
 
   return (
     <div>
-      <SettingsPageHeader
+      <PageHeader
         title="Accessibility"
         subtitle="Adjust motion and other accessibility preferences to suit you."
       />

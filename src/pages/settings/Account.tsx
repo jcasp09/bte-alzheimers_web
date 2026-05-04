@@ -8,8 +8,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import { signOutUser } from '../../services/auth'
 import { db } from '../../services/firestore'
 import { storage } from '../../services/storage'
-import SettingsPageHeader from '../../components/SettingsPageHeader'
-import SettingsBanner from '../../components/SettingsBanner'
+import PageHeader from '../../components/PageHeader'
+import Banner from '../../components/Banner'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import styles from './Account.module.css'
 
 type ProfileForm = {
@@ -112,6 +113,9 @@ function Account() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const [showRemovePhotoConfirm, setShowRemovePhotoConfirm] = useState(false)
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
+
   const photoURL = profile?.photoURL ?? null
 
   const currentUid = user?.uid ?? null
@@ -159,6 +163,13 @@ function Account() {
       delete next[field]
       return next
     })
+  }
+
+  const handleDiscardChanges = () => {
+    setForm(initialForm)
+    setErrors(EMPTY_ERRORS)
+    setError(null)
+    setStatusMessage(null)
   }
 
   const handleSave = async (event: SubmitEvent) => {
@@ -254,6 +265,11 @@ function Account() {
     }
   }
 
+  const handleConfirmRemovePhoto = async () => {
+    await handleRemovePhoto()
+    setShowRemovePhotoConfirm(false)
+  }
+
   const handleRemovePhoto = async () => {
     if (user == null || photoURL == null)
       return
@@ -284,6 +300,11 @@ function Account() {
     }
   }
 
+  const handleConfirmSignOut = async () => {
+    await handleSignOut()
+    setShowSignOutConfirm(false)
+  }
+
   const handleSignOut = async () => {
     setError(null)
     setStatusMessage(null)
@@ -301,7 +322,7 @@ function Account() {
   if (user == null) {
     return (
       <div>
-        <SettingsPageHeader
+        <PageHeader
           title="Account"
           subtitle="Sign in to view and edit your account details."
         />
@@ -317,20 +338,20 @@ function Account() {
 
   return (
     <div>
-      <SettingsPageHeader
+      <PageHeader
         title="Account"
         subtitle="Update your name, photo, and other personal details."
       />
 
       {statusMessage != null && (
-        <SettingsBanner
+        <Banner
           kind="success"
           message={statusMessage}
           onDismiss={() => setStatusMessage(null)}
         />
       )}
       {error != null && (
-        <SettingsBanner
+        <Banner
           kind="error"
           message={error}
           onDismiss={() => setError(null)}
@@ -364,7 +385,7 @@ function Account() {
                 <button
                   type="button"
                   className="btn-ghost"
-                  onClick={handleRemovePhoto}
+                  onClick={() => setShowRemovePhotoConfirm(true)}
                   disabled={photoBusy || isLoading}
                 >
                   {isRemovingPhoto ? 'Removing…' : 'Remove'}
@@ -437,6 +458,16 @@ function Account() {
         </label>
 
         <div className={styles.formActions}>
+          {isDirty && (
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={handleDiscardChanges}
+              disabled={isSaving || isLoading}
+            >
+              Discard changes
+            </button>
+          )}
           <button
             type="submit"
             className="btn-primary"
@@ -452,6 +483,7 @@ function Account() {
         <div className={styles.field}>
           <p className={styles.fieldLabel}>Email</p>
           <p className={styles.fieldValue}>{user.email}</p>
+          <p className={styles.fieldHint}>Email cannot be changed at this time.</p>
         </div>
       </div>
 
@@ -461,12 +493,37 @@ function Account() {
         <button
           type="button"
           className="btn-ghost"
-          onClick={handleSignOut}
+          onClick={() => setShowSignOutConfirm(true)}
           disabled={isSigningOut}
         >
           {isSigningOut ? 'Signing out…' : 'Sign out'}
         </button>
       </div>
+
+      {showRemovePhotoConfirm && (
+        <ConfirmDialog
+          title="Remove profile photo?"
+          message="Your profile photo will be permanently removed. You can upload a new one any time."
+          confirmLabel="Remove photo"
+          cancelLabel="Keep photo"
+          confirmVariant="danger"
+          isConfirming={isRemovingPhoto}
+          onConfirm={handleConfirmRemovePhoto}
+          onCancel={() => setShowRemovePhotoConfirm(false)}
+        />
+      )}
+
+      {showSignOutConfirm && (
+        <ConfirmDialog
+          title="Sign out?"
+          message="You will be returned to the sign-in screen and will need to sign in again to use the app."
+          confirmLabel="Sign out"
+          cancelLabel="Stay signed in"
+          isConfirming={isSigningOut}
+          onConfirm={handleConfirmSignOut}
+          onCancel={() => setShowSignOutConfirm(false)}
+        />
+      )}
     </div>
   )
 }

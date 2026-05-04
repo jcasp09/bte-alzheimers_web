@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { type Theme, getTheme, setTheme, subscribeToThemeChange } from '../../services/theme'
 import { useRadioGroupKeyboard } from '../../hooks/useRadioGroupKeyboard'
-import SettingsPageHeader from '../../components/SettingsPageHeader'
+import PageHeader from '../../components/PageHeader'
 import styles from './Appearance.module.css'
 
 type ThemeOption = {
@@ -51,7 +51,7 @@ function Appearance() {
 
   return (
     <div>
-      <SettingsPageHeader
+      <PageHeader
         title="Appearance"
         subtitle="Choose how the app looks. Changes apply immediately."
       />

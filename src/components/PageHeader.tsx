@@ -1,11 +1,12 @@
-import styles from './SettingsPageHeader.module.css'
+import styles from './PageHeader.module.css'
 
-type SettingsPageHeaderProps = {
+type PageHeaderProps = {
   title: string
   subtitle?: string
 }
 
-function SettingsPageHeader({ title, subtitle }: SettingsPageHeaderProps) {
+/** Page-level title block. Used at the top of sub-pages within a section. */
+function PageHeader({ title, subtitle }: PageHeaderProps) {
   return (
     <header className={styles.pageHeader}>
       <h2 className={styles.pageTitle}>{title}</h2>
@@ -14,4 +15,4 @@ function SettingsPageHeader({ title, subtitle }: SettingsPageHeaderProps) {
   )
 }
 
-export default SettingsPageHeader
+export default PageHeader

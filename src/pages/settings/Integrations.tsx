@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuth } from '../../contexts/AuthContext'
 import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarTasks } from '../../services/calendar'
-import SettingsPageHeader from '../../components/SettingsPageHeader'
-import SettingsBanner from '../../components/SettingsBanner'
+import PageHeader from '../../components/PageHeader'
+import Banner from '../../components/Banner'
 import styles from './Integrations.module.css'
 
 /** How long success banners stay visible before auto-dismissing. */
@@ -72,7 +72,7 @@ function Integrations() {
   if (user == null) {
     return (
       <div>
-        <SettingsPageHeader
+        <PageHeader
           title="Integrations"
           subtitle="Sign in to connect external services."
         />
@@ -84,20 +84,20 @@ function Integrations() {
 
   return (
     <div>
-      <SettingsPageHeader
+      <PageHeader
         title="Integrations"
         subtitle="Connect external services to import data into your graphs."
       />
 
       {calendarStatus != null && (
-        <SettingsBanner
+        <Banner
           kind="success"
           message={calendarStatus}
           onDismiss={() => setCalendarStatus(null)}
         />
       )}
       {error != null && (
-        <SettingsBanner
+        <Banner
           kind="error"
           message={error}
           onDismiss={() => setError(null)}
