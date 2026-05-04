@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { useAuth } from '../contexts/AuthContext'
-import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarTasks } from '../services/calendar'
-import styles from './Profile.module.css'
+import { useAuth } from '../../contexts/AuthContext'
+import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarTasks } from '../../services/calendar'
+import PageHeader from '../../components/PageHeader'
+import Banner from '../../components/Banner'
+import styles from './Integrations.module.css'
 
-function Profile() {
+/** How long success banners stay visible before auto-dismissing. */
+const SUCCESS_BANNER_MS = 5000
+
+function Integrations() {
   const { user } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [isCalendarConnected, setIsCalendarConnected] = useState(false)
@@ -14,17 +19,20 @@ function Profile() {
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user?.uid) {
-      setIsCalendarConnected(isGoogleCalendarConnected(user.uid))
-    } else {
-      setIsCalendarConnected(false)
-    }
+    setIsCalendarConnected(!!(user?.uid && isGoogleCalendarConnected(user.uid)))
   }, [user?.uid])
 
-  const handleConnectCalendar = async () => {
-    if (!user?.uid) {
+  // Auto-dismiss success banners after a short delay; errors stay until next action.
+  useEffect(() => {
+    if (calendarStatus == null)
       return
-    }
+    const timer = window.setTimeout(() => setCalendarStatus(null), SUCCESS_BANNER_MS)
+    return () => window.clearTimeout(timer)
+  }, [calendarStatus])
+
+  const handleConnectCalendar = async () => {
+    if (!user?.uid)
+      return
 
     setError(null)
     setCalendarStatus(null)
@@ -43,9 +51,8 @@ function Profile() {
   }
 
   const handleSyncCalendar = async () => {
-    if (!user?.uid) {
+    if (!user?.uid)
       return
-    }
 
     setError(null)
     setCalendarStatus(null)
@@ -62,31 +69,43 @@ function Profile() {
     }
   }
 
-  if (!user) {
+  if (user == null) {
     return (
       <div>
-        <p>Sign in to add and manage your graph nodes.</p>
-        <Link to="/">Go to Home</Link>
+        <PageHeader
+          title="Integrations"
+          subtitle="Sign in to connect external services."
+        />
+        <p className={styles.signedOutText}>You are not signed in.</p>
+        <Link to="/" className="btn-primary">Go to sign in</Link>
       </div>
     )
   }
 
   return (
     <div>
-      <div className={clsx(styles.card, styles.cardWithGap)}>
-        <h2 className={styles.cardTitle}>Account</h2>
+      <PageHeader
+        title="Integrations"
+        subtitle="Connect external services to import data into your graphs."
+      />
 
-        <div className={styles.field}>
-          <p className={styles.fieldLabel}>Email</p>
-          <p className={styles.fieldValue}>{user.email}</p>
-        </div>
-      </div>
+      {calendarStatus != null && (
+        <Banner
+          kind="success"
+          message={calendarStatus}
+          onDismiss={() => setCalendarStatus(null)}
+        />
+      )}
+      {error != null && (
+        <Banner
+          kind="error"
+          message={error}
+          onDismiss={() => setError(null)}
+        />
+      )}
 
       <div className={styles.card}>
-        <h2 className={styles.cardTitleTight}>Connected services</h2>
-        <p className={styles.cardSubtitle}>
-          Connect external services to import data into your graphs.
-        </p>
+        <h3 className={styles.cardTitle}>Connected services</h3>
 
         <div className={styles.serviceRow}>
           <div>
@@ -118,19 +137,9 @@ function Profile() {
             </button>
           </div>
         </div>
-
-        {calendarStatus != null && (
-          <p className={styles.statusMessage}>{calendarStatus}</p>
-        )}
       </div>
-
-      {error != null && (
-        <p className={clsx('text-error', styles.pageError)}>
-          {error}
-        </p>
-      )}
     </div>
   )
 }
 
-export default Profile
+export default Integrations

@@ -1,7 +1,20 @@
 import { createContext, useContext } from 'react'
 import { type User } from 'firebase/auth'
 
-export type AuthContextValue = { user: User | null }
+/**
+ * The user's editable profile, mirrored live from `users/{uid}` in Firestore.
+ */
+export type Profile = {
+  firstName: string
+  lastName: string
+  birthday: string
+  photoURL: string | null
+}
+
+export type AuthContextValue = {
+  user: User | null
+  profile: Profile | null
+}
 
 /** Internal context store. Consumers should call `useAuth()` instead of reading this directly. */
 export const AuthContext = createContext<AuthContextValue | null>(null)
