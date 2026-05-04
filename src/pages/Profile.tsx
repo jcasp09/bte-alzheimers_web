@@ -64,19 +64,15 @@ function Profile() {
 
   if (!user) {
     return (
-      <section>
-        <h1>Profile</h1>
+      <div>
         <p>Sign in to add and manage your graph nodes.</p>
         <Link to="/">Go to Home</Link>
-      </section>
+      </div>
     )
   }
 
   return (
-    <section>
-      <h1>Profile</h1>
-      <p className={styles.intro}>Manage your account details and connected services.</p>
-
+    <div>
       <div className={clsx(styles.card, styles.cardWithGap)}>
         <h2 className={styles.cardTitle}>Account</h2>
 
@@ -133,7 +129,7 @@ function Profile() {
           {error}
         </p>
       )}
-    </section>
+    </div>
   )
 }
 

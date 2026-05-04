@@ -66,9 +66,9 @@ function Header() {
 
         {user ? (
           <NavLink
-            to="/profile"
+            to="/settings"
             className={({ isActive }) => clsx(styles.profile, isActive && styles.profileActive)}
-            aria-label={`Open profile for ${label}`}
+            aria-label={`Open account settings for ${label}`}
           >
             <span className={styles.profileName}>{label}</span>
             <span className={styles.avatar} aria-hidden="true">
