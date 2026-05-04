@@ -3,6 +3,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
   type MouseEvent,
   type RefObject,
 } from 'react'
@@ -29,6 +30,7 @@ import type {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '../graph/nodeTypes'
+import { getThemeColor, subscribeToThemeChange } from '../services/theme'
 
 type XY = { x: number; y: number }
 
@@ -93,6 +95,14 @@ function FlowCanvas({
   const nodesRef = useRef<Node[]>(initialNodes)
   const paneClickInvokerRef = useRef<((e: MouseEvent) => void) | null>(null)
 
+  const [gridColor, setGridColor] = useState<string>(() => getThemeColor('--color-grid-dot'))
+  useEffect(() => {
+    return subscribeToThemeChange(() => {
+      const resolved = getThemeColor('--color-grid-dot')
+      if (resolved) setGridColor(resolved)
+    })
+  }, [])
+
   const controlledNodes = onNodesChangeFromParent != null
   const controlledEdges = onEdgesChangeFromParent != null
 
@@ -146,6 +156,7 @@ function FlowCanvas({
       onNodeClick={onNodeClick}
       onEdgeClick={onEdgeClick}
       defaultViewport={defaultViewport}
+      proOptions={{ hideAttribution: true }}
       onMoveEnd={(_, viewport) => {
         viewportRef.current = viewport
       }}
@@ -157,7 +168,7 @@ function FlowCanvas({
       <Background
         id="1"
         gap={25}
-        color="#f1f1f1"
+        color={gridColor}
         variant={BackgroundVariant.Cross}
       />
       <Controls />

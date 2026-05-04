@@ -101,15 +101,15 @@ export function PersonNode({ data }: NodeProps) {
             height: avatar,
             borderRadius: '9999px',
             backgroundImage: resolvedImageUrl ? `url(${resolvedImageUrl})` : undefined,
-            backgroundColor: resolvedImageUrl ? undefined : '#e5e7eb',
+            backgroundColor: resolvedImageUrl ? undefined : 'var(--color-accent-soft)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            border: '2px solid #9ca3af',
+            border: '2px solid var(--color-border-strong)',
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#4b5563',
+            color: 'var(--color-accent-hover)',
             fontSize: Math.round(avatar * 0.4),
             fontWeight: 600,
             userSelect: 'none',
@@ -142,7 +142,7 @@ export function PersonNode({ data }: NodeProps) {
             <span
               style={{
                 fontSize: relFont,
-                color: '#6b7280',
+                color: 'var(--color-text-muted)',
                 whiteSpace: 'nowrap',
                 textOverflow: 'ellipsis',
                 overflow: 'hidden',
@@ -155,7 +155,7 @@ export function PersonNode({ data }: NodeProps) {
             <span
               style={{
                 fontSize: contactFont,
-                color: '#6b7280',
+                color: 'var(--color-text-muted)',
                 whiteSpace: 'nowrap',
                 textOverflow: 'ellipsis',
                 overflow: 'hidden',
@@ -168,7 +168,7 @@ export function PersonNode({ data }: NodeProps) {
             <span
               style={{
                 fontSize: contactFont,
-                color: '#6b7280',
+                color: 'var(--color-text-muted)',
                 whiteSpace: 'nowrap',
                 textOverflow: 'ellipsis',
                 overflow: 'hidden',

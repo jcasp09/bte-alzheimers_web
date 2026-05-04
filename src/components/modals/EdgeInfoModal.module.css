@@ -1,26 +1,27 @@
 .summary {
-  font-size: 13px;
-  color: #6b7280;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
   margin-bottom: 0.75rem;
 }
 
 .summary strong {
-  color: #374151;
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 .meta {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
   margin-bottom: 1rem;
 }
 
 .meta span {
-  color: #374151;
+  color: var(--color-text);
 }
 
 .pendingWarning {
-  font-size: 12px;
-  color: #92400e;
+  font-size: 0.78rem;
+  color: var(--color-warning);
   margin-bottom: 1rem;
 }
 
@@ -30,6 +31,6 @@
 
 .helpText {
   margin: 0.35rem 0 0.75rem;
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }

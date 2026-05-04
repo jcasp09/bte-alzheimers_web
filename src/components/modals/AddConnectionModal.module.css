@@ -13,50 +13,63 @@
   margin-bottom: 0.4rem;
   font-weight: 600;
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--color-text-muted);
 }
 
 .pickerList {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   max-height: 200px;
   overflow-y: auto;
-  background-color: #fff;
+  background-color: var(--color-surface);
 }
 
 .pickerEmpty {
-  padding: 0.5rem;
-  color: #6b7280;
-  font-size: 13px;
+  padding: 0.55rem 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .pickerItem {
-  padding: 0.5rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   cursor: pointer;
-  border-bottom: 1px solid #f3f4f6;
-  font-size: 13px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.85rem;
   background-color: transparent;
-  transition: background-color 0.1s;
+  color: var(--color-text);
+  transition: background-color 0.1s ease;
+}
+
+.pickerItem:hover {
+  background-color: var(--color-page);
+}
+
+.pickerItem:last-child {
+  border-bottom: none;
 }
 
 .pickerItemSelected {
-  background-color: #e0f2fe;
+  background-color: var(--color-accent-soft);
+}
+
+.pickerItemSelected:hover {
+  background-color: var(--color-accent-soft);
 }
 
 .pickerItemTypeLabel {
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   margin-left: 0.4rem;
-  font-size: 11px;
+  font-size: 0.7rem;
 }
 
 .arrowSeparator {
   display: flex;
   align-items: center;
   padding-top: 1.5rem;
-  color: #94a3b8;
+  color: var(--color-text-subtle);
   font-size: 1.1rem;
 }
 
@@ -75,7 +88,7 @@
   margin: 0 0 0.35rem;
   font-weight: 600;
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--color-text-muted);
 }
 
 .sideOptionRow {
@@ -85,20 +98,28 @@
 }
 
 .sideOption {
-  padding: 0.3rem 0.55rem;
-  border-radius: 0.35rem;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #475569;
-  font-size: 12px;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
   font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.sideOption:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
 .sideOptionSelected {
-  border-color: #0284c7;
-  background: #e0f2fe;
-  color: #0369a1;
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
   font-weight: 600;
 }
 
@@ -107,12 +128,12 @@
 }
 
 .preview {
-  padding: 0.5rem 0.75rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  font-size: 0.8rem;
-  color: #475569;
+  padding: 0.55rem 0.85rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
@@ -121,8 +142,9 @@
 
 .previewName {
   font-weight: 600;
+  color: var(--color-text);
 }
 
 .previewArrow {
-  color: #94a3b8;
+  color: var(--color-text-subtle);
 }

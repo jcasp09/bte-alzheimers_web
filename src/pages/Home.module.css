@@ -1,65 +1,128 @@
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.6rem;
+  margin: 2.5rem 0 1.25rem;
+}
+
+.heroLogo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background-color: transparent;
+}
+
+.heroName {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+}
+
+.heroTagline {
+  margin: 0.1rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  max-width: 38ch;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr);
-  gap: 2rem;
+  gap: 1.75rem;
   margin-top: 1.5rem;
   align-items: flex-start;
 }
 
 @media (max-width: 768px) {
+  .hero {
+    margin: 1.75rem 0 1rem;
+  }
+
+  .heroName {
+    font-size: 2rem;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
 }
 
+.overview {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 1.85rem;
+}
+
 .overview h2 {
   margin-top: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
+  color: var(--color-text);
 }
 
 .overview p {
   margin: 0;
-  color: #4b5563;
+  color: var(--color-text-muted);
+  line-height: 1.6;
 }
 
 .authCard {
-  border-radius: 0.75rem;
-  border: 1px solid #e5e7eb;
-  padding: 1.25rem 1.5rem;
-  background-color: #f9fafb;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: 1.5rem 1.6rem;
+  background-color: var(--color-surface);
+}
+
+.signedInTitle {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
 }
 
 .authSubtitle {
   margin: 0 0 1rem 0;
-  color: #4b5563;
+  color: var(--color-text-muted);
 }
 
 .authEmail {
   font-weight: 600;
+  color: var(--color-text);
 }
 
 .authToggle {
   display: inline-flex;
-  border-radius: 9999px;
-  border: 1px solid #e5e7eb;
-  padding: 0.12rem;
-  background-color: #f9fafb;
-  margin-bottom: 1rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  padding: 0.18rem;
+  background-color: var(--color-page);
+  margin-bottom: 1.1rem;
 }
 
 .authToggleButton {
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   border: none;
   background: transparent;
-  padding: 0.35rem 0.9rem;
+  padding: 0.4rem 1rem;
   font-size: 0.9rem;
-  color: #4b5563;
+  color: var(--color-text-muted);
   cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.authToggleButton:hover:not(.authToggleButtonActive) {
+  color: var(--color-text);
 }
 
 .authToggleButtonActive {
-  background-color: #111827;
-  color: #f9fafb;
+  background-color: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 .passwordRow {
@@ -73,33 +136,36 @@
 }
 
 .passwordToggle {
-  padding: 0.35rem 0.7rem;
+  padding: 0.4rem 0.75rem;
   font-size: 0.8rem;
-  background-color: #e5e7eb;
-  color: #111827;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
+  background-color: var(--color-page);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .passwordToggle:hover {
-  border-color: #9ca3af;
+  background-color: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
-.signedInTitle {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
+.passwordToggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
-.signOutButton {
-  margin-top: 0.5rem;
+.signedInActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .submitButton {
   margin-top: 1rem;
-}
-
-.pageIntro {
-  margin: 0;
-  color: #555;
 }

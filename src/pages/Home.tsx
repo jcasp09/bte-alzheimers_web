@@ -1,4 +1,5 @@
 import { type SubmitEvent, useState } from 'react'
+import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { doc, setDoc } from 'firebase/firestore'
 import { db } from '../services/firestore'
@@ -58,8 +59,20 @@ function Home() {
 
   return (
     <section>
-      <h1>Home</h1>
-      <p className={styles.pageIntro}>Welcome to the MemoryJog dashboard.</p>
+      <header className={styles.hero}>
+        <img
+          src="/logo.png"
+          alt=""
+          aria-hidden="true"
+          className={styles.heroLogo}
+          width={72}
+          height={72}
+        />
+        <h1 className={styles.heroName}>Memory Jog</h1>
+        <p className={styles.heroTagline}>
+          Visual support for the people, places, and tasks that matter most.
+        </p>
+      </header>
       <div className={styles.layout}>
         <div className={styles.overview}>
           <h2>Your cognitive support hub</h2>
@@ -72,13 +85,18 @@ function Home() {
         <div className={styles.authCard} aria-live="polite">
           {user ? (
             <div>
-              <h2 className={styles.signedInTitle}>Signed in</h2>
+              <h2 className={styles.signedInTitle}>Welcome back</h2>
               <p className={styles.authSubtitle}>
-                You&apos;re signed in as <span className={styles.authEmail}>{user.email}</span>.
+                Signed in as <span className={styles.authEmail}>{user.email}</span>.
               </p>
-              <button type="button" onClick={handleSignOut} className={clsx('btn-primary', styles.signOutButton)}>
-                Sign out
-              </button>
+              <div className={styles.signedInActions}>
+                <Link to="/graph" className="btn-primary">
+                  Open your graph
+                </Link>
+                <button type="button" onClick={handleSignOut} className="btn-ghost">
+                  Sign out
+                </button>
+              </div>
             </div>
           ) : (
             <div>
