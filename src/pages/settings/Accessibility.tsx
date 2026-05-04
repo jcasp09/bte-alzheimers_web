@@ -50,8 +50,8 @@ function Accessibility() {
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Motion</h3>
         <p className={styles.sectionSubtitle}>
-          Animation can be disorienting for some people. This setting controls whether the app reduces motion such as the
-          gentle floating of graph nodes.
+          Animation can be disorienting for some people.
+          This controls whether the app reduces motion, such as the gentle floating of graph nodes.
         </p>
 
         <ul className={styles.optionList} role="radiogroup" aria-label="Motion preference">
