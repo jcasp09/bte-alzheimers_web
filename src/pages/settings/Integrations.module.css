@@ -47,17 +47,6 @@
   flex-wrap: wrap;
 }
 
-.statusMessage {
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  color: var(--color-success);
-}
-
-.pageError {
-  margin-top: 0.75rem;
-  font-size: 0.95rem;
-}
-
 .signedOutText {
   margin: 0 0 1rem;
   color: var(--color-text-muted);

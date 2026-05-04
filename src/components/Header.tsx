@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -47,9 +48,12 @@ function initialFor(label: string): string {
 
 function Header() {
   const { user, profile } = useAuth()
+  const [failedPhotoURL, setFailedPhotoURL] = useState<string | null>(null)
+
   const label = displayLabelFor(user, profile)
   const initial = initialFor(label)
   const photoURL = profile?.photoURL ?? null
+  const showPhoto = photoURL != null && photoURL !== failedPhotoURL
 
   return (
     <header className={styles.header}>
@@ -91,8 +95,13 @@ function Header() {
           >
             <span className={styles.profileName}>{label}</span>
             <span className={styles.avatar} aria-hidden="true">
-              {photoURL != null ? (
-                <img src={photoURL} alt="" className={styles.avatarImage} />
+              {showPhoto && photoURL != null ? (
+                <img
+                  src={photoURL}
+                  alt=""
+                  className={styles.avatarImage}
+                  onError={() => setFailedPhotoURL(photoURL)}
+                />
               ) : (
                 initial
               )}

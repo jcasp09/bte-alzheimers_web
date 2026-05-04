@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type SubmitEvent } from 
 import { Link, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { updateProfile } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, setDoc } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { useAuth } from '../../contexts/AuthContext'
 import { signOutUser } from '../../services/auth'
@@ -72,17 +72,6 @@ function validateProfileForm(form: ProfileForm): FieldErrors {
   return errors
 }
 
-/** Read first/last/birthday from users/{uid}. */
-async function loadProfile(uid: string): Promise<ProfileForm> {
-  const snap = await getDoc(doc(db, 'users', uid))
-  const data = snap.data() ?? {}
-  return {
-    firstName: typeof data.firstName === 'string' ? data.firstName : '',
-    lastName: typeof data.lastName === 'string' ? data.lastName : '',
-    birthday: typeof data.birthday === 'string' ? data.birthday : '',
-  }
-}
-
 function buildDisplayName(firstName: string, lastName: string): string {
   return [firstName.trim(), lastName.trim()].filter((part) => part.length > 0).join(' ')
 }
@@ -104,16 +93,17 @@ function formatBytesMB(bytes: number): string {
 }
 
 function Account() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  const [lastUid, setLastUid] = useState<string | null>(user?.uid ?? null)
+  const [hasInitialized, setHasInitialized] = useState(false)
+
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM)
   const [initialForm, setInitialForm] = useState<ProfileForm>(EMPTY_FORM)
-  const [photoURL, setPhotoURL] = useState<string | null>(null)
   const [errors, setErrors] = useState<FieldErrors>(EMPTY_ERRORS)
 
-  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isRemovingPhoto, setIsRemovingPhoto] = useState(false)
@@ -122,41 +112,29 @@ function Account() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Load profile data when the signed-in user becomes available.
-  useEffect(() => {
-    if (user?.uid == null) {
-      setIsLoading(false)
-      return
+  const photoURL = profile?.photoURL ?? null
+
+  const currentUid = user?.uid ?? null
+  if (lastUid !== currentUid) {
+    setLastUid(currentUid)
+    setForm(EMPTY_FORM)
+    setInitialForm(EMPTY_FORM)
+    setErrors(EMPTY_ERRORS)
+    setHasInitialized(false)
+  }
+
+  if (!hasInitialized && profile != null) {
+    const initial: ProfileForm = {
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      birthday: profile.birthday,
     }
+    setForm(initial)
+    setInitialForm(initial)
+    setHasInitialized(true)
+  }
 
-    let cancelled = false
-    setIsLoading(true)
-
-    void (async () => {
-      try {
-        const loaded = await loadProfile(user.uid)
-        if (cancelled)
-          return
-
-        setForm(loaded)
-        setInitialForm(loaded)
-        setPhotoURL(user.photoURL)
-      } catch (err) {
-        if (cancelled)
-          return
-
-        const message = err instanceof Error ? err.message : 'Failed to load profile'
-        setError(message)
-      } finally {
-        if (!cancelled)
-          setIsLoading(false)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [user?.uid, user?.photoURL])
+  const isLoading = user != null && !hasInitialized
 
   // Auto-dismiss success banners after a short delay; errors stay until next action.
   useEffect(() => {
@@ -267,7 +245,6 @@ function Account() {
       await updateProfile(user, { photoURL: url })
       await setDoc(doc(db, 'users', user.uid), { photoURL: url }, { merge: true })
 
-      setPhotoURL(url)
       setStatusMessage('Photo updated.')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to upload photo'
@@ -299,7 +276,6 @@ function Account() {
       await updateProfile(user, { photoURL: null })
       await setDoc(doc(db, 'users', user.uid), { photoURL: null }, { merge: true })
 
-      setPhotoURL(null)
       setStatusMessage('Photo removed.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove photo')
@@ -476,7 +452,6 @@ function Account() {
         <div className={styles.field}>
           <p className={styles.fieldLabel}>Email</p>
           <p className={styles.fieldValue}>{user.email}</p>
-          <p className={styles.fieldHint}>Email cannot be changed at this time.</p>
         </div>
       </div>
 
