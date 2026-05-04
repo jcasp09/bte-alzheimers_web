@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { auth } from '../services/auth'
 import { db } from '../services/firestore'
 import { AuthContext } from './AuthContext'
-import { THEMES, type Theme, getTheme, setTheme, subscribeToThemeChange } from '../services/theme'
+import { DEFAULT_THEME, THEMES, type Theme, getTheme, setTheme, subscribeToThemeChange } from '../services/theme'
 
 function isTheme(value: unknown): value is Theme {
   return typeof value === 'string' && (THEMES as readonly string[]).includes(value)
@@ -21,8 +21,8 @@ async function loadCloudTheme(uid: string): Promise<Theme | null> {
 async function saveCloudTheme(uid: string, theme: Theme): Promise<void> {
   try {
     await setDoc(doc(db, 'users', uid), { themePreference: theme }, { merge: true })
-  } catch {
-    // Network/permission failure, but local state still correct
+  } catch (err) {
+    console.warn('[theme] failed to write themePreference to Firestore:', err)
   }
 }
 
@@ -37,11 +37,14 @@ async function hydrateThemeForUser(uid: string, isCancelled: () => boolean): Pro
 
     if (cloudTheme != null) {
       setTheme(cloudTheme)
-    } else {
-      await saveCloudTheme(uid, getTheme())
+      return
     }
-  } catch {
-    // Network/permission failure, but local state still correct
+
+    const localTheme = getTheme()
+    if (localTheme !== DEFAULT_THEME)
+      await saveCloudTheme(uid, localTheme)
+  } catch (err) {
+    console.warn('[theme] failed to hydrate themePreference from Firestore:', err)
   }
 }
 
