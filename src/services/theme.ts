@@ -1,9 +1,3 @@
-/**
- * Currently only sets themes via `data-theme` on the <html> element,
- * and does not persist the choice. This will eventually be fixed with
- * localStorage + Firestore.
- */
-
 export const THEMES = ['soft', 'warm', 'dark'] as const
 
 export type Theme = typeof THEMES[number]
@@ -11,6 +5,7 @@ export type Theme = typeof THEMES[number]
 export const DEFAULT_THEME: Theme = 'soft'
 
 const THEME_ATTRIBUTE = 'data-theme'
+const STORAGE_KEY = 'memoryJogTheme'
 
 const themeChangeListeners = new Set<(theme: Theme) => void>()
 
@@ -31,8 +26,23 @@ export function getTheme(): Theme {
 }
 
 /**
- * Apply a theme by setting `data-theme` on the <html> element. Notifies any
- * subscribers registered via subscribeToThemeChange().
+ * Read the persisted theme from localStorage.
+ */
+export function getStoredTheme(): Theme | null {
+  if (typeof window === 'undefined')
+    return null
+
+  try {
+    const value = window.localStorage.getItem(STORAGE_KEY)
+    return isTheme(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Apply a theme by setting `data-theme` on the <html> element.
+ * Notifies subscribers registered via subscribeToThemeChange().
  */
 export function setTheme(theme: Theme): void {
   if (typeof document === 'undefined')
@@ -43,6 +53,12 @@ export function setTheme(theme: Theme): void {
     document.documentElement.removeAttribute(THEME_ATTRIBUTE)
   } else {
     document.documentElement.setAttribute(THEME_ATTRIBUTE, theme)
+  }
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, theme)
+  } catch {
+    // Storage may be unavailable
   }
 
   for (const listener of themeChangeListeners) {
