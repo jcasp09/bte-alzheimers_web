@@ -70,11 +70,11 @@ function Header() {
             className={({ isActive }) => clsx(styles.profile, isActive && styles.profileActive)}
             aria-label={`Open profile for ${label}`}
           >
+            <span className={styles.profileName}>{label}</span>
             <span className={styles.avatar} aria-hidden="true">
               {/* Replace this span with an <img> once profile photos exist. */}
               {initial}
             </span>
-            <span className={styles.profileName}>{label}</span>
           </NavLink>
         ) : (
           <Link to="/" className={styles.signIn}>

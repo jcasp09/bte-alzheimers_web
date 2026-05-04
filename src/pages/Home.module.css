@@ -159,8 +159,11 @@
   outline-offset: 2px;
 }
 
-.signOutButton {
-  margin-top: 0.5rem;
+.signedInActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .submitButton {
