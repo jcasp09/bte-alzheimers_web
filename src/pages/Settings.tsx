@@ -5,6 +5,7 @@ import styles from './Settings.module.css'
 const TABS: { to: string; label: string }[] = [
   { to: 'account', label: 'Account' },
   { to: 'appearance', label: 'Appearance' },
+  { to: 'accessibility', label: 'Accessibility' },
 ]
 
 function Settings() {

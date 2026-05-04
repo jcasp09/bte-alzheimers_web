@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { type Theme, getTheme, setTheme, subscribeToThemeChange } from '../services/theme'
+import { useRadioGroupKeyboard } from '../hooks/useRadioGroupKeyboard'
 import styles from './Appearance.module.css'
 
 type ThemeOption = {
@@ -42,6 +43,11 @@ function Appearance() {
   // Stay in sync if the theme changes elsewhere.
   useEffect(() => subscribeToThemeChange(setCurrent), [])
 
+  const { optionRefs, handleKeyDown } = useRadioGroupKeyboard({
+    count: THEME_OPTIONS.length,
+    onSelect: (index) => setTheme(THEME_OPTIONS[index].value),
+  })
+
   return (
     <div className={styles.section}>
       <h2 className={styles.sectionTitle}>Theme</h2>
@@ -50,15 +56,18 @@ function Appearance() {
       </p>
 
       <ul className={styles.optionList} role="radiogroup" aria-label="Theme">
-        {THEME_OPTIONS.map((option) => {
+        {THEME_OPTIONS.map((option, index) => {
           const isActive = current === option.value
           return (
             <li key={option.value}>
               <button
+                ref={(el) => { optionRefs.current[index] = el }}
                 type="button"
                 role="radio"
                 aria-checked={isActive}
+                tabIndex={isActive ? 0 : -1}
                 onClick={() => setTheme(option.value)}
+                onKeyDown={(event) => handleKeyDown(event, index)}
                 className={clsx(styles.option, isActive && styles.optionActive)}
               >
                 <ThemePreview theme={option.value} />

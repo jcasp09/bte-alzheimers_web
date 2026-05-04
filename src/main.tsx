@@ -5,6 +5,9 @@ import './index.css'
 import './styles/utilities.css'
 import './graph/graphMotion.css'
 import App from './App.tsx'
+import { applyThemeColorMeta } from './services/theme'
+
+applyThemeColorMeta()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

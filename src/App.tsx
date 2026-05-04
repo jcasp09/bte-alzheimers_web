@@ -7,6 +7,7 @@ import Profile from './pages/Profile'
 import Tasks from './pages/Tasks'
 import Settings from './pages/Settings'
 import Appearance from './pages/Appearance'
+import Accessibility from './pages/Accessibility'
 import styles from './App.module.css'
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
                 <Route index element={<Navigate to="account" replace />} />
                 <Route path="account" element={<Profile />} />
                 <Route path="appearance" element={<Appearance />} />
+                <Route path="accessibility" element={<Accessibility />} />
               </Route>
             </Routes>
           </div>
