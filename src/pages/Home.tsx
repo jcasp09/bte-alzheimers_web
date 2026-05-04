@@ -58,8 +58,20 @@ function Home() {
 
   return (
     <section>
-      <h1>Home</h1>
-      <p className={styles.pageIntro}>Welcome to the MemoryJog dashboard.</p>
+      <header className={styles.hero}>
+        <img
+          src="/logo.png"
+          alt=""
+          aria-hidden="true"
+          className={styles.heroLogo}
+          width={72}
+          height={72}
+        />
+        <h1 className={styles.heroName}>Memory Jog</h1>
+        <p className={styles.heroTagline}>
+          Visual support for the people, places, and tasks that matter most.
+        </p>
+      </header>
       <div className={styles.layout}>
         <div className={styles.overview}>
           <h2>Your cognitive support hub</h2>

@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthProvider'
 import Header from './components/Header'
 import Home from './pages/Home'
@@ -8,10 +8,13 @@ import Tasks from './pages/Tasks'
 import styles from './App.module.css'
 
 function App() {
+  const location = useLocation()
+  const showHeader = location.pathname !== '/'
+
   return (
     <AuthProvider>
       <div className={styles.app}>
-        <Header />
+        {showHeader && <Header />}
 
         <main className={styles.main}>
           <div className={styles.mainInner}>

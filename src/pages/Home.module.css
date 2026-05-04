@@ -1,3 +1,35 @@
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.6rem;
+  margin: 2.5rem 0 1.25rem;
+}
+
+.heroLogo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background-color: transparent;
+}
+
+.heroName {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+}
+
+.heroTagline {
+  margin: 0.1rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  max-width: 38ch;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr);
@@ -7,6 +39,14 @@
 }
 
 @media (max-width: 768px) {
+  .hero {
+    margin: 1.75rem 0 1rem;
+  }
+
+  .heroName {
+    font-size: 2rem;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
@@ -125,10 +165,4 @@
 
 .submitButton {
   margin-top: 1rem;
-}
-
-.pageIntro {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 1.05rem;
 }

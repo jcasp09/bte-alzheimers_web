@@ -4,7 +4,7 @@
  * localStorage + Firestore.
  */
 
-export const THEMES = ['soft'] as const
+export const THEMES = ['soft', 'warm', 'dark'] as const
 
 export type Theme = typeof THEMES[number]
 

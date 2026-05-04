@@ -39,3 +39,83 @@
   --color-group-fill: rgba(221, 228, 211, 0.55);
   --color-grid-dot: #cdd6c1;
 }
+
+[data-theme='warm'] {
+  --color-page: #f0e9d9;
+  --color-page-elev: #e6dec9;
+  --color-surface: #fbf7ec;
+  --color-surface-raised: #ffffff;
+
+  --color-border: #d9cfb2;
+  --color-border-strong: #b8a886;
+
+  --color-text: #2e2418;
+  --color-text-muted: #5e503d;
+  --color-text-subtle: #8a7d65;
+  --color-text-inverse: #fbf7ec;
+
+  --color-accent: #8b6f47;
+  --color-accent-hover: #6d5535;
+  --color-accent-soft: #e6dec9;
+
+  --color-focus: #6d5535;
+  --color-focus-ring-rgb: 139, 111, 71;
+
+  --color-error: #a32b22;
+  --color-error-bg: #f5dcd6;
+  --color-error-border: #d9a39a;
+  --color-success: #5d6d10;
+  --color-warning: #7a4f0b;
+  --color-warning-bg: #f0e0b8;
+  --color-warning-border: #c9a665;
+
+  --color-overlay: rgba(46, 36, 24, 0.45);
+  --color-shadow-rgb: 46, 36, 24;
+
+  --color-featured-grad-start: #e6dec9;
+  --color-featured-grad-end: #d4c5a3;
+  --color-featured-pill-bg: rgba(139, 111, 71, 0.18);
+
+  --color-group-fill: rgba(230, 222, 201, 0.6);
+  --color-grid-dot: #d9cfb2;
+}
+
+[data-theme='dark'] {
+  --color-page: #181725;
+  --color-page-elev: #25243a;
+  --color-surface: #322f4c;
+  --color-surface-raised: #423f60;
+
+  --color-border: #5a5775;
+  --color-border-strong: #7c7a98;
+
+  --color-text: #f0eadb;
+  --color-text-muted: #b6afa3;
+  --color-text-subtle: #8a8377;
+  --color-text-inverse: #181725;
+
+  --color-accent: #e0c4a0;
+  --color-accent-hover: #c9a880;
+  --color-accent-soft: #34324c;
+
+  --color-focus: #e0c4a0;
+  --color-focus-ring-rgb: 224, 196, 160;
+
+  --color-error: #f0a3a3;
+  --color-error-bg: #4a2828;
+  --color-error-border: #8a4848;
+  --color-success: #b3d49b;
+  --color-warning: #e8c889;
+  --color-warning-bg: #4a3a1f;
+  --color-warning-border: #8a6f3d;
+
+  --color-overlay: rgba(0, 0, 0, 0.75);
+  --color-shadow-rgb: 0, 0, 0;
+
+  --color-featured-grad-start: #423f60;
+  --color-featured-grad-end: #322f4c;
+  --color-featured-pill-bg: rgba(224, 196, 160, 0.22);
+
+  --color-group-fill: rgba(224, 196, 160, 0.12);
+  --color-grid-dot: #4a4860;
+}

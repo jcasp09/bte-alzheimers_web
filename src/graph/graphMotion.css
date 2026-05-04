@@ -25,3 +25,33 @@
 .react-flow__node.graph-node-motion > div {
   animation: node-bounce-in 0.4s ease-out, node-float 3s ease-in-out 0.4s infinite;
 }
+
+.react-flow .react-flow__controls {
+  box-shadow: 0 4px 12px rgba(var(--color-shadow-rgb), 0.08);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.react-flow .react-flow__controls-button {
+  background: var(--color-surface);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  fill: var(--color-text);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.react-flow .react-flow__controls-button:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-accent);
+  fill: var(--color-accent);
+}
+
+.react-flow .react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+.react-flow .react-flow__controls-button svg {
+  fill: currentColor;
+}

@@ -156,6 +156,7 @@ function FlowCanvas({
       onNodeClick={onNodeClick}
       onEdgeClick={onEdgeClick}
       defaultViewport={defaultViewport}
+      proOptions={{ hideAttribution: true }}
       onMoveEnd={(_, viewport) => {
         viewportRef.current = viewport
       }}

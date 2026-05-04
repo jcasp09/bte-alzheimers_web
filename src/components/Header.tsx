@@ -47,20 +47,22 @@ function Header() {
           <span className={styles.brandName}>{PRODUCT_NAME}</span>
         </Link>
 
-        <nav className={styles.nav} aria-label="Primary">
-          <NavLink
-            to="/graph"
-            className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
-          >
-            Graph
-          </NavLink>
-          <NavLink
-            to="/tasks"
-            className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
-          >
-            Tasks
-          </NavLink>
-        </nav>
+        {user && (
+          <nav className={styles.nav} aria-label="Primary">
+            <NavLink
+              to="/graph"
+              className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
+            >
+              Graph
+            </NavLink>
+            <NavLink
+              to="/tasks"
+              className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
+            >
+              Tasks
+            </NavLink>
+          </nav>
+        )}
 
         {user ? (
           <NavLink
