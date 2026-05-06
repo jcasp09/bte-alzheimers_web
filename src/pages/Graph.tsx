@@ -374,7 +374,7 @@ function Graph() {
   // If user is not logged in, send to login page
   if (!user) {
     return (
-      <section>
+      <section className={styles.statusFrame}>
         <h1>Graph</h1>
         <p>Sign in to view your graph.</p>
         <Link to="/">Go to Home</Link>
@@ -385,7 +385,7 @@ function Graph() {
   // Loading state
   if (loading) {
     return (
-      <section>
+      <section className={styles.statusFrame}>
         <h1>Graph</h1>
         <p>Loading your relationship graph…</p>
       </section>
@@ -395,7 +395,7 @@ function Graph() {
   // Error state
   if (error) {
     return (
-      <section>
+      <section className={styles.statusFrame}>
         <h1>Graph</h1>
         <p className="text-error">{error}</p>
       </section>
@@ -409,11 +409,63 @@ function Graph() {
 
   // Render the graph
   return (
-    <section>
-      <div className={styles.headerRow}>
-        <h1 className={styles.pageTitle}>Relationship Graph</h1>
+    <section className={styles.fullBleedRoot} aria-label="Relationship graph">
+      <h1 className="sr-only">Relationship graph</h1>
 
-        <div className={styles.toolbar}>
+      <div className={styles.canvasContainer}>
+        <div className={styles.flowFill}>
+          <DefaultFlow
+            key={`${user.uid}-${flowKey}`}
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeDragStop={onNodeDragStop}
+            onPaneFlowClick={addGroupPlacement.status === 'picking' ? handlePaneFlowClick : undefined}
+            groupPlacementPanMode={addGroupPlacement.status === 'picking'}
+            defaultViewport={initialViewport}
+            onNodeClick={handleNodeClick}
+            onEdgeClick={handleEdgeClick}
+            onConnectPersist={handleConnectPersist}
+            onSavePositions={(updatedNodes) => {
+              void saveNodePositions(
+                user.uid,
+                updatedNodes.map((n) => ({
+                  id: n.id,
+                  position: n.position,
+                  parentId: n.parentId ?? null,
+                })),
+                GRAPH_IDS.context,
+              )
+            }}
+            onSaveViewport={(viewport) => {
+              void saveGraphViewport(user.uid, viewport, GRAPH_IDS.context)
+            }}
+          />
+        </div>
+
+        {addGroupPlacement.status === 'picking' ? (
+          <p className={styles.hintFloat}>
+            {addGroupPlacement.phase === 1
+              ? 'Click the top-left corner of the new group on the graph, then the bottom-right. Pan with middle or right mouse drag, or the scroll wheel. Press Esc to cancel.'
+              : 'Now click the bottom-right corner. Esc to cancel.'}
+          </p>
+        ) : null}
+
+        {syncEdgeError ? (
+          <div className={styles.bannerFloat}>
+            <p className={clsx('text-error', styles.bannerFloatError)}>{syncEdgeError}</p>
+            <button
+              type="button"
+              className={clsx('btn-ghost', styles.bannerFloatDismiss)}
+              onClick={() => setSyncEdgeError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
+        <div className={styles.toolbarFloat} role="toolbar" aria-label="Graph actions">
           <button
             type="button"
             onClick={() => togglePanel('addNode')}
@@ -448,23 +500,6 @@ function Graph() {
           </button>
         </div>
       </div>
-
-      <p className={styles.pageSubtitle}>
-        Your personal map of the people and places around you.
-      </p>
-
-      {syncEdgeError ? (
-        <div className={styles.syncBanner}>
-          <p className={clsx('text-error', styles.syncBannerError)}>{syncEdgeError}</p>
-          <button
-            type="button"
-            className={clsx('btn-ghost', styles.syncBannerDismiss)}
-            onClick={() => setSyncEdgeError(null)}
-          >
-            Dismiss
-          </button>
-        </div>
-      ) : null}
 
       {openPanel === 'addNode' && (
         <AddNodePanel
@@ -540,45 +575,6 @@ function Graph() {
           onSaveEdgeLabel={handleSaveEdgeLabel}
         />
       )}
-
-      {addGroupPlacement.status === 'picking' ? (
-        <p className={styles.placementHint}>
-          {addGroupPlacement.phase === 1
-            ? 'Click the top-left corner of the new group on the graph, then the bottom-right. Pan with middle or right mouse drag, or the scroll wheel. Press Esc to cancel.'
-            : 'Now click the bottom-right corner. Esc to cancel.'}
-        </p>
-      ) : null}
-
-      <div className={styles.flowContainer}>
-        <DefaultFlow
-          key={`${user.uid}-${flowKey}`}
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeDragStop={onNodeDragStop}
-          onPaneFlowClick={addGroupPlacement.status === 'picking' ? handlePaneFlowClick : undefined}
-          groupPlacementPanMode={addGroupPlacement.status === 'picking'}
-          defaultViewport={initialViewport}
-          onNodeClick={handleNodeClick}
-          onEdgeClick={handleEdgeClick}
-          onConnectPersist={handleConnectPersist}
-          onSavePositions={(updatedNodes) => {
-            void saveNodePositions(
-              user.uid,
-              updatedNodes.map((n) => ({
-                id: n.id,
-                position: n.position,
-                parentId: n.parentId ?? null,
-              })),
-              GRAPH_IDS.context,
-            )
-          }}
-          onSaveViewport={(viewport) => {
-            void saveGraphViewport(user.uid, viewport, GRAPH_IDS.context)
-          }}
-        />
-      </div>
     </section>
   )
 }
