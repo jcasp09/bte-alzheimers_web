@@ -17,6 +17,8 @@
   padding: 1.5rem;
   width: 100%;
   max-width: 460px;
+  max-height: min(90vh, 880px);
+  overflow-y: auto;
   box-shadow: 0 12px 40px rgba(var(--color-shadow-rgb), 0.18);
   color: var(--color-text);
 }

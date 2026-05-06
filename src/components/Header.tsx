@@ -56,6 +56,12 @@ function Header() {
               Graph
             </NavLink>
             <NavLink
+              to="/moments"
+              className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
+            >
+              Moments
+            </NavLink>
+            <NavLink
               to="/tasks"
               className={({ isActive }) => clsx(styles.navLink, isActive && styles.navLinkActive)}
             >

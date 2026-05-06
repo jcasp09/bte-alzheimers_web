@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthProvider'
 import Header from './components/Header'
 import Home from './pages/Home'
 import Graph from './pages/Graph'
+import Moments from './pages/Moments'
 import Profile from './pages/Profile'
 import Tasks from './pages/Tasks'
 import Settings from './pages/Settings'
@@ -24,6 +25,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/graph" element={<Graph />} />
+              <Route path="/moments" element={<Moments />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/settings" element={<Settings />}>
                 <Route index element={<Navigate to="account" replace />} />
