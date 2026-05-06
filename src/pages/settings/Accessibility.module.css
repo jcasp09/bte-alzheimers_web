@@ -1,24 +1,3 @@
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.sectionTitle {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.sectionSubtitle {
-  margin: 0 0 1.1rem;
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-  line-height: 1.5;
-  max-width: 60ch;
-}
-
 .optionList {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

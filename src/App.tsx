@@ -5,10 +5,12 @@ import Home from './pages/Home'
 import Graph from './pages/Graph'
 import Moments from './pages/Moments'
 import Profile from './pages/Profile'
+import Account from './pages/settings/Account'
 import Tasks from './pages/Tasks'
-import Settings from './pages/Settings'
-import Appearance from './pages/Appearance'
-import Accessibility from './pages/Accessibility'
+import Settings from './pages/settings/Settings'
+import Appearance from './pages/settings/Appearance'
+import Accessibility from './pages/settings/Accessibility'
+import Integrations from './pages/settings/Integrations'
 import styles from './App.module.css'
 
 function App() {
@@ -29,9 +31,10 @@ function App() {
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/settings" element={<Settings />}>
                 <Route index element={<Navigate to="account" replace />} />
-                <Route path="account" element={<Profile />} />
+                <Route path="account" element={<Account />} />
                 <Route path="appearance" element={<Appearance />} />
                 <Route path="accessibility" element={<Accessibility />} />
+                <Route path="integrations" element={<Integrations />} />
               </Route>
             </Routes>
           </div>
