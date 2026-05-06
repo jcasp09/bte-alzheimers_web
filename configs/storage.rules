@@ -10,7 +10,15 @@ service firebase.storage {
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png)');
     }
-
+    // Moment journal photos (multiple files per moment document).
+    match /users/{uid}/moments/{momentId}/{photoFile} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png)');
+    }
     // Only the authenticated owner can access their profile photo.
     match /users/{uid}/profile-photo {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
@@ -20,7 +28,6 @@ service firebase.storage {
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png)');
     }
-
     // Deny all other storage paths by default.
     match /{allPaths=**} {
       allow read, write: if false;
