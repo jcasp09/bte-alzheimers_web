@@ -15,56 +15,136 @@
   overflow: hidden;
 }
 
-.toolbarFloat {
+.flowFill {
   position: absolute;
-  bottom: 1.25rem;
+  inset: 0;
+}
+
+.dock {
+  position: absolute;
+  bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: center;
-  padding: 0.5rem;
-  border-radius: var(--radius-lg);
+  align-items: stretch;
+  gap: 0.25rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-xl);
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  box-shadow: 0 6px 20px rgba(var(--color-shadow-rgb), 0.08);
+  box-shadow: 0 8px 24px rgba(var(--color-shadow-rgb), 0.10);
   z-index: 5;
+  max-width: calc(100% - 2rem);
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-.toolbarButton {
-  margin-top: 0;
-  border: 1px solid var(--color-border);
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  font-weight: 500;
-  font-size: 0.9rem;
-  font-family: inherit;
+.dockItem {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.55rem;
+  min-width: 4rem;
+  border: none;
+  background: transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  font-family: inherit;
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+  color: var(--color-text);
 }
 
-.toolbarButton:hover {
-  background-color: var(--color-surface-raised);
-  border-color: var(--color-border-strong);
+.dockItemDraggable {
+  cursor: grab;
 }
 
-.toolbarButton:focus-visible {
+.dockItemDraggable:active {
+  cursor: grabbing;
+}
+
+.dockItem:hover {
+  background-color: var(--color-page-elev);
+}
+
+.dockItem:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 
-.toolbarButtonActive {
+.dockIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1.5px solid transparent;
+  transition: filter 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  user-select: none;
+}
+
+.dockItem:hover .dockIcon {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+
+.dockIconPerson {
+  background-color: var(--color-node-person-soft);
+  color: var(--color-node-person-text);
+  border-color: var(--color-node-person-border);
+}
+
+.dockIconPlace {
+  background-color: var(--color-node-place-soft);
+  color: var(--color-node-place-text);
+  border-color: var(--color-node-place-border);
+}
+
+.dockIconGroup {
+  background-color: var(--color-accent-soft);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.dockIconLink {
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border-strong);
+}
+
+.dockItemActive .dockIcon {
   background-color: var(--color-accent);
   border-color: var(--color-accent);
   color: var(--color-text-inverse);
+  filter: none;
 }
 
-.toolbarButtonActive:hover {
+.dockItemActive:hover .dockIcon {
+  filter: none;
   background-color: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
+}
+
+.dockLabel {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+
+.dockItemActive .dockLabel {
+  color: var(--color-accent);
+}
+
+.dockDivider {
+  width: 1px;
+  align-self: stretch;
+  background-color: var(--color-border);
+  margin: 0.4rem 0.35rem;
 }
 
 .bannerFloat {
@@ -113,11 +193,6 @@
   color: var(--color-text);
   font-size: 0.9rem;
   box-shadow: 0 6px 20px rgba(var(--color-shadow-rgb), 0.08);
-}
-
-.flowFill {
-  position: absolute;
-  inset: 0;
 }
 
 .statusFrame {

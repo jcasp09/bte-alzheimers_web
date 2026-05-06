@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
-import { DefaultFlow } from '../components/DefaultFlow'
+import { DOCK_NODE_DND_TYPE, DefaultFlow } from '../components/DefaultFlow'
 import styles from './Graph.module.css'
 import {
   GRAPH_IDS,
@@ -26,7 +26,7 @@ import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'
 import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../components/modals/EdgeInfoModal.tsx'
 
-type OpenPanel = 'addNode' | 'addConnection' | null
+type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | null
 
 type XY = { x: number; y: number }
 
@@ -153,6 +153,7 @@ function Graph() {
   const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
   const [initialViewport, setInitialViewport] = useState<Viewport | undefined>(undefined)
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
+  const [pendingNodePosition, setPendingNodePosition] = useState<XY | null>(null)
   const [addGroupPlacement, setAddGroupPlacement] = useState<AddGroupPlacement>({ status: 'idle' })
   const [pendingGroupRect, setPendingGroupRect] = useState<{
     x: number
@@ -284,7 +285,46 @@ function Graph() {
 
   const togglePanel = (panel: OpenPanel) => {
     setOpenPanel((prev) => (prev === panel ? null : panel))
+    setPendingNodePosition(null)
   }
+
+  const handleDockDragStart = useCallback(
+    (kind: 'person' | 'place' | 'group') => (e: ReactDragEvent<HTMLButtonElement>) => {
+      e.dataTransfer.setData(DOCK_NODE_DND_TYPE, kind)
+      e.dataTransfer.effectAllowed = 'copy'
+    },
+    [],
+  )
+
+  const handleDropAtFlowPosition = useCallback(
+    (kind: string, point: XY) => {
+      if (addGroupPlacementRef.current.status === 'picking') {
+        addGroupPlacementRef.current = { status: 'idle' }
+        setAddGroupPlacement({ status: 'idle' })
+      }
+
+      if (kind === 'group') {
+        const w = GROUP_NODE_DEFAULT_SIZE.width
+        const h = GROUP_NODE_DEFAULT_SIZE.height
+        setOpenPanel(null)
+        setPendingNodePosition(null)
+        setPendingGroupRect({
+          x: point.x - w / 2,
+          y: point.y - h / 2,
+          width: w,
+          height: h,
+        })
+        return
+      }
+
+      if (kind === 'person' || kind === 'place') {
+        setPendingGroupRect(null)
+        setPendingNodePosition(point)
+        setOpenPanel(kind === 'person' ? 'addPerson' : 'addPlace')
+      }
+    },
+    [],
+  )
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (addGroupPlacementRef.current.status === 'picking')
@@ -427,6 +467,7 @@ function Graph() {
             onNodeClick={handleNodeClick}
             onEdgeClick={handleEdgeClick}
             onConnectPersist={handleConnectPersist}
+            onDropAtFlowPosition={handleDropAtFlowPosition}
             onSavePositions={(updatedNodes) => {
               void saveNodePositions(
                 user.uid,
@@ -465,25 +506,35 @@ function Graph() {
           </div>
         ) : null}
 
-        <div className={styles.toolbarFloat} role="toolbar" aria-label="Graph actions">
+        <div className={styles.dock} role="toolbar" aria-label="Graph actions">
           <button
             type="button"
-            onClick={() => togglePanel('addNode')}
-            className={clsx(styles.toolbarButton, openPanel === 'addNode' && styles.toolbarButtonActive)}
+            draggable
+            onDragStart={handleDockDragStart('person')}
+            onClick={() => togglePanel('addPerson')}
+            aria-label="Add a person. Click to place at default position, or drag onto the canvas to choose a spot."
+            className={clsx(styles.dockItem, styles.dockItemDraggable, openPanel === 'addPerson' && styles.dockItemActive)}
           >
-            + Add Node
+            <span className={clsx(styles.dockIcon, styles.dockIconPerson)} aria-hidden="true">+</span>
+            <span className={styles.dockLabel}>Person</span>
           </button>
 
           <button
             type="button"
-            onClick={() => togglePanel('addConnection')}
-            className={clsx(styles.toolbarButton, openPanel === 'addConnection' && styles.toolbarButtonActive)}
+            draggable
+            onDragStart={handleDockDragStart('place')}
+            onClick={() => togglePanel('addPlace')}
+            aria-label="Add a place. Click to place at default position, or drag onto the canvas to choose a spot."
+            className={clsx(styles.dockItem, styles.dockItemDraggable, openPanel === 'addPlace' && styles.dockItemActive)}
           >
-            + Add Connection
+            <span className={clsx(styles.dockIcon, styles.dockIconPlace)} aria-hidden="true">+</span>
+            <span className={styles.dockLabel}>Place</span>
           </button>
 
           <button
             type="button"
+            draggable
+            onDragStart={handleDockDragStart('group')}
             onClick={() => {
               if (addGroupPlacement.status === 'picking') {
                 addGroupPlacementRef.current = { status: 'idle' }
@@ -494,19 +545,42 @@ function Graph() {
               addGroupPlacementRef.current = { status: 'picking', phase: 1 }
               setAddGroupPlacement({ status: 'picking', phase: 1 })
             }}
-            className={clsx(styles.toolbarButton, addGroupPlacement.status === 'picking' && styles.toolbarButtonActive)}
+            aria-label={addGroupPlacement.status === 'picking' ? 'Cancel group placement' : 'Add a group. Click to draw a region, or drag onto the canvas to drop a default-sized group.'}
+            className={clsx(styles.dockItem, styles.dockItemDraggable, addGroupPlacement.status === 'picking' && styles.dockItemActive)}
           >
-            + Add group
+            <span className={clsx(styles.dockIcon, styles.dockIconGroup)} aria-hidden="true">+</span>
+            <span className={styles.dockLabel}>Group</span>
+          </button>
+
+          <span className={styles.dockDivider} aria-hidden="true" />
+
+          <button
+            type="button"
+            onClick={() => togglePanel('addConnection')}
+            aria-label="Link two nodes"
+            className={clsx(styles.dockItem, openPanel === 'addConnection' && styles.dockItemActive)}
+          >
+            <span className={clsx(styles.dockIcon, styles.dockIconLink)} aria-hidden="true">↔</span>
+            <span className={styles.dockLabel}>Link</span>
           </button>
         </div>
       </div>
 
-      {openPanel === 'addNode' && (
+      {(openPanel === 'addPerson' || openPanel === 'addPlace') && (
         <AddNodePanel
+          key={openPanel}
           userId={user.uid}
           pickableNodes={pickableNodes}
-          onClose={() => setOpenPanel(null)}
-          onSuccess={() => void handleAddNodeSuccess()}
+          initialType={openPanel === 'addPerson' ? 'person' : 'place'}
+          position={pendingNodePosition ?? undefined}
+          onClose={() => {
+            setOpenPanel(null)
+            setPendingNodePosition(null)
+          }}
+          onSuccess={() => {
+            setPendingNodePosition(null)
+            void handleAddNodeSuccess()
+          }}
         />
       )}
 

@@ -66,6 +66,7 @@ export type CreatePersonNodeData = {
   photoUpdatedAt?: string
   width?: number
   height?: number
+  position?: { x: number; y: number }
 }
 
 export type CreatePlaceNodeData = {
@@ -74,6 +75,7 @@ export type CreatePlaceNodeData = {
   address: string
   width?: number
   height?: number
+  position?: { x: number; y: number }
 }
 
 export type CreateTaskNodeData = {
@@ -116,17 +118,18 @@ export async function createNode(
 ): Promise<string> {
   let position = { x: randomOffset(), y: randomOffset() }
   const base = omitUndefinedFields(data) as Record<string, unknown>
-  if (data.type === 'group') {
-    const w = data.width ?? GROUP_NODE_DEFAULT_SIZE.width
-    const h = data.height ?? GROUP_NODE_DEFAULT_SIZE.height
-    base.width = w
-    base.height = h
-    const p = data.position
-    if (p && typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-      position = { x: p.x, y: p.y }
-    }
-    delete base.position
+
+  const p = (data as { position?: { x: number; y: number } }).position
+  if (p && typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+    position = { x: p.x, y: p.y }
   }
+  delete base.position
+
+  if (data.type === 'group') {
+    base.width = data.width ?? GROUP_NODE_DEFAULT_SIZE.width
+    base.height = data.height ?? GROUP_NODE_DEFAULT_SIZE.height
+  }
+
   const docRef = await addDoc(nodesCollection(uid, graphId), {
     ...base,
     position,

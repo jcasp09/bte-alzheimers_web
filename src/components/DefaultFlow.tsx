@@ -4,6 +4,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type DragEvent as ReactDragEvent,
   type MouseEvent,
   type RefObject,
 } from 'react'
@@ -34,6 +35,8 @@ import { getThemeColor, subscribeToThemeChange } from '../services/theme'
 
 type XY = { x: number; y: number }
 
+export const DOCK_NODE_DND_TYPE = 'application/x-memoryjog-dock-node'
+
 type DefaultFlowProps = {
   nodes: Node[]
   edges: Edge[]
@@ -53,6 +56,7 @@ type DefaultFlowProps = {
   onEdgeClick?: EdgeMouseHandler
   /** Parent queues the connection locally; do not call addEdge here. */
   onConnectPersist?: (connection: Connection) => void
+  onDropAtFlowPosition?: (kind: string, point: XY) => void
 }
 
 function PaneFlowClickBridge({
@@ -88,7 +92,9 @@ function FlowCanvas({
   onNodeClick,
   onEdgeClick,
   onConnectPersist,
+  onDropAtFlowPosition,
 }: DefaultFlowProps) {
+  const { screenToFlowPosition } = useReactFlow()
   const [internalNodes, , onInternalNodesChange] = useNodesState(initialNodes)
   const [internalEdges, setInternalEdges, onInternalEdgesChange] = useEdgesState(initialEdges)
   const viewportRef = useRef<Viewport | null>(null)
@@ -131,6 +137,27 @@ function FlowCanvas({
     paneClickInvokerRef.current?.(e)
   }, [])
 
+  const handleDragOver = useCallback((e: ReactDragEvent) => {
+    if (!onDropAtFlowPosition || !Array.from(e.dataTransfer.types).includes(DOCK_NODE_DND_TYPE))
+      return
+
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }, [onDropAtFlowPosition])
+
+  const handleDrop = useCallback((e: ReactDragEvent) => {
+    if (!onDropAtFlowPosition)
+      return
+
+    const kind = e.dataTransfer.getData(DOCK_NODE_DND_TYPE)
+    if (!kind)
+      return
+
+    e.preventDefault()
+    const point = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    onDropAtFlowPosition(kind, point)
+  }, [onDropAtFlowPosition, screenToFlowPosition])
+
   useEffect(() => {
     return () => {
       if (onSavePositions) {
@@ -151,6 +178,8 @@ function FlowCanvas({
       onConnect={onConnect}
       onNodeDragStop={onNodeDragStop}
       onPaneClick={onPaneFlowClick ? handlePaneClick : undefined}
+      onDragOver={onDropAtFlowPosition ? handleDragOver : undefined}
+      onDrop={onDropAtFlowPosition ? handleDrop : undefined}
       panOnDrag={groupPlacementPanMode ? [1, 2] : true}
       nodeTypes={nodeTypes}
       onNodeClick={onNodeClick}

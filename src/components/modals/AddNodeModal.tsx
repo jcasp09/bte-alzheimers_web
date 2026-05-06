@@ -19,13 +19,15 @@ import styles from './AddNodeModal.module.css'
 type Props = {
   userId: string
   pickableNodes: PickableNode[]
+  initialType?: NodeType
+  position?: { x: number; y: number }
   onClose: () => void
   onSuccess: () => void
 }
 
-export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Props) {
+export function AddNodePanel({ userId, pickableNodes, initialType = 'person', position, onClose, onSuccess }: Props) {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [nodeType, setNodeType] = useState<NodeType>('person')
+  const [nodeType, setNodeType] = useState<NodeType>(initialType)
   const [name, setName] = useState('')
   const [relationship, setRelationship] = useState('')
   const [email, setEmail] = useState('')
@@ -62,8 +64,8 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
       }
 
       const data = nodeType === 'person'
-        ? { type: 'person' as const, name, relationship, email, phone }
-        : { type: 'place' as const, name, address }
+        ? { type: 'person' as const, name, relationship, email, phone, position }
+        : { type: 'place' as const, name, address, position }
       const newNodeId = await createNode(userId, data)
 
       if (nodeType === 'person' && photoFile) {
