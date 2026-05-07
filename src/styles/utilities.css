@@ -96,6 +96,30 @@
   box-shadow: 0 0 0 3px rgba(var(--color-focus-ring-rgb), 0.18);
 }
 
+.field textarea {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface-raised);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  resize: vertical;
+  min-height: 5.5rem;
+  line-height: 1.45;
+}
+
+.field textarea:hover {
+  border-color: var(--color-border-strong);
+}
+
+.field textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(var(--color-focus-ring-rgb), 0.18);
+}
+
 .text-error {
   margin: 0;
   font-size: 0.85rem;

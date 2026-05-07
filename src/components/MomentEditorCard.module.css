@@ -1,0 +1,92 @@
+.photosLead {
+  margin-bottom: 0.5rem;
+}
+
+.photosTitle {
+  color: var(--color-text);
+}
+
+.photosCount {
+  margin-left: 0.5rem;
+}
+
+.uploadingStatus {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.photoGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.photoTile {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.photoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoLoading {
+  display: block;
+  padding: 6px;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+/* Frosted control sitting on top of an arbitrary user photo. The white-with-alpha
+   reads as a lightweight overlay regardless of the underlying image, which is why
+   it intentionally doesn't follow the theme tokens. */
+.photoRemoveButton {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.08s ease;
+}
+
+.photoRemoveButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.savingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.savingLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}

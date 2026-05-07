@@ -17,12 +17,18 @@
   padding: 1.5rem;
   width: 100%;
   max-width: 460px;
+  max-height: min(90vh, 880px);
+  overflow-y: auto;
   /* Two-layer shadow gives the dialog more definition against the dark overlay
      in dark mode, while still looking gentle in the light/warm themes. */
   box-shadow:
     0 18px 48px rgba(var(--color-shadow-rgb), 0.32),
     0 4px 12px rgba(var(--color-shadow-rgb), 0.18);
   color: var(--color-text);
+}
+
+.dialogWide {
+  max-width: 520px;
 }
 
 .header {

@@ -16,6 +16,7 @@ import {
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db } from './firestore'
 import { storage } from './storage'
+import { removeMomentReferencesToDeletedNode } from '../firebase/moments'
 import { GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 import type {
   EdgeDoc,
@@ -367,6 +368,10 @@ export async function deleteNodeAndEdges(
       // File may already be missing; node/edge deletion should still succeed.
       console.warn('Failed to delete person node photo from storage', error)
     }
+  }
+
+  if (graphId === 'context') {
+    await removeMomentReferencesToDeletedNode(uid, nodeId)
   }
 }
 
