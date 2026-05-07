@@ -12,7 +12,7 @@ import {
 import type { Edge, Node, NodeMouseHandler } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { MomentsBucketNode } from '../nodeTypes/MomentsBucketNode'
-import { DOCK_NODE_DND_TYPE } from './DefaultFlow'
+import { DOCK_NODE_DND_TYPE } from './flowConstants'
 import { getThemeColor, subscribeToThemeChange } from '../services/theme'
 
 const momentsNodeTypes = {

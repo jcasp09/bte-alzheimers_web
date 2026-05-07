@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
+import { getDownloadURL, ref } from 'firebase/storage'
+import { storage } from '../services/storage'
 import { useAuth } from '../contexts/AuthContext'
-import { DOCK_NODE_DND_TYPE, DefaultFlow } from '../components/DefaultFlow'
+import { DefaultFlow } from '../components/DefaultFlow'
+import { DOCK_NODE_DND_TYPE, GRAPH_TRANSLATE_EXTENT, type DefaultFlowHandle } from '../components/flowConstants'
 import styles from './Graph.module.css'
 import {
   GRAPH_IDS,
@@ -144,6 +147,72 @@ function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>):
   return edges.map(edgeDocToReactFlowEdge)
 }
 
+type VisibleTypes = { person: boolean; place: boolean; group: boolean }
+
+const DEFAULT_VISIBLE_TYPES: VisibleTypes = { person: true, place: true, group: true }
+
+// Four corner nodes to anchor the minimap
+const ANCHOR_NODES: Node[] = (() => {
+  const [[minX, minY], [maxX, maxY]] = GRAPH_TRANSLATE_EXTENT
+  const baseProps = {
+    type: 'anchor',
+    width: 1,
+    height: 1,
+    data: {},
+    draggable: false,
+    selectable: false,
+    connectable: false,
+    deletable: false,
+    focusable: false,
+  } as const
+  return [
+    { id: '__anchor_tl', position: { x: minX, y: minY }, ...baseProps },
+    { id: '__anchor_tr', position: { x: maxX, y: minY }, ...baseProps },
+    { id: '__anchor_bl', position: { x: minX, y: maxY }, ...baseProps },
+    { id: '__anchor_br', position: { x: maxX, y: maxY }, ...baseProps },
+  ]
+})()
+
+const photoUrlCache = new Map<string, string>()
+
+function useResolvedPhotoUrl(photoPath: string | undefined): string | null {
+  const [, forceRender] = useState(0)
+  const url = photoPath ? photoUrlCache.get(photoPath) ?? null : null
+
+  useEffect(() => {
+    if (!photoPath || photoUrlCache.has(photoPath)) return
+    let cancelled = false
+    void getDownloadURL(ref(storage, photoPath))
+      .then((u) => {
+        if (cancelled) return
+        photoUrlCache.set(photoPath, u)
+        forceRender((c) => c + 1)
+      })
+      .catch(() => { /* ignore, fall back to no image */ })
+    return () => { cancelled = true }
+  }, [photoPath])
+
+  return url
+}
+
+/** Lower number = higher priority in the search dropdown. */
+function typePriority(type: string): number {
+  switch (type) {
+    case 'person': return 0
+    case 'place': return 1
+    case 'group': return 2
+    case 'moment': return 3
+    case 'task': return 4
+    default: return 99
+  }
+}
+
+function SearchResultThumb({ photoPath }: { photoPath: string | undefined }) {
+  const url = useResolvedPhotoUrl(photoPath)
+  if (!url) return null
+  return <img src={url} alt="" className={styles.searchResultThumb} />
+}
+
 function Graph() {
   const { user } = useAuth()
   const [nodes, setNodes] = useState<Node[]>([])
@@ -164,6 +233,9 @@ function Graph() {
   const addGroupPlacementRef = useRef<AddGroupPlacement>({ status: 'idle' })
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<SelectedEdge | null>(null)
+  const flowRef = useRef<DefaultFlowHandle>(null)
+  const [visibleTypes, setVisibleTypes] = useState<VisibleTypes>(DEFAULT_VISIBLE_TYPES)
+  const [searchQuery, setSearchQuery] = useState('')
   const flowKeyRef = useRef(0)
   const [flowKey, setFlowKey] = useState(0)
 
@@ -283,6 +355,49 @@ function Graph() {
     return out
   }, [nodes])
 
+  const displayNodes = useMemo(() => {
+    const filtered = nodes.map((n) => {
+      const t = n.type
+      const allowed = (t === 'person' && visibleTypes.person)
+        || (t === 'place' && visibleTypes.place)
+        || (t === 'group' && visibleTypes.group)
+      return allowed ? n : { ...n, hidden: true }
+    })
+    return [...ANCHOR_NODES, ...filtered]
+  }, [nodes, visibleTypes])
+
+  const displayEdges = useMemo(() => {
+    const visible = new Set(displayNodes.filter((n) => !n.hidden).map((n) => n.id))
+    return edges.map((e) => ({
+      ...e,
+      hidden: !(visible.has(e.source) && visible.has(e.target)),
+    }))
+  }, [edges, displayNodes])
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return [] as { id: string; name: string; type: string; photoPath: string | undefined }[]
+    const all: { id: string; name: string; type: string; photoPath: string | undefined }[] = []
+    for (const n of nodes) {
+      if (n.type !== 'person' && n.type !== 'place' && n.type !== 'group') continue
+      const name = typeof n.data?.name === 'string' ? n.data.name : ''
+      if (!name) continue
+      if (name.toLowerCase().includes(q)) {
+        const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
+        all.push({ id: n.id, name, type: n.type, photoPath })
+      }
+    }
+
+    all.sort((a, b) => {
+      const pa = typePriority(a.type)
+      const pb = typePriority(b.type)
+      if (pa !== pb) return pa - pb
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    })
+    return all.slice(0, 8)
+  }, [nodes, searchQuery])
+
+
   const togglePanel = (panel: OpenPanel) => {
     setOpenPanel((prev) => (prev === panel ? null : panel))
     setPendingNodePosition(null)
@@ -334,6 +449,7 @@ function Graph() {
   )
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    if (node.type === 'anchor') return
     if (addGroupPlacementRef.current.status === 'picking')
       return
 
@@ -476,9 +592,10 @@ function Graph() {
       <div className={clsx(styles.canvasContainer, isSidePanelOpen && styles.canvasContainerPanelOpen)}>
         <div className={styles.flowFill}>
           <DefaultFlow
+            ref={flowRef}
             key={`${user.uid}-${flowKey}`}
-            nodes={nodes}
-            edges={edges}
+            nodes={displayNodes}
+            edges={displayEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
@@ -526,6 +643,87 @@ function Graph() {
             </button>
           </div>
         ) : null}
+
+        <div className={styles.filterRow} role="group" aria-label="Toggle node types">
+          <button
+            type="button"
+            onClick={() => setVisibleTypes((v) => ({ ...v, person: !v.person }))}
+            aria-pressed={visibleTypes.person}
+            className={clsx(styles.filterChip, visibleTypes.person && styles.filterChipActive, visibleTypes.person && styles.filterChipPerson)}
+          >
+            <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-person-border)' }} aria-hidden="true" />
+            People
+          </button>
+          <button
+            type="button"
+            onClick={() => setVisibleTypes((v) => ({ ...v, place: !v.place }))}
+            aria-pressed={visibleTypes.place}
+            className={clsx(styles.filterChip, visibleTypes.place && styles.filterChipActive, visibleTypes.place && styles.filterChipPlace)}
+          >
+            <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-place-border)' }} aria-hidden="true" />
+            Places
+          </button>
+          <button
+            type="button"
+            onClick={() => setVisibleTypes((v) => ({ ...v, group: !v.group }))}
+            aria-pressed={visibleTypes.group}
+            className={clsx(styles.filterChip, visibleTypes.group && styles.filterChipActive, visibleTypes.group && styles.filterChipGroup)}
+          >
+            <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-border-strong)' }} aria-hidden="true" />
+            Groups
+          </button>
+        </div>
+
+        <div className={styles.searchWrap}>
+          <div className={styles.searchInputWrap}>
+            <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+              <circle cx="7" cy="7" r="4.5" />
+              <line x1="10.5" y1="10.5" x2="14" y2="14" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              className={styles.searchInput}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Find a person or place…"
+              aria-label="Search nodes by name"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                className={styles.searchClear}
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+          {searchQuery ? (
+            <ul className={styles.searchResults} role="listbox">
+              {searchResults.length === 0 ? (
+                <li className={styles.searchEmpty}>No matches</li>
+              ) : (
+                searchResults.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      className={styles.searchResultItem}
+                      onClick={() => {
+                        flowRef.current?.focusNode(r.id)
+                        setSearchQuery('')
+                      }}
+                    >
+                      <SearchResultThumb photoPath={r.photoPath} />
+                      <span className={styles.searchResultName}>{r.name}</span>
+                      <span className={styles.searchResultType}>{r.type}</span>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+          ) : null}
+        </div>
 
         <div className={styles.dock} role="toolbar" aria-label="Graph actions">
           <button

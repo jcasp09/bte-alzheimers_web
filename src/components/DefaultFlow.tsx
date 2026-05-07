@@ -1,6 +1,8 @@
 import {
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
@@ -11,7 +13,7 @@ import {
 import {
   Background,
   BackgroundVariant,
-  Controls,
+  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   addEdge,
@@ -35,7 +37,11 @@ import { getThemeColor, subscribeToThemeChange } from '../services/theme'
 
 type XY = { x: number; y: number }
 
-export const DOCK_NODE_DND_TYPE = 'application/x-memoryjog-dock-node'
+import {
+  DOCK_NODE_DND_TYPE,
+  GRAPH_TRANSLATE_EXTENT,
+  type DefaultFlowHandle,
+} from './flowConstants'
 
 type DefaultFlowProps = {
   nodes: Node[]
@@ -78,7 +84,7 @@ function PaneFlowClickBridge({
   return null
 }
 
-function FlowCanvas({
+const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function FlowCanvas({
   nodes: initialNodes,
   edges: initialEdges,
   onNodesChange: onNodesChangeFromParent,
@@ -93,7 +99,7 @@ function FlowCanvas({
   onEdgeClick,
   onConnectPersist,
   onDropAtFlowPosition,
-}: DefaultFlowProps) {
+}: DefaultFlowProps, ref) {
   const { screenToFlowPosition } = useReactFlow()
   const [internalNodes, , onInternalNodesChange] = useNodesState(initialNodes)
   const [internalEdges, setInternalEdges, onInternalEdgesChange] = useEdgesState(initialEdges)
@@ -101,13 +107,50 @@ function FlowCanvas({
   const nodesRef = useRef<Node[]>(initialNodes)
   const paneClickInvokerRef = useRef<((e: MouseEvent) => void) | null>(null)
 
+  const reactFlowApi = useReactFlow()
+  useImperativeHandle(ref, () => ({
+    focusNode: (id: string) => {
+      const n = reactFlowApi.getNode(id)
+      if (!n || !n.position) return
+      const measured = (n as { measured?: { width?: number; height?: number } }).measured
+      const w = measured?.width ?? n.width ?? 200
+      const h = measured?.height ?? n.height ?? 100
+      reactFlowApi.setCenter(n.position.x + w / 2, n.position.y + h / 2, { duration: 400, zoom: 1.4 })
+    },
+  }), [reactFlowApi])
+
   const [gridColor, setGridColor] = useState<string>(() => getThemeColor('--color-grid-dot'))
+  const [miniMapColors, setMiniMapColors] = useState(() => ({
+    person: getThemeColor('--color-node-person-border'),
+    place: getThemeColor('--color-node-place-border'),
+    group: getThemeColor('--color-border-strong'),
+    moment: getThemeColor('--color-node-moment-border'),
+    fallback: getThemeColor('--color-text-muted'),
+  }))
   useEffect(() => {
     return subscribeToThemeChange(() => {
-      const resolved = getThemeColor('--color-grid-dot')
-      if (resolved) setGridColor(resolved)
+      const grid = getThemeColor('--color-grid-dot')
+      if (grid) setGridColor(grid)
+      setMiniMapColors({
+        person: getThemeColor('--color-node-person-border'),
+        place: getThemeColor('--color-node-place-border'),
+        group: getThemeColor('--color-border-strong'),
+        moment: getThemeColor('--color-node-moment-border'),
+        fallback: getThemeColor('--color-text-muted'),
+      })
     })
   }, [])
+
+  const miniMapNodeColor = useCallback((node: Node) => {
+    if (node.type === 'anchor') return 'transparent'
+    if (node.type === 'person') return miniMapColors.person
+    if (node.type === 'place') return miniMapColors.place
+    if (node.type === 'group') return miniMapColors.group
+    if (node.type === 'momentsBucket') return miniMapColors.moment
+    return miniMapColors.fallback
+  }, [miniMapColors])
+
+  const minimapStyle = { width: 180, height: 180 }
 
   const controlledNodes = onNodesChangeFromParent != null
   const controlledEdges = onEdgesChangeFromParent != null
@@ -181,6 +224,8 @@ function FlowCanvas({
       onDragOver={onDropAtFlowPosition ? handleDragOver : undefined}
       onDrop={onDropAtFlowPosition ? handleDrop : undefined}
       panOnDrag={groupPlacementPanMode ? [1, 2] : true}
+      translateExtent={GRAPH_TRANSLATE_EXTENT}
+      nodeExtent={GRAPH_TRANSLATE_EXTENT}
       nodeTypes={nodeTypes}
       onNodeClick={onNodeClick}
       onEdgeClick={onEdgeClick}
@@ -200,15 +245,23 @@ function FlowCanvas({
         color={gridColor}
         variant={BackgroundVariant.Cross}
       />
-      <Controls />
+      <MiniMap
+        position="bottom-left"
+        pannable
+        zoomable
+        nodeColor={miniMapNodeColor}
+        nodeStrokeColor={miniMapNodeColor}
+        nodeStrokeWidth={2}
+        style={minimapStyle}
+      />
     </ReactFlow>
   )
-}
+})
 
-export function DefaultFlow(props: DefaultFlowProps) {
+export const DefaultFlow = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function DefaultFlow(props, ref) {
   return (
     <ReactFlowProvider>
-      <FlowCanvas {...props} />
+      <FlowCanvas {...props} ref={ref} />
     </ReactFlowProvider>
   )
-}
+})
