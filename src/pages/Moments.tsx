@@ -8,8 +8,7 @@ import momentsStyles from './Moments.module.css'
 import { MomentsFlow } from '../components/MomentsFlow'
 import { MomentEditorCard } from '../components/MomentEditorCard'
 import { AddMomentModal } from '../components/modals/AddMomentModal'
-import { Modal } from '../components/ui/Modal'
-import modalStyles from '../components/ui/Modal.module.css'
+import { SidePanel } from '../components/ui/SidePanel'
 import { getNodes } from '../services/graph'
 import type { NodeDoc } from '../types/graph'
 import { getMoments, parseOccurredOn, type MomentDoc } from '../firebase/moments'
@@ -29,6 +28,14 @@ const MONTH_NAMES = [
   'November',
   'December',
 ]
+
+function getInitialsForAvatar(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+}
 
 function Moments() {
   const { user } = useAuth()
@@ -125,7 +132,7 @@ function Moments() {
   const closeOverlay = () => {
     const el = document.activeElement
     if (el instanceof HTMLElement) el.blur()
-    window.setTimeout(() => setOverlay(null), 550)
+    setOverlay(null)
   }
 
   const overlayMoments = useMemo(() => {
@@ -149,8 +156,14 @@ function Moments() {
   const closeAddMoment = () => setAddMomentOpen(false)
 
   const toggleAddMoment = () => {
-    setAddMomentOpen((o) => !o)
+    setAddMomentOpen((o) => {
+      const next = !o
+      if (next) setOverlay(null)
+      return next
+    })
   }
+
+  const isSidePanelOpen = addMomentOpen || overlay != null
 
   if (!user) {
     return (
@@ -180,11 +193,15 @@ function Moments() {
     )
   }
 
+  const overlayDateLabel = overlay
+    ? `${MONTH_NAMES[overlay.m - 1]} ${overlay.d}, ${overlay.y}`
+    : ''
+
   return (
     <section className={styles.fullBleedRoot} aria-label="Moments graph">
       <h1 className="sr-only">Moments</h1>
 
-      <div className={styles.canvasContainer}>
+      <div className={clsx(styles.canvasContainer, isSidePanelOpen && styles.canvasContainerPanelOpen)}>
         <div className={styles.flowFill}>
           <MomentsFlow
             key={`${viewMode}-${level}-${selectedYear}-${selectedMonth}`}
@@ -237,48 +254,49 @@ function Moments() {
             <span className={styles.dockLabel}>Moment</span>
           </button>
         </div>
+
+        {addMomentOpen ? (
+          <AddMomentModal
+            userId={user.uid}
+            people={people.map((n) => ({ id: n.id, name: n.name }))}
+            onClose={closeAddMoment}
+            onCreated={load}
+          />
+        ) : null}
+
+        {overlay ? (
+          <SidePanel
+            title={overlayDateLabel}
+            onClose={closeOverlay}
+            accent="moment"
+            hero={{ avatarLabel: getInitialsForAvatar(primaryOverlayMoment?.title ?? '') }}
+          >
+            <p className={momentsStyles.overlaySubtitle}>
+              One moment per day — view, edit, or delete below.
+              {overlayMoments.length > 1
+                ? ' (Multiple records found for this date; showing the most recent.)'
+                : null}
+            </p>
+
+            {!primaryOverlayMoment ? (
+              <p className={momentsStyles.emptyDayMessage}>No moment on this day.</p>
+            ) : (
+              <MomentEditorCard
+                uid={user.uid}
+                moment={primaryOverlayMoment}
+                people={people}
+                onRemoved={(id) => {
+                  setMoments((prev) => prev.filter((x) => x.id !== id))
+                  setOverlay(null)
+                }}
+                onUpdated={(updated) => {
+                  setMoments((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+                }}
+              />
+            )}
+          </SidePanel>
+        ) : null}
       </div>
-
-      {addMomentOpen ? (
-        <AddMomentModal
-          userId={user.uid}
-          people={people.map((n) => ({ id: n.id, name: n.name }))}
-          onClose={closeAddMoment}
-          onCreated={load}
-        />
-      ) : null}
-
-      {overlay ? (
-        <Modal
-          title={`${MONTH_NAMES[overlay.m - 1]} ${overlay.d}, ${overlay.y}`}
-          onClose={closeOverlay}
-          dialogClassName={modalStyles.dialogWide}
-        >
-          <p className={modalStyles.leadText}>
-            One moment per day — view, edit, or delete below.
-            {overlayMoments.length > 1
-              ? ' (Multiple records found for this date; showing the most recent.)'
-              : null}
-          </p>
-
-          {!primaryOverlayMoment ? (
-            <p className={momentsStyles.emptyDayMessage}>No moment on this day.</p>
-          ) : (
-            <MomentEditorCard
-              uid={user.uid}
-              moment={primaryOverlayMoment}
-              people={people}
-              onRemoved={(id) => {
-                setMoments((prev) => prev.filter((x) => x.id !== id))
-                setOverlay(null)
-              }}
-              onUpdated={(updated) => {
-                setMoments((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
-              }}
-            />
-          )}
-        </Modal>
-      ) : null}
     </section>
   )
 }

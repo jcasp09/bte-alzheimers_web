@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { GRAPH_IDS, deleteEdge } from '../../services/graph'
 import { edgeHandleLabel } from '../../graph/edgeHandles'
 import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
-import { Modal } from '../ui/Modal'
+import { SidePanel } from '../ui/SidePanel'
 import modalStyles from '../ui/Modal.module.css'
 import styles from './EdgeInfoModal.module.css'
 
@@ -81,7 +81,7 @@ export function EdgeInfoModal({
   const busy = isDeleting || isSavingLabel
 
   return (
-    <Modal title="Connection" onClose={onClose}>
+    <SidePanel title="Connection" onClose={onClose} accent="connection">
       <p className={styles.summary}>
         <strong>{sourceName}</strong>
         {' → '}
@@ -140,6 +140,6 @@ export function EdgeInfoModal({
           Close
         </button>
       </div>
-    </Modal>
+    </SidePanel>
   )
 }

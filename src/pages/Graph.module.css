@@ -13,6 +13,11 @@
   min-height: 0;
   background-color: var(--color-surface);
   overflow: hidden;
+  --side-panel-width: 0px;
+}
+
+.canvasContainerPanelOpen {
+  --side-panel-width: min(420px, 100%);
 }
 
 .flowFill {
@@ -23,7 +28,8 @@
 .dock {
   position: absolute;
   bottom: 1.5rem;
-  left: 50%;
+  /* Re-centers in the canvas area not covered by an open side panel. */
+  left: calc(50% - var(--side-panel-width) / 2);
   transform: translateX(-50%);
   display: flex;
   align-items: stretch;
@@ -34,9 +40,10 @@
   border: 1px solid var(--color-border);
   box-shadow: 0 8px 24px rgba(var(--color-shadow-rgb), 0.10);
   z-index: 5;
-  max-width: calc(100% - 2rem);
+  max-width: calc(100% - 2rem - var(--side-panel-width));
   flex-wrap: wrap;
   justify-content: center;
+  transition: left 220ms cubic-bezier(0.16, 1, 0.3, 1), max-width 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dockItem {

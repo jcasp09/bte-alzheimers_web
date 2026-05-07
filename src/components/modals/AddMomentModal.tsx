@@ -2,7 +2,7 @@ import { type FormEvent, useState } from 'react'
 import clsx from 'clsx'
 import { createMoment, parseOccurredOn } from '../../firebase/moments'
 import { MultiEntityPicker, type PickerItem } from '../MultiEntityPicker'
-import { Modal } from '../ui/Modal'
+import { SidePanel } from '../ui/SidePanel'
 import modalStyles from '../ui/Modal.module.css'
 
 type Props = {
@@ -10,6 +10,14 @@ type Props = {
   people: PickerItem[]
   onClose: () => void
   onCreated: () => Promise<void> | void
+}
+
+function getInitialsForAvatar(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
 export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
@@ -52,7 +60,12 @@ export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
   }
 
   return (
-    <Modal title="Add moment" onClose={onClose} dialogClassName={modalStyles.dialogWide}>
+    <SidePanel
+      title="Add a moment"
+      onClose={onClose}
+      accent="moment"
+      hero={{ avatarLabel: getInitialsForAvatar(momentTitle) }}
+    >
       <form onSubmit={handleSubmit} className="form-stack">
         {error ? <p className={clsx('text-error', modalStyles.errorText)}>{error}</p> : null}
 
@@ -106,6 +119,6 @@ export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
           </button>
         </div>
       </form>
-    </Modal>
+    </SidePanel>
   )
 }

@@ -286,6 +286,9 @@ function Graph() {
   const togglePanel = (panel: OpenPanel) => {
     setOpenPanel((prev) => (prev === panel ? null : panel))
     setPendingNodePosition(null)
+    // Side-panel slots are mutually exclusive
+    setSelectedNode(null)
+    setSelectedEdge(null)
   }
 
   const handleDockDragStart = useCallback(
@@ -302,6 +305,10 @@ function Graph() {
         addGroupPlacementRef.current = { status: 'idle' }
         setAddGroupPlacement({ status: 'idle' })
       }
+
+      // Side-panel slots are mutually exclusive — close any open node/edge detail.
+      setSelectedNode(null)
+      setSelectedEdge(null)
 
       if (kind === 'group') {
         const w = GROUP_NODE_DEFAULT_SIZE.width
@@ -339,6 +346,10 @@ function Graph() {
     const w = node.type === 'group' ? node.width : node.data.width
     const h = node.type === 'group' ? node.height : node.data.height
 
+    setOpenPanel(null)
+    setPendingNodePosition(null)
+    setSelectedEdge(null)
+
     setSelectedNode({
       id: node.id,
       name,
@@ -361,6 +372,10 @@ function Graph() {
     const targetName = nodes.find((n) => n.id === edge.target)?.data?.name as string ?? edge.target
     const rawLabel = edge.label
     const label = typeof rawLabel === 'string' ? rawLabel : typeof rawLabel === 'number' ? String(rawLabel) : ''
+
+    setOpenPanel(null)
+    setPendingNodePosition(null)
+    setSelectedNode(null)
 
     setSelectedEdge({
       id: edge.id,
@@ -447,12 +462,18 @@ function Graph() {
     await loadGraph({ skipLoading: true })
   }
 
+  const isSidePanelOpen =
+    openPanel === 'addPerson' ||
+    openPanel === 'addPlace' ||
+    selectedNode != null ||
+    selectedEdge != null
+
   // Render the graph
   return (
     <section className={styles.fullBleedRoot} aria-label="Relationship graph">
       <h1 className="sr-only">Relationship graph</h1>
 
-      <div className={styles.canvasContainer}>
+      <div className={clsx(styles.canvasContainer, isSidePanelOpen && styles.canvasContainerPanelOpen)}>
         <div className={styles.flowFill}>
           <DefaultFlow
             key={`${user.uid}-${flowKey}`}
@@ -564,25 +585,67 @@ function Graph() {
             <span className={styles.dockLabel}>Link</span>
           </button>
         </div>
-      </div>
 
-      {(openPanel === 'addPerson' || openPanel === 'addPlace') && (
-        <AddNodePanel
-          key={openPanel}
-          userId={user.uid}
-          pickableNodes={pickableNodes}
-          initialType={openPanel === 'addPerson' ? 'person' : 'place'}
-          position={pendingNodePosition ?? undefined}
-          onClose={() => {
-            setOpenPanel(null)
-            setPendingNodePosition(null)
-          }}
-          onSuccess={() => {
-            setPendingNodePosition(null)
-            void handleAddNodeSuccess()
-          }}
-        />
-      )}
+        {(openPanel === 'addPerson' || openPanel === 'addPlace') && (
+          <AddNodePanel
+            key={openPanel}
+            userId={user.uid}
+            pickableNodes={pickableNodes}
+            initialType={openPanel === 'addPerson' ? 'person' : 'place'}
+            position={pendingNodePosition ?? undefined}
+            onClose={() => {
+              setOpenPanel(null)
+              setPendingNodePosition(null)
+            }}
+            onSuccess={() => {
+              setPendingNodePosition(null)
+              void handleAddNodeSuccess()
+            }}
+          />
+        )}
+
+        {selectedNode && (
+          <NodeInfoModal
+            userId={user.uid}
+            nodeId={selectedNode.id}
+            nodeName={selectedNode.name}
+            nodeType={selectedNode.type}
+            nodeRelationship={selectedNode.relationship ?? ''}
+            nodeEmail={selectedNode.email ?? ''}
+            nodePhone={selectedNode.phone ?? ''}
+            nodeAddress={selectedNode.address ?? ''}
+            nodePhotoPath={selectedNode.photoPath ?? ''}
+            nodeWidth={selectedNode.width}
+            nodeHeight={selectedNode.height}
+            onClose={() => setSelectedNode(null)}
+            onSuccess={() => {
+              void (async () => {
+                await flushPendingEdges()
+                await loadGraph({ skipLoading: true })
+                setSelectedNode(null)
+              })()
+            }}
+          />
+        )}
+
+        {selectedEdge && (
+          <EdgeInfoModal
+            userId={user.uid}
+            edgeId={selectedEdge.id}
+            sourceName={selectedEdge.sourceName}
+            targetName={selectedEdge.targetName}
+            sourceHandle={selectedEdge.sourceHandle}
+            targetHandle={selectedEdge.targetHandle}
+            edgeLabel={selectedEdge.label ?? ''}
+            onClose={() => setSelectedEdge(null)}
+            onEdgeDeleted={(edgeId) => {
+              removePendingEdge(edgeId)
+              setSelectedEdge(null)
+            }}
+            onSaveEdgeLabel={handleSaveEdgeLabel}
+          />
+        )}
+      </div>
 
       {openPanel === 'addConnection' && (
         <AddConnectionModal
@@ -605,48 +668,6 @@ function Graph() {
             setPendingGroupRect(null)
             void handleAddNodeSuccess()
           }}
-        />
-      )}
-
-      {selectedNode && (
-        <NodeInfoModal
-          userId={user.uid}
-          nodeId={selectedNode.id}
-          nodeName={selectedNode.name}
-          nodeType={selectedNode.type}
-          nodeRelationship={selectedNode.relationship ?? ''}
-          nodeEmail={selectedNode.email ?? ''}
-          nodePhone={selectedNode.phone ?? ''}
-          nodeAddress={selectedNode.address ?? ''}
-          nodePhotoPath={selectedNode.photoPath ?? ''}
-          nodeWidth={selectedNode.width}
-          nodeHeight={selectedNode.height}
-          onClose={() => setSelectedNode(null)}
-          onSuccess={() => {
-            void (async () => {
-              await flushPendingEdges()
-              await loadGraph({ skipLoading: true })
-              setSelectedNode(null)
-            })()
-          }}
-        />
-      )}
-
-      {selectedEdge && (
-        <EdgeInfoModal
-          userId={user.uid}
-          edgeId={selectedEdge.id}
-          sourceName={selectedEdge.sourceName}
-          targetName={selectedEdge.targetName}
-          sourceHandle={selectedEdge.sourceHandle}
-          targetHandle={selectedEdge.targetHandle}
-          edgeLabel={selectedEdge.label ?? ''}
-          onClose={() => setSelectedEdge(null)}
-          onEdgeDeleted={(edgeId) => {
-            removePendingEdge(edgeId)
-            setSelectedEdge(null)
-          }}
-          onSaveEdgeLabel={handleSaveEdgeLabel}
         />
       )}
     </section>

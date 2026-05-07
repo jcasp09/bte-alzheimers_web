@@ -12,7 +12,7 @@ import {
 } from '../../services/graph'
 import type { NodeType, PickableNode } from '../../types/graph'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
-import { Modal } from '../ui/Modal'
+import { SidePanel } from '../ui/SidePanel'
 import modalStyles from '../ui/Modal.module.css'
 import styles from './AddNodeModal.module.css'
 
@@ -23,6 +23,15 @@ type Props = {
   position?: { x: number; y: number }
   onClose: () => void
   onSuccess: () => void
+}
+
+/** First+last initial of a name; '' for empty. Mirrors PersonNode's logic. */
+function getInitialsForAvatar(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
 export function AddNodePanel({ userId, pickableNodes, initialType = 'person', position, onClose, onSuccess }: Props) {
@@ -99,8 +108,16 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
     }
   }
 
+  const panelTitle = nodeType === 'person' ? 'Add a person' : 'Add a place'
+  const panelAccent = nodeType === 'person' ? 'person' : 'place'
+
   return (
-    <Modal title="Add Node" onClose={onClose}>
+    <SidePanel
+      title={panelTitle}
+      onClose={onClose}
+      accent={panelAccent}
+      hero={{ avatarLabel: getInitialsForAvatar(name) }}
+    >
       <div className={styles.typeToggle}>
         {(['person', 'place'] as NodeType[]).map((type) => (
           <button
@@ -243,6 +260,6 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
           </button>
         </div>
       </form>
-    </Modal>
+    </SidePanel>
   )
 }

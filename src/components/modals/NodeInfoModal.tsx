@@ -1,6 +1,6 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { Modal } from '../ui/Modal'
+import { SidePanel } from '../ui/SidePanel'
 import {
   GRAPH_IDS,
   PHOTO_ACCEPT_ATTR,
@@ -37,6 +37,14 @@ type Props = {
   nodeHeight?: number
   onClose: () => void
   onSuccess: () => void
+}
+
+function getInitialsForAvatar(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
 export function NodeInfoModal({
@@ -207,7 +215,20 @@ export function NodeInfoModal({
   const canIncrease = sizeNodeType ? canIncreaseNodeSize(sizeNodeType, sizeW, sizeH) : false
 
   return (
-    <Modal title={nodeName || 'Node'} onClose={onClose}>
+    <SidePanel
+      title={nodeName || 'Node'}
+      onClose={onClose}
+      accent={
+        nodeType === 'person'
+          ? 'person'
+          : nodeType === 'place'
+            ? 'place'
+            : nodeType === 'group'
+              ? 'group'
+              : 'neutral'
+      }
+      hero={{ avatarLabel: getInitialsForAvatar(name || nodeName) }}
+    >
       <p className={styles.typeRow}>
         Type: <strong>{nodeType}</strong>
       </p>
@@ -412,12 +433,12 @@ export function NodeInfoModal({
           onClick={handleDelete}
           className={modalStyles.dangerButton}
         >
-          {isDeleting ? 'Deleting…' : isGroup ? 'Delete group (detach members)' : 'Delete node'}
+          {isDeleting ? 'Deleting…' : 'Delete node'}
         </button>
         <button type="button" onClick={onClose} className="btn-ghost">
           Close
         </button>
       </div>
-    </Modal>
+    </SidePanel>
   )
 }
