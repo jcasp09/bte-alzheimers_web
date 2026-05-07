@@ -27,6 +27,10 @@
   color: var(--color-text);
 }
 
+.dialogWide {
+  max-width: 520px;
+}
+
 .header {
   display: flex;
   justify-content: space-between;

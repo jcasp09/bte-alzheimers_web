@@ -8,6 +8,8 @@ import momentsStyles from './Moments.module.css'
 import { MomentsFlow } from '../components/MomentsFlow'
 import { MomentEditorCard } from '../components/MomentEditorCard'
 import { AddMomentModal } from '../components/modals/AddMomentModal'
+import { Modal } from '../components/ui/Modal'
+import modalStyles from '../components/ui/Modal.module.css'
 import { getNodes } from '../services/graph'
 import type { NodeDoc } from '../types/graph'
 import { getMoments, parseOccurredOn, type MomentDoc } from '../firebase/moments'
@@ -237,56 +239,35 @@ function Moments() {
       </div>
 
       {overlay ? (
-        <div
-          role="presentation"
-          className={momentsStyles.overlayBackdrop}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeOverlay()
-          }}
+        <Modal
+          title={`${MONTH_NAMES[overlay.m - 1]} ${overlay.d}, ${overlay.y}`}
+          onClose={closeOverlay}
+          dialogClassName={modalStyles.dialogWide}
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className={momentsStyles.overlayDialog}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-              <div>
-                <h2 className={momentsStyles.overlayTitle}>
-                  {MONTH_NAMES[overlay.m - 1]} {overlay.d}, {overlay.y}
-                </h2>
-                <p className={momentsStyles.overlayMeta}>
-                  One moment per day — view, edit, or delete below.
-                  {overlayMoments.length > 1
-                    ? ' (Multiple records found for this date; showing the most recent.)'
-                    : null}
-                </p>
-              </div>
-              <button type="button" className={momentsStyles.closeButton} onClick={closeOverlay}>
-                Close
-              </button>
-            </div>
+          <p className={modalStyles.leadText}>
+            One moment per day — view, edit, or delete below.
+            {overlayMoments.length > 1
+              ? ' (Multiple records found for this date; showing the most recent.)'
+              : null}
+          </p>
 
-            <div style={{ marginTop: '1rem' }}>
-              {!primaryOverlayMoment ? (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No moment on this day.</p>
-              ) : (
-                <MomentEditorCard
-                  uid={user.uid}
-                  moment={primaryOverlayMoment}
-                  people={people}
-                  onRemoved={(id) => {
-                    setMoments((prev) => prev.filter((x) => x.id !== id))
-                    setOverlay(null)
-                  }}
-                  onUpdated={(updated) => {
-                    setMoments((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+          {!primaryOverlayMoment ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No moment on this day.</p>
+          ) : (
+            <MomentEditorCard
+              uid={user.uid}
+              moment={primaryOverlayMoment}
+              people={people}
+              onRemoved={(id) => {
+                setMoments((prev) => prev.filter((x) => x.id !== id))
+                setOverlay(null)
+              }}
+              onUpdated={(updated) => {
+                setMoments((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+              }}
+            />
+          )}
+        </Modal>
       ) : null}
     </section>
   )

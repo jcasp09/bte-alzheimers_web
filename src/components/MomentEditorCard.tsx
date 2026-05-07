@@ -14,6 +14,7 @@ import type { NodeDoc } from '../types/graph'
 import { storage } from '../services/storage'
 import { MultiEntityPicker, type PickerItem } from './MultiEntityPicker'
 import modalStyles from './ui/Modal.module.css'
+import styles from './MomentEditorCard.module.css'
 
 type MomentEditorCardProps = {
   uid: string
@@ -222,9 +223,9 @@ export function MomentEditorCard({
       </label>
 
       <section>
-        <p className={modalStyles.leadText} style={{ marginBottom: '0.5rem' }}>
-          <strong style={{ color: 'var(--color-text)' }}>Photos</strong>
-          <span style={{ marginLeft: 8 }}>
+        <p className={clsx(modalStyles.leadText, styles.photosLead)}>
+          <strong className={styles.photosTitle}>Photos</strong>
+          <span className={styles.photosCount}>
             {paths.length} / {MAX_PHOTOS_PER_MOMENT} — JPEG or PNG, max 10 MB each
           </span>
         </p>
@@ -238,50 +239,21 @@ export function MomentEditorCard({
           }}
         />
         {uploadingPhoto ? (
-          <span style={{ marginLeft: '0.5rem', fontSize: 12, color: 'var(--color-text-muted)' }}>Uploading…</span>
+          <span className={styles.uploadingStatus}>Uploading…</span>
         ) : null}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.6rem' }}>
+        <div className={styles.photoGrid}>
           {paths.map((p) => (
-            <div
-              key={p}
-              style={{
-                position: 'relative',
-                width: 128,
-                height: 128,
-                borderRadius: 12,
-                overflow: 'hidden',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface-raised)',
-              }}
-            >
+            <div key={p} className={styles.photoTile}>
               {photoUrls[p] ? (
-                <img src={photoUrls[p]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={photoUrls[p]} alt="" className={styles.photoImage} />
               ) : (
-                <span style={{ fontSize: 11, padding: 6, display: 'block', color: 'var(--color-text-muted)' }}>
-                  Loading…
-                </span>
+                <span className={styles.photoLoading}>Loading…</span>
               )}
               <button
                 type="button"
                 disabled={removingPath === p}
                 onClick={() => void handleRemovePhoto(p)}
-                style={{
-                  position: 'absolute',
-                  top: 5,
-                  right: 5,
-                  width: 20,
-                  height: 20,
-                  borderRadius: 999,
-                  border: '1px solid var(--color-border)',
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  color: 'var(--color-text-muted)',
-                  fontSize: 12,
-                  lineHeight: 1,
-                  display: 'grid',
-                  placeItems: 'center',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease, color 0.15s ease, transform 0.08s ease',
-                }}
+                className={styles.photoRemoveButton}
                 aria-label="Remove photo"
                 title="Remove photo"
               >
@@ -305,7 +277,7 @@ export function MomentEditorCard({
 
       {error ? <p className={clsx('text-error', modalStyles.errorText)}>{error}</p> : null}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <div className={styles.footerRow}>
         <button
           type="button"
           className={modalStyles.dangerButton}
@@ -315,8 +287,8 @@ export function MomentEditorCard({
           {deleting ? 'Deleting…' : 'Delete moment'}
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {saving ? <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Saving…</span> : null}
+        <div className={styles.savingIndicator}>
+          {saving ? <span className={styles.savingLabel}>Saving…</span> : null}
         </div>
       </div>
     </article>

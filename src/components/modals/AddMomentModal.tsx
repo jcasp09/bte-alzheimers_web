@@ -4,7 +4,6 @@ import { createMoment, parseOccurredOn } from '../../firebase/moments'
 import { MultiEntityPicker, type PickerItem } from '../MultiEntityPicker'
 import { Modal } from '../ui/Modal'
 import modalStyles from '../ui/Modal.module.css'
-import styles from './AddMomentModal.module.css'
 
 type Props = {
   userId: string
@@ -53,7 +52,7 @@ export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
   }
 
   return (
-    <Modal title="Add moment" onClose={onClose} dialogClassName={styles.wide}>
+    <Modal title="Add moment" onClose={onClose} dialogClassName={modalStyles.dialogWide}>
       <form onSubmit={handleSubmit} className="form-stack">
         {error ? <p className={clsx('text-error', modalStyles.errorText)}>{error}</p> : null}
 
