@@ -1,5 +1,6 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
+import { getDownloadURL, ref } from 'firebase/storage'
 import { SidePanel } from '../ui/SidePanel'
 import {
   GRAPH_IDS,
@@ -20,7 +21,8 @@ import {
   safeNodeDimensions,
   stepNodeDimensions,
 } from '../../graph/dimensions'
-import modalStyles from '../ui/Modal.module.css'
+import { storage } from '../../services/storage'
+import formStyles from '../../styles/formActions.module.css'
 import styles from './NodeInfoModal.module.css'
 
 type Props = {
@@ -69,6 +71,7 @@ export function NodeInfoModal({
   const [address, setAddress] = useState(nodeAddress)
   const [photoPath, setPhotoPath] = useState(nodePhotoPath)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(null)
   const [sizeW, setSizeW] = useState(() =>
     (nodeType === 'person' || nodeType === 'place')
       ? safeNodeDimensions(nodeType, nodeWidth, nodeHeight).width
@@ -112,6 +115,19 @@ export function NodeInfoModal({
       setGroupH(clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height))
     }
   }, [nodeId, isGroup, nodeWidth, nodeHeight])
+
+  // Resolve the stored photo path into a download URL. Falls back to initials when missing.
+  useEffect(() => {
+    if (!photoPath) {
+      setResolvedAvatarUrl(null)
+      return
+    }
+    let cancelled = false
+    void getDownloadURL(ref(storage, photoPath))
+      .then((url) => { if (!cancelled) setResolvedAvatarUrl(url) })
+      .catch(() => { if (!cancelled) setResolvedAvatarUrl(null) })
+    return () => { cancelled = true }
+  }, [photoPath])
 
   const handleSaveGroup = async (e: SubmitEvent) => {
     e.preventDefault()
@@ -227,7 +243,10 @@ export function NodeInfoModal({
               ? 'group'
               : 'neutral'
       }
-      hero={{ avatarLabel: getInitialsForAvatar(name || nodeName) }}
+      hero={{
+        avatarLabel: getInitialsForAvatar(name || nodeName),
+        avatarImageUrl: resolvedAvatarUrl ?? undefined,
+      }}
     >
       <p className={styles.typeRow}>
         Type: <strong>{nodeType}</strong>
@@ -423,15 +442,15 @@ export function NodeInfoModal({
       )}
 
       {error && (
-        <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
+        <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
       )}
 
-      <div className={modalStyles.actionsLeftAligned}>
+      <div className={formStyles.actionsLeftAligned}>
         <button
           type="button"
           disabled={busy}
           onClick={handleDelete}
-          className={modalStyles.dangerButton}
+          className={formStyles.dangerButton}
         >
           {isDeleting ? 'Deleting…' : 'Delete node'}
         </button>

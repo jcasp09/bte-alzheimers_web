@@ -1,5 +1,5 @@
 import { Modal } from './Modal'
-import modalStyles from './Modal.module.css'
+import formStyles from '../../styles/formActions.module.css'
 
 type ConfirmVariant = 'primary' | 'danger'
 
@@ -31,8 +31,8 @@ export function ConfirmDialog({
 
   return (
     <Modal title={title} onClose={handleClose}>
-      <p className={modalStyles.leadText}>{message}</p>
-      <div className={modalStyles.actions}>
+      <p className={formStyles.leadText}>{message}</p>
+      <div className={formStyles.actions}>
         <button
           type="button"
           className="btn-ghost"
@@ -43,7 +43,7 @@ export function ConfirmDialog({
         </button>
         <button
           type="button"
-          className={confirmVariant === 'danger' ? modalStyles.dangerButton : 'btn-primary'}
+          className={confirmVariant === 'danger' ? formStyles.dangerButton : 'btn-primary'}
           onClick={onConfirm}
           disabled={isConfirming}
         >

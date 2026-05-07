@@ -2,7 +2,7 @@ import { type SubmitEvent, useState } from 'react'
 import clsx from 'clsx'
 import { GRAPH_IDS, createNode } from '../../services/graph'
 import { Modal } from '../ui/Modal'
-import modalStyles from '../ui/Modal.module.css'
+import formStyles from '../../styles/formActions.module.css'
 
 type DraftRect = { x: number; y: number; width: number; height: number }
 
@@ -50,13 +50,13 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
 
   return (
     <Modal title="Name your group" onClose={onClose}>
-      <p className={modalStyles.leadText}>
+      <p className={formStyles.leadText}>
         Frame: {Math.round(draftRect.width)} × {Math.round(draftRect.height)} px at (
         {Math.round(draftRect.x)}, {Math.round(draftRect.y)}). Drag people and places into the group after you
         create it; deleting the group leaves members on the canvas.
       </p>
       <form onSubmit={(e) => { void handleSubmit(e) }} className="form-stack">
-        <label className={clsx('field', modalStyles.spacedField)}>
+        <label className={clsx('field', formStyles.spacedField)}>
           <span>Name</span>
           <input
             type="text"
@@ -67,9 +67,9 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
           />
         </label>
         {error ? (
-          <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
+          <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
         ) : null}
-        <div className={modalStyles.actions}>
+        <div className={formStyles.actions}>
           <button type="button" onClick={onClose} className="btn-ghost">
             Cancel
           </button>

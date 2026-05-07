@@ -1,4 +1,4 @@
-import { type SubmitEvent, useState } from 'react'
+import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import {
   GRAPH_IDS,
@@ -13,7 +13,7 @@ import {
 import type { NodeType, PickableNode } from '../../types/graph'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
 import { SidePanel } from '../ui/SidePanel'
-import modalStyles from '../ui/Modal.module.css'
+import formStyles from '../../styles/formActions.module.css'
 import styles from './AddNodeModal.module.css'
 
 type Props = {
@@ -36,6 +36,7 @@ function getInitialsForAvatar(raw: string): string {
 
 export function AddNodePanel({ userId, pickableNodes, initialType = 'person', position, onClose, onSuccess }: Props) {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
   const [nodeType, setNodeType] = useState<NodeType>(initialType)
   const [name, setName] = useState('')
   const [relationship, setRelationship] = useState('')
@@ -47,6 +48,16 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(photoFile)
+    setPhotoPreviewUrl(url)
+    return () => { URL.revokeObjectURL(url) }
+  }, [photoFile])
 
   const handleTypeChange = (type: NodeType) => {
     setNodeType(type)
@@ -116,7 +127,10 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
       title={panelTitle}
       onClose={onClose}
       accent={panelAccent}
-      hero={{ avatarLabel: getInitialsForAvatar(name) }}
+      hero={{
+        avatarLabel: getInitialsForAvatar(name),
+        avatarImageUrl: photoPreviewUrl ?? undefined,
+      }}
     >
       <div className={styles.typeToggle}>
         {(['person', 'place'] as NodeType[]).map((type) => (
@@ -248,10 +262,10 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
         </div>
 
         {error != null && (
-          <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
+          <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
         )}
 
-        <div className={modalStyles.actions}>
+        <div className={formStyles.actions}>
           <button type="button" onClick={onClose} className="btn-ghost">
             Cancel
           </button>

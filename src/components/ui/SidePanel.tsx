@@ -6,6 +6,7 @@ export type SidePanelAccent = 'person' | 'place' | 'group' | 'moment' | 'connect
 
 export type SidePanelHero = {
   avatarLabel?: string
+  avatarImageUrl?: string
 }
 
 type Props = {
@@ -43,7 +44,11 @@ export function SidePanel({ title, onClose, children, accent = 'neutral', hero }
         className={clsx(styles.panel, styles.panelHero, accentClassByName[accent])}
       >
         <div className={styles.avatar} aria-hidden="true">
-          {hero.avatarLabel ?? ''}
+          {hero.avatarImageUrl ? (
+            <img src={hero.avatarImageUrl} alt="" className={styles.avatarImage} />
+          ) : (
+            hero.avatarLabel ?? ''
+          )}
         </div>
         <div className={styles.panelRect}>
           <header className={styles.headerHero}>

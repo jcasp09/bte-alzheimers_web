@@ -17,16 +17,16 @@
 }
 
 .photoGrid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
   gap: 0.6rem;
   margin-top: 0.6rem;
 }
 
 .photoTile {
   position: relative;
-  width: 128px;
-  height: 128px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--color-border);

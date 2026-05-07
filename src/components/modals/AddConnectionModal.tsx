@@ -4,7 +4,7 @@ import type { Connection } from '@xyflow/react'
 import type { PickableNode } from '../../types/graph'
 import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../graph/edgeHandles'
 import { Modal } from '../ui/Modal'
-import modalStyles from '../ui/Modal.module.css'
+import formStyles from '../../styles/formActions.module.css'
 import styles from './AddConnectionModal.module.css'
 
 type Props = {
@@ -121,7 +121,7 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
 
   return (
     <Modal title="Add Connection" onClose={onClose}>
-      <p className={modalStyles.leadText}>
+      <p className={formStyles.leadText}>
         Select a source and target node, then which side of each node the link uses (same as dragging between handles on the graph).
       </p>
 
@@ -168,10 +168,10 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
       )}
 
       {error != null && (
-        <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
+        <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
       )}
 
-      <div className={modalStyles.actions}>
+      <div className={formStyles.actions}>
         <button type="button" onClick={onClose} className="btn-ghost">
           Cancel
         </button>

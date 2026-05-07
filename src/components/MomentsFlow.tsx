@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type DragEvent as ReactDragEvent } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -12,6 +12,7 @@ import {
 import type { Edge, Node, NodeMouseHandler } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { MomentsBucketNode } from '../nodeTypes/MomentsBucketNode'
+import { DOCK_NODE_DND_TYPE } from './DefaultFlow'
 import { getThemeColor, subscribeToThemeChange } from '../services/theme'
 
 const momentsNodeTypes = {
@@ -21,9 +22,10 @@ const momentsNodeTypes = {
 type MomentsFlowInnerProps = {
   nodes: Node[]
   onNodeClick: NodeMouseHandler
+  onMomentDrop?: () => void
 }
 
-function MomentsFlowInner({ nodes: initialNodes, onNodeClick }: MomentsFlowInnerProps) {
+function MomentsFlowInner({ nodes: initialNodes, onNodeClick, onMomentDrop }: MomentsFlowInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, , onEdgesChange] = useEdgesState<Edge>([])
   const { fitView } = useReactFlow()
@@ -61,6 +63,21 @@ function MomentsFlowInner({ nodes: initialNodes, onNodeClick }: MomentsFlowInner
     })
   }, [fitView])
 
+  const handleDragOver = useCallback((e: ReactDragEvent) => {
+    if (!onMomentDrop) return
+    if (!Array.from(e.dataTransfer.types).includes(DOCK_NODE_DND_TYPE)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }, [onMomentDrop])
+
+  const handleDrop = useCallback((e: ReactDragEvent) => {
+    if (!onMomentDrop) return
+    const kind = e.dataTransfer.getData(DOCK_NODE_DND_TYPE)
+    if (kind !== 'moment') return
+    e.preventDefault()
+    onMomentDrop()
+  }, [onMomentDrop])
+
   const noopConnect = useCallback(() => {}, [])
 
   return (
@@ -70,6 +87,8 @@ function MomentsFlowInner({ nodes: initialNodes, onNodeClick }: MomentsFlowInner
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={noopConnect}
+      onDragOver={onMomentDrop ? handleDragOver : undefined}
+      onDrop={onMomentDrop ? handleDrop : undefined}
       nodeTypes={momentsNodeTypes}
       onNodeClick={onNodeClick}
       nodesConnectable={false}
@@ -88,12 +107,13 @@ function MomentsFlowInner({ nodes: initialNodes, onNodeClick }: MomentsFlowInner
 type MomentsFlowProps = {
   nodes: Node[]
   onNodeClick: NodeMouseHandler
+  onMomentDrop?: () => void
 }
 
-export function MomentsFlow({ nodes, onNodeClick }: MomentsFlowProps) {
+export function MomentsFlow({ nodes, onNodeClick, onMomentDrop }: MomentsFlowProps) {
   return (
     <ReactFlowProvider>
-      <MomentsFlowInner nodes={nodes} onNodeClick={onNodeClick} />
+      <MomentsFlowInner nodes={nodes} onNodeClick={onNodeClick} onMomentDrop={onMomentDrop} />
     </ReactFlowProvider>
   )
 }

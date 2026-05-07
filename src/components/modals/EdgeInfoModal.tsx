@@ -4,7 +4,7 @@ import { GRAPH_IDS, deleteEdge } from '../../services/graph'
 import { edgeHandleLabel } from '../../graph/edgeHandles'
 import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
 import { SidePanel } from '../ui/SidePanel'
-import modalStyles from '../ui/Modal.module.css'
+import formStyles from '../../styles/formActions.module.css'
 import styles from './EdgeInfoModal.module.css'
 
 type Props = {
@@ -124,15 +124,15 @@ export function EdgeInfoModal({
       </form>
 
       {error && (
-        <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
+        <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
       )}
 
-      <div className={modalStyles.actionsLeftAligned}>
+      <div className={formStyles.actionsLeftAligned}>
         <button
           type="button"
           disabled={busy}
           onClick={() => { void handleDelete() }}
-          className={modalStyles.dangerButton}
+          className={formStyles.dangerButton}
         >
           {isDeleting ? 'Deleting…' : 'Delete connection'}
         </button>

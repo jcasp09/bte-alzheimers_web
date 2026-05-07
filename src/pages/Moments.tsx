@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type DragEvent as ReactDragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import type { NodeMouseHandler } from '@xyflow/react'
@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import styles from './Graph.module.css'
 import momentsStyles from './Moments.module.css'
 import { MomentsFlow } from '../components/MomentsFlow'
+import { DOCK_NODE_DND_TYPE } from '../components/DefaultFlow'
 import { MomentEditorCard } from '../components/MomentEditorCard'
 import { AddMomentModal } from '../components/modals/AddMomentModal'
 import { SidePanel } from '../components/ui/SidePanel'
@@ -155,6 +156,11 @@ function Moments() {
 
   const closeAddMoment = () => setAddMomentOpen(false)
 
+  const handleMomentDragStart = (e: ReactDragEvent<HTMLButtonElement>) => {
+    e.dataTransfer.setData(DOCK_NODE_DND_TYPE, 'moment')
+    e.dataTransfer.effectAllowed = 'copy'
+  }
+
   const toggleAddMoment = () => {
     setAddMomentOpen((o) => {
       const next = !o
@@ -207,6 +213,7 @@ function Moments() {
             key={`${viewMode}-${level}-${selectedYear}-${selectedMonth}`}
             nodes={flowNodes}
             onNodeClick={onNodeClick}
+            onMomentDrop={() => setAddMomentOpen(true)}
           />
         </div>
 
@@ -246,9 +253,11 @@ function Moments() {
         <div className={styles.dock} role="toolbar" aria-label="Moments actions">
           <button
             type="button"
+            draggable
+            onDragStart={handleMomentDragStart}
             onClick={toggleAddMoment}
-            aria-label="Add a moment"
-            className={clsx(styles.dockItem, addMomentOpen && styles.dockItemActive)}
+            aria-label="Add a moment. Click to open the form, or drag onto the canvas."
+            className={clsx(styles.dockItem, styles.dockItemDraggable, addMomentOpen && styles.dockItemActive)}
           >
             <span className={clsx(styles.dockIcon, styles.dockIconMoment)} aria-hidden="true">+</span>
             <span className={styles.dockLabel}>Moment</span>

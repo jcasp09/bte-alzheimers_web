@@ -13,7 +13,7 @@ import { deleteMomentPhotoByPath, uploadMomentPhoto } from '../firebase/momentPh
 import type { NodeDoc } from '../types/graph'
 import { storage } from '../services/storage'
 import { MultiEntityPicker, type PickerItem } from './MultiEntityPicker'
-import modalStyles from './ui/Modal.module.css'
+import formStyles from '../styles/formActions.module.css'
 import styles from './MomentEditorCard.module.css'
 
 type MomentEditorCardProps = {
@@ -228,7 +228,7 @@ export function MomentEditorCard({
       </label>
 
       <section>
-        <p className={clsx(modalStyles.leadText, styles.photosLead)}>
+        <p className={clsx(formStyles.leadText, styles.photosLead)}>
           <strong className={styles.photosTitle}>Photos</strong>
           <span className={styles.photosCount}>
             {paths.length} / {MAX_PHOTOS_PER_MOMENT} — JPEG or PNG, max 10 MB each
@@ -280,12 +280,12 @@ export function MomentEditorCard({
         }}
       />
 
-      {error ? <p className={clsx('text-error', modalStyles.errorText)}>{error}</p> : null}
+      {error ? <p className={clsx('text-error', formStyles.errorText)}>{error}</p> : null}
 
       <div className={styles.footerRow}>
         <button
           type="button"
-          className={modalStyles.dangerButton}
+          className={formStyles.dangerButton}
           disabled={deleting}
           onClick={handleDelete}
         >

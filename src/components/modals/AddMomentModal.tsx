@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { createMoment, parseOccurredOn } from '../../firebase/moments'
 import { MultiEntityPicker, type PickerItem } from '../MultiEntityPicker'
 import { SidePanel } from '../ui/SidePanel'
-import modalStyles from '../ui/Modal.module.css'
+import formStyles from '../../styles/formActions.module.css'
 
 type Props = {
   userId: string
@@ -67,7 +67,7 @@ export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
       hero={{ avatarLabel: getInitialsForAvatar(momentTitle) }}
     >
       <form onSubmit={handleSubmit} className="form-stack">
-        {error ? <p className={clsx('text-error', modalStyles.errorText)}>{error}</p> : null}
+        {error ? <p className={clsx('text-error', formStyles.errorText)}>{error}</p> : null}
 
         <label className="field">
           <span>Name</span>
@@ -110,7 +110,7 @@ export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
           disabled={isSubmitting}
         />
 
-        <div className={modalStyles.actions}>
+        <div className={formStyles.actions}>
           <button type="button" onClick={onClose} className="btn-ghost" disabled={isSubmitting}>
             Cancel
           </button>
