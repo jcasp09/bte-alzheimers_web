@@ -57,22 +57,27 @@ export function MomentEditorCard({
     moment.description,
     moment.occurredOn,
     moment.personNodeIds,
-    moment.photoPaths,
   ])
 
   useEffect(() => {
     let cancelled = false
     const paths = moment.photoPaths ?? []
     void (async () => {
+      const results = await Promise.all(
+        paths.map(async (p) => {
+          try {
+            return [p, await getDownloadURL(ref(storage, p))] as const
+          } catch {
+            return null
+          }
+        }),
+      )
+      if (cancelled) return
       const next: Record<string, string> = {}
-      for (const p of paths) {
-        try {
-          next[p] = await getDownloadURL(ref(storage, p))
-        } catch {
-          /* missing file */
-        }
+      for (const r of results) {
+        if (r) next[r[0]] = r[1]
       }
-      if (!cancelled) setPhotoUrls(next)
+      setPhotoUrls(next)
     })()
     return () => {
       cancelled = true

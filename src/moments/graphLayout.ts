@@ -192,42 +192,19 @@ function buildChronological(
   }
 
   if (level === 'days' && selectedYear != null && selectedMonth != null) {
-    const days = new Set<number>()
-    moments.forEach((m) => {
-      const p = parseOccurredOn(m.occurredOn)
-      if (p && p.y === selectedYear && p.m === selectedMonth) days.add(p.d)
-    })
-    const sorted = [...days].sort((a, b) => a - b)
-    return sorted.map((day, i) => {
+    const buckets = buildDayBuckets(moments, selectedYear, selectedMonth)
+    const monthLabel = monthNames[selectedMonth - 1] ?? String(selectedMonth)
+    return buckets.map(({ day, moment }, i) => {
       const p = gridPlace(i)
-      const sameDay = moments.filter((m) => {
-        const pd = parseOccurredOn(m.occurredOn)
-        return pd && pd.y === selectedYear && pd.m === selectedMonth && pd.d === day
-      })
-      const momentForDay =
-        sameDay.length === 0
-          ? undefined
-          : sameDay.reduce((best, m) => {
-              const tb = m.createdAt?.toMillis() ?? 0
-              const bb = best.createdAt?.toMillis() ?? 0
-              return tb >= bb ? m : best
-            })
-      const monthLabel = monthNames[selectedMonth - 1] ?? String(selectedMonth)
-      const title =
-        momentForDay?.title.trim()
-          ? momentForDay.title.trim()
-          : String(day)
-      const caption = momentForDay?.title.trim()
-        ? `${monthLabel} ${day}, ${selectedYear}`
-        : monthLabel
+      const titleTrimmed = moment.title.trim()
       const data: BucketData = {
-        title,
-        caption,
+        title: titleTrimmed.length > 0 ? titleTrimmed : String(day),
+        caption: titleTrimmed.length > 0 ? `${monthLabel} ${day}, ${selectedYear}` : monthLabel,
         kind: 'day',
         year: selectedYear,
         month: selectedMonth,
         day,
-        momentId: momentForDay?.id,
+        momentId: moment.id,
       }
       return {
         id: `d-${selectedYear}-${selectedMonth}-${day}`,
