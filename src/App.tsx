@@ -16,7 +16,7 @@ import styles from './App.module.css'
 function App() {
   const location = useLocation()
   const showHeader = location.pathname !== '/'
-  const fullBleed = location.pathname === '/graph'
+  const fullBleed = location.pathname === '/graph' || location.pathname === '/moments'
 
   return (
     <AuthProvider>

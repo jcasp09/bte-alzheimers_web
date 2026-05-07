@@ -154,8 +154,8 @@ function Moments() {
 
   if (!user) {
     return (
-      <section>
-        <h1 className={styles.pageTitle}>Moments</h1>
+      <section className={styles.statusFrame}>
+        <h1>Moments</h1>
         <p>Sign in to browse your moments.</p>
         <Link to="/">Go to Home</Link>
       </section>
@@ -164,8 +164,8 @@ function Moments() {
 
   if (loading) {
     return (
-      <section>
-        <h1 className={styles.pageTitle}>Moments</h1>
+      <section className={styles.statusFrame}>
+        <h1>Moments</h1>
         <p>Loading your moments…</p>
       </section>
     )
@@ -173,50 +173,68 @@ function Moments() {
 
   if (loadError) {
     return (
-      <section>
-        <h1 className={styles.pageTitle}>Moments</h1>
+      <section className={styles.statusFrame}>
+        <h1>Moments</h1>
         <p className="text-error">{loadError}</p>
       </section>
     )
   }
 
   return (
-    <section style={{ position: 'relative' }}>
-      <div className={styles.headerRow}>
-        <h1 className={styles.pageTitle}>Moments</h1>
+    <section className={styles.fullBleedRoot} aria-label="Moments graph">
+      <h1 className="sr-only">Moments</h1>
 
-        <div className={styles.toolbar}>
+      <div className={styles.canvasContainer}>
+        <div className={styles.flowFill}>
+          <MomentsFlow
+            key={`${viewMode}-${level}-${selectedYear}-${selectedMonth}`}
+            nodes={flowNodes}
+            onNodeClick={onNodeClick}
+          />
+        </div>
+
+        <div className={momentsStyles.topChrome}>
           {showBack ? (
-            <button type="button" className={styles.toolbarButton} onClick={handleBack}>
+            <button
+              type="button"
+              className={momentsStyles.chipButton}
+              onClick={handleBack}
+              aria-label="Go back to previous level"
+            >
               ← Back
             </button>
           ) : null}
-          <button
-            type="button"
-            className={clsx(styles.toolbarButton, addMomentOpen && styles.toolbarButtonActive)}
-            onClick={toggleAddMoment}
-          >
-            Add moment
-          </button>
-        </div>
-      </div>
 
-      <div className={momentsStyles.sortRow}>
-        <span className={momentsStyles.sortLabel}>Sort By</span>
-        <div className={momentsStyles.sortButtons}>
+          <div className={momentsStyles.sortGroup} role="group" aria-label="Sort moments">
+            <span className={momentsStyles.sortLabel}>Sort by</span>
+            <button
+              type="button"
+              className={clsx(momentsStyles.chipButton, viewMode === 'chronological' && momentsStyles.chipButtonActive)}
+              onClick={() => setViewMode('chronological')}
+              aria-pressed={viewMode === 'chronological'}
+            >
+              Date
+            </button>
+            <button
+              type="button"
+              className={clsx(momentsStyles.chipButton, viewMode === 'impactful' && momentsStyles.chipButtonActive)}
+              onClick={() => setViewMode('impactful')}
+              aria-pressed={viewMode === 'impactful'}
+            >
+              Content
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.dock} role="toolbar" aria-label="Moments actions">
           <button
             type="button"
-            className={clsx(styles.toolbarButton, viewMode === 'chronological' && styles.toolbarButtonActive)}
-            onClick={() => setViewMode('chronological')}
+            onClick={toggleAddMoment}
+            aria-label="Add a moment"
+            className={clsx(styles.dockItem, addMomentOpen && styles.dockItemActive)}
           >
-            Date
-          </button>
-          <button
-            type="button"
-            className={clsx(styles.toolbarButton, viewMode === 'impactful' && styles.toolbarButtonActive)}
-            onClick={() => setViewMode('impactful')}
-          >
-            Content
+            <span className={clsx(styles.dockIcon, styles.dockIconMoment)} aria-hidden="true">+</span>
+            <span className={styles.dockLabel}>Moment</span>
           </button>
         </div>
       </div>
@@ -229,14 +247,6 @@ function Moments() {
           onCreated={load}
         />
       ) : null}
-
-      <div className={styles.flowContainer}>
-        <MomentsFlow
-          key={`${viewMode}-${level}-${selectedYear}-${selectedMonth}`}
-          nodes={flowNodes}
-          onNodeClick={onNodeClick}
-        />
-      </div>
 
       {overlay ? (
         <Modal
@@ -252,7 +262,7 @@ function Moments() {
           </p>
 
           {!primaryOverlayMoment ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No moment on this day.</p>
+            <p className={momentsStyles.emptyDayMessage}>No moment on this day.</p>
           ) : (
             <MomentEditorCard
               uid={user.uid}

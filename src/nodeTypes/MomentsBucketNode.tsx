@@ -75,8 +75,9 @@ export function MomentsBucketNode({ data, id, width, height }: NodeProps) {
         height: curD,
         boxSizing: 'border-box',
         borderRadius: '50%',
-        background: 'var(--color-surface)',
-        border: '2px solid var(--color-border-strong)',
+        background: 'var(--color-node-moment)',
+        border: '2px solid var(--color-node-moment-border)',
+        color: 'var(--color-node-moment-text)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -101,7 +102,7 @@ export function MomentsBucketNode({ data, id, width, height }: NodeProps) {
           style={{
             fontWeight: 600,
             fontSize: TITLE_FS,
-            color: 'var(--color-text)',
+            color: 'var(--color-node-moment-text)',
             lineHeight: 1.35,
             width: '100%',
             whiteSpace: 'normal',
@@ -115,7 +116,8 @@ export function MomentsBucketNode({ data, id, width, height }: NodeProps) {
           <span
             style={{
               fontSize: CAPTION_FS,
-              color: 'var(--color-text-muted)',
+              color: 'var(--color-node-moment-text)',
+              opacity: 0.78,
               lineHeight: 1.35,
               width: '100%',
               whiteSpace: 'normal',

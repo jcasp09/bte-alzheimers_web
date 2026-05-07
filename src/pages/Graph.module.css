@@ -110,6 +110,12 @@
   border-color: var(--color-border-strong);
 }
 
+.dockIconMoment {
+  background-color: var(--color-node-moment-soft);
+  color: var(--color-node-moment-text);
+  border-color: var(--color-node-moment-border);
+}
+
 .dockIconLink {
   background-color: var(--color-surface-raised);
   color: var(--color-text-muted);
