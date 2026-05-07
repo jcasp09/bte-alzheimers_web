@@ -66,7 +66,7 @@ export function MomentsBucketNode({ data, id, width, height }: NodeProps) {
     const prevH = node?.height ?? minDiameter
     if (prevW === next && prevH === next) return
     rf.updateNode(id, { width: next, height: next })
-  }, [caption, id, innerPadding, minDiameter, rf, semanticFloor, textMax, title])
+  }, [caption, id, rf, semanticFloor, textMax, title])
 
   return (
     <div
@@ -75,8 +75,8 @@ export function MomentsBucketNode({ data, id, width, height }: NodeProps) {
         height: curD,
         boxSizing: 'border-box',
         borderRadius: '50%',
-        background: '#f9fafb',
-        border: '2px solid #9ca3af',
+        background: 'var(--color-surface)',
+        border: '2px solid var(--color-border-strong)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

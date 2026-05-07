@@ -7,7 +7,7 @@ service firebase.storage {
       allow create, update: if request.auth != null
         && request.auth.uid == uid
         && request.resource != null
-        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.size <= 10 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png)');
     }
     // Moment journal photos (multiple files per moment document).
@@ -16,7 +16,7 @@ service firebase.storage {
       allow create, update: if request.auth != null
         && request.auth.uid == uid
         && request.resource != null
-        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.size <= 10 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png)');
     }
     // Only the authenticated owner can access their profile photo.
@@ -25,7 +25,7 @@ service firebase.storage {
       allow create, update: if request.auth != null
         && request.auth.uid == uid
         && request.resource != null
-        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.size <= 10 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png)');
     }
     // Deny all other storage paths by default.

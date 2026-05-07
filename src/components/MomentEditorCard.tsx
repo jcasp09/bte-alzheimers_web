@@ -44,8 +44,6 @@ export function MomentEditorCard({
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const momentIdRef = useRef(moment.id)
-  momentIdRef.current = moment.id
 
   useEffect(() => {
     setTitle(moment.title)
@@ -89,8 +87,10 @@ export function MomentEditorCard({
   const peopleItems: PickerItem[] = people.map((p) => ({ id: p.id, name: p.name }))
   const paths = moment.photoPaths ?? []
 
-  const persist = async () => {
-    if (momentIdRef.current !== moment.id) return
+  const persist = async (scheduledId: string) => {
+    if (scheduledId !== moment.id)
+      return
+
     setError(null)
     const patch: Parameters<typeof updateMoment>[2] = {}
     if (title !== moment.title) patch.title = title
@@ -126,9 +126,10 @@ export function MomentEditorCard({
 
   const scheduleSave = () => {
     if (timer.current) clearTimeout(timer.current)
+    const scheduledId = moment.id
     timer.current = setTimeout(() => {
       timer.current = null
-      void persist()
+      void persist(scheduledId)
     }, DEBOUNCE_MS)
   }
 

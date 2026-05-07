@@ -1,5 +1,4 @@
 import {
-  addDoc,
   arrayRemove,
   collection,
   deleteDoc,
@@ -8,6 +7,7 @@ import {
   getDoc,
   getDocs,
   query,
+  runTransaction,
   serverTimestamp,
   Timestamp,
   updateDoc,
@@ -77,6 +77,10 @@ function momentsCollection(uid: string) {
   return collection(db, 'users', uid, 'moments')
 }
 
+function momentDateLockRef(uid: string, occurredOn: string) {
+  return doc(db, 'users', uid, 'momentDateLocks', occurredOn)
+}
+
 async function validateContextNodeIdsByType(
   uid: string,
   ids: string[],
@@ -131,14 +135,6 @@ export function momentRichnessScore(m: Pick<MomentDoc, 'title' | 'description' |
   return people + places + photos * 1.5 + descTerm + titleBonus
 }
 
-async function assertSingleMomentPerDay(uid: string, occurredOn: string, excludeMomentId?: string): Promise<void> {
-  const snap = await getDocs(query(momentsCollection(uid), where('occurredOn', '==', occurredOn)))
-  for (const d of snap.docs) {
-    if (excludeMomentId && d.id === excludeMomentId) continue
-    throw new Error('You already have a moment on this date. Only one moment per day is allowed.')
-  }
-}
-
 export async function getMoments(uid: string): Promise<MomentDoc[]> {
   const snapshot = await getDocs(momentsCollection(uid))
   return snapshot.docs.map((d) => {
@@ -161,23 +157,33 @@ export async function createMoment(uid: string, input: CreateMomentInput): Promi
   if (!parseOccurredOn(input.occurredOn)) {
     throw new Error('Choose a valid date.')
   }
-  await assertSingleMomentPerDay(uid, input.occurredOn)
   const personNodeIds = [...new Set(input.personNodeIds)].slice(0, MAX_PEOPLE_PER_MOMENT)
   const placeNodeIds = [...new Set(input.placeNodeIds)].slice(0, MAX_PLACES_PER_MOMENT)
   await Promise.all([
     validateContextNodeIdsByType(uid, personNodeIds, 'person'),
     validateContextNodeIdsByType(uid, placeNodeIds, 'place'),
   ])
-  const docRef = await addDoc(momentsCollection(uid), {
-    title: input.title,
-    description: input.description,
-    occurredOn: input.occurredOn,
-    personNodeIds,
-    placeNodeIds,
-    photoPaths: [],
-    createdAt: serverTimestamp(),
+
+  const newMomentRef = doc(momentsCollection(uid))
+  const lockRef = momentDateLockRef(uid, input.occurredOn)
+
+  await runTransaction(db, async (tx) => {
+    const lockSnap = await tx.get(lockRef)
+    if (lockSnap.exists()) {
+      throw new Error('You already have a moment on this date. Only one moment per day is allowed.')
+    }
+    tx.set(newMomentRef, {
+      title: input.title,
+      description: input.description,
+      occurredOn: input.occurredOn,
+      personNodeIds,
+      placeNodeIds,
+      photoPaths: [],
+      createdAt: serverTimestamp(),
+    })
+    tx.set(lockRef, { momentId: newMomentRef.id })
   })
-  return docRef.id
+  return newMomentRef.id
 }
 
 export async function updateMoment(
@@ -185,17 +191,38 @@ export async function updateMoment(
   momentId: string,
   patch: UpdateMomentInput,
 ): Promise<void> {
-  const ref = doc(db, 'users', uid, 'moments', momentId)
-  const payload: Record<string, unknown> = {}
-  if (patch.title !== undefined) payload.title = patch.title
-  if (patch.description !== undefined) payload.description = patch.description
+  const momentRef = doc(db, 'users', uid, 'moments', momentId)
+
   if (patch.occurredOn !== undefined) {
     if (!parseOccurredOn(patch.occurredOn)) {
       throw new Error('Use a valid calendar date (YYYY-MM-DD).')
     }
-    await assertSingleMomentPerDay(uid, patch.occurredOn, momentId)
-    payload.occurredOn = patch.occurredOn
+    const newOccurredOn = patch.occurredOn
+    const newLockRef = momentDateLockRef(uid, newOccurredOn)
+
+    await runTransaction(db, async (tx) => {
+      const momentSnap = await tx.get(momentRef)
+      if (!momentSnap.exists())
+        throw new Error('Moment not found.')
+
+      const currentOccurredOn = (momentSnap.data() as { occurredOn?: string }).occurredOn ?? ''
+      if (currentOccurredOn === newOccurredOn)
+        return
+
+      const newLockSnap = await tx.get(newLockRef)
+      if (newLockSnap.exists() && newLockSnap.data().momentId !== momentId)
+
+      if (currentOccurredOn) {
+        tx.delete(momentDateLockRef(uid, currentOccurredOn))
+      }
+      tx.set(newLockRef, { momentId })
+      tx.update(momentRef, { occurredOn: newOccurredOn })
+    })
   }
+
+  const payload: Record<string, unknown> = {}
+  if (patch.title !== undefined) payload.title = patch.title
+  if (patch.description !== undefined) payload.description = patch.description
   if (patch.personNodeIds !== undefined) {
     const personNodeIds = [...new Set(patch.personNodeIds)].slice(0, MAX_PEOPLE_PER_MOMENT)
     await validateContextNodeIdsByType(uid, personNodeIds, 'person')
@@ -212,15 +239,16 @@ export async function updateMoment(
     payload.photoPaths = photoPaths
   }
   if (Object.keys(payload).length === 0) return
-  await updateDoc(ref, payload)
+  await updateDoc(momentRef, payload)
 }
 
 export async function deleteMoment(uid: string, momentId: string): Promise<void> {
   const refDoc = doc(db, 'users', uid, 'moments', momentId)
   const snap = await getDoc(refDoc)
-  const paths = snap.exists()
-    ? normalizePhotoPaths((snap.data() as { photoPaths?: unknown }).photoPaths)
-    : []
+  if (!snap.exists()) return
+  const data = snap.data() as { photoPaths?: unknown; occurredOn?: string }
+  const paths = normalizePhotoPaths(data.photoPaths)
+  const occurredOn = typeof data.occurredOn === 'string' ? data.occurredOn : ''
   await Promise.all(
     paths.map((p) =>
       deleteObject(ref(storage, p)).catch(() => {
@@ -229,6 +257,9 @@ export async function deleteMoment(uid: string, momentId: string): Promise<void>
     ),
   )
   await deleteDoc(refDoc)
+  if (occurredOn) {
+    await deleteDoc(momentDateLockRef(uid, occurredOn))
+  }
 }
 
 /** After a person or place graph node is removed, strip its id from all moments. */

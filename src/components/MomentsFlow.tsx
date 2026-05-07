@@ -59,7 +59,7 @@ function MomentsFlowInner({ nodes: initialNodes, onNodeClick }: MomentsFlowInner
     queueMicrotask(() => {
       fitView({ padding: 0.2, duration: 200 })
     })
-  }, [initialNodes, fitView])
+  }, [fitView])
 
   const noopConnect = useCallback(() => {}, [])
 

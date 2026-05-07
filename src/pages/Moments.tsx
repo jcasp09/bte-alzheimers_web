@@ -230,7 +230,7 @@ function Moments() {
 
       <div className={styles.flowContainer}>
         <MomentsFlow
-          key={`${viewMode}-${level}-${selectedYear}-${selectedMonth}-${flowNodes.length}`}
+          key={`${viewMode}-${level}-${selectedYear}-${selectedMonth}`}
           nodes={flowNodes}
           onNodeClick={onNodeClick}
         />
@@ -269,7 +269,7 @@ function Moments() {
 
             <div style={{ marginTop: '1rem' }}>
               {!primaryOverlayMoment ? (
-                <p style={{ color: '#6b7280', fontSize: 14 }}>No moment on this day.</p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No moment on this day.</p>
               ) : (
                 <MomentEditorCard
                   uid={user.uid}
