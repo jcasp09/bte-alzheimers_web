@@ -14,6 +14,7 @@ import { getNodes } from '../services/graph'
 import type { NodeDoc } from '../types/graph'
 import { getMoments, parseOccurredOn, type MomentDoc } from '../firebase/moments'
 import { buildMomentFlowNodes, type DrillLevel, type ViewMode } from '../moments/graphLayout'
+import { getInitialsForAvatar } from '../util/initials'
 
 const MONTH_NAMES = [
   'January',
@@ -29,14 +30,6 @@ const MONTH_NAMES = [
   'November',
   'December',
 ]
-
-function getInitialsForAvatar(raw: string): string {
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  const parts = trimmed.split(/\s+/)
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-}
 
 function Moments() {
   const { user } = useAuth()

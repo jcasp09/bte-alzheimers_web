@@ -4,20 +4,13 @@ import { createMoment, parseOccurredOn } from '../../firebase/moments'
 import { MultiEntityPicker, type PickerItem } from '../MultiEntityPicker'
 import { SidePanel } from '../ui/SidePanel'
 import formStyles from '../../styles/formActions.module.css'
+import { getInitialsForAvatar } from '../../util/initials'
 
 type Props = {
   userId: string
   people: PickerItem[]
   onClose: () => void
   onCreated: () => Promise<void> | void
-}
-
-function getInitialsForAvatar(raw: string): string {
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  const parts = trimmed.split(/\s+/)
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
 export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {

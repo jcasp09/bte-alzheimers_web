@@ -1,6 +1,5 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { getDownloadURL, ref } from 'firebase/storage'
 import { SidePanel } from '../ui/SidePanel'
 import {
   GRAPH_IDS,
@@ -21,9 +20,10 @@ import {
   safeNodeDimensions,
   stepNodeDimensions,
 } from '../../graph/dimensions'
-import { storage } from '../../services/storage'
 import formStyles from '../../styles/formActions.module.css'
 import styles from './NodeInfoModal.module.css'
+import { getInitialsForAvatar } from '../../util/initials'
+import { usePhotoUrl } from '../../hooks/usePhotoUrl'
 
 type Props = {
   userId: string
@@ -39,14 +39,6 @@ type Props = {
   nodeHeight?: number
   onClose: () => void
   onSuccess: () => void
-}
-
-function getInitialsForAvatar(raw: string): string {
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  const parts = trimmed.split(/\s+/)
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
 export function NodeInfoModal({
@@ -71,7 +63,7 @@ export function NodeInfoModal({
   const [address, setAddress] = useState(nodeAddress)
   const [photoPath, setPhotoPath] = useState(nodePhotoPath)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(null)
+  const resolvedAvatarUrl = usePhotoUrl(photoPath)
   const [sizeW, setSizeW] = useState(() =>
     (nodeType === 'person' || nodeType === 'place')
       ? safeNodeDimensions(nodeType, nodeWidth, nodeHeight).width
@@ -115,19 +107,6 @@ export function NodeInfoModal({
       setGroupH(clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height))
     }
   }, [nodeId, isGroup, nodeWidth, nodeHeight])
-
-  // Resolve the stored photo path into a download URL. Falls back to initials when missing.
-  useEffect(() => {
-    if (!photoPath) {
-      setResolvedAvatarUrl(null)
-      return
-    }
-    let cancelled = false
-    void getDownloadURL(ref(storage, photoPath))
-      .then((url) => { if (!cancelled) setResolvedAvatarUrl(url) })
-      .catch(() => { if (!cancelled) setResolvedAvatarUrl(null) })
-    return () => { cancelled = true }
-  }, [photoPath])
 
   const handleSaveGroup = async (e: SubmitEvent) => {
     e.preventDefault()

@@ -3,11 +3,10 @@ import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
-import { getDownloadURL, ref } from 'firebase/storage'
-import { storage } from '../services/storage'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
-import { DOCK_NODE_DND_TYPE, GRAPH_TRANSLATE_EXTENT, type DefaultFlowHandle } from '../components/flowConstants'
+import { DOCK_NODE_DND_TYPE, GRAPH_TRANSLATE_EXTENT, type DefaultFlowHandle, type XY } from '../components/flowConstants'
+import { usePhotoUrl } from '../hooks/usePhotoUrl'
 import styles from './Graph.module.css'
 import {
   GRAPH_IDS,
@@ -28,10 +27,9 @@ import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
 import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'
 import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../components/modals/EdgeInfoModal.tsx'
+import * as React from "react";
 
 type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | null
-
-type XY = { x: number; y: number }
 
 type AddGroupPlacement =
   | { status: 'idle' }
@@ -173,28 +171,6 @@ const ANCHOR_NODES: Node[] = (() => {
   ]
 })()
 
-const photoUrlCache = new Map<string, string>()
-
-function useResolvedPhotoUrl(photoPath: string | undefined): string | null {
-  const [, forceRender] = useState(0)
-  const url = photoPath ? photoUrlCache.get(photoPath) ?? null : null
-
-  useEffect(() => {
-    if (!photoPath || photoUrlCache.has(photoPath)) return
-    let cancelled = false
-    void getDownloadURL(ref(storage, photoPath))
-      .then((u) => {
-        if (cancelled) return
-        photoUrlCache.set(photoPath, u)
-        forceRender((c) => c + 1)
-      })
-      .catch(() => { /* ignore, fall back to no image */ })
-    return () => { cancelled = true }
-  }, [photoPath])
-
-  return url
-}
-
 /** Lower number = higher priority in the search dropdown. */
 function typePriority(type: string): number {
   switch (type) {
@@ -208,7 +184,7 @@ function typePriority(type: string): number {
 }
 
 function SearchResultThumb({ photoPath }: { photoPath: string | undefined }) {
-  const url = useResolvedPhotoUrl(photoPath)
+  const url = usePhotoUrl(photoPath)
   if (!url) return null
   return <img src={url} alt="" className={styles.searchResultThumb} />
 }

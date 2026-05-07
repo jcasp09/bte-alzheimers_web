@@ -1,9 +1,8 @@
 import type { NodeProps } from '@xyflow/react'
-import { useEffect, useState } from 'react'
-import { getDownloadURL, ref } from 'firebase/storage'
 import { NodeEdgeHandles } from '../../components/NodeEdgeHandles'
+import { usePhotoUrl } from '../../hooks/usePhotoUrl'
 import { PERSON_NODE_DEFAULT_SIZE, safeNodeDimensions } from '../dimensions'
-import { storage } from '../../services/storage'
+import { getInitialsForAvatar } from '../../util/initials'
 
 function personScale(width: number, height: number) {
   return Math.min(
@@ -12,26 +11,12 @@ function personScale(width: number, height: number) {
   )
 }
 
-/** Up to two letters from a person's name; falls back to '?' for blank names. */
-function getInitials(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed)
-    return '?'
-
-  const parts = trimmed.split(/\s+/)
-  if (parts.length === 1)
-    return parts[0].charAt(0).toUpperCase()
-
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-}
-
 export function PersonNode({ data }: NodeProps) {
   const name = typeof data.name === 'string' ? data.name : ''
   const relationship = typeof data.relationship === 'string' ? data.relationship : ''
   const email = typeof data.email === 'string' ? data.email : ''
   const phone = typeof data.phone === 'string' ? data.phone : ''
   const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
-  const [fetchedPhoto, setFetchedPhoto] = useState<{ path: string; url: string } | null>(null)
 
   const { width: w, height: h } = safeNodeDimensions('person', data.width, data.height)
   const sc = personScale(w, h)
@@ -46,27 +31,7 @@ export function PersonNode({ data }: NodeProps) {
   const showRelationship = w >= 165 && h >= 46
   const showEmailPhone = w >= 205 && h >= 72
 
-  useEffect(() => {
-    if (!photoPath)
-      return
-
-    let isCancelled = false
-    void getDownloadURL(ref(storage, photoPath))
-      .then((url) => {
-        if (!isCancelled) {
-          setFetchedPhoto({ path: photoPath, url })
-        }
-      })
-      .catch(() => {
-        // Ignore lookup failures and use initials fallback.
-      })
-
-    return () => {
-      isCancelled = true
-    }
-  }, [photoPath])
-
-  const resolvedImageUrl = fetchedPhoto?.path === photoPath ? fetchedPhoto.url : ''
+  const resolvedImageUrl = usePhotoUrl(photoPath) ?? ''
 
   return (
     <div
@@ -117,7 +82,7 @@ export function PersonNode({ data }: NodeProps) {
           }}
           aria-label={name ? `${name} avatar` : 'Person avatar'}
         >
-          {resolvedImageUrl ? null : getInitials(name)}
+          {resolvedImageUrl ? null : getInitialsForAvatar(name) || '?'}
         </div>
         <div
           style={{

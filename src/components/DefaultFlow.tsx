@@ -5,7 +5,6 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useRef,
-  useState,
   type DragEvent as ReactDragEvent,
   type MouseEvent,
   type RefObject,
@@ -34,15 +33,14 @@ import type {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '../graph/nodeTypes'
-import { getThemeColor, subscribeToThemeChange } from '../services/theme'
 import { getMotionMode } from '../services/motion'
-
-type XY = { x: number; y: number }
+import { useThemeColor } from '../hooks/useThemeColor'
 
 import {
   DOCK_NODE_DND_TYPE,
   GRAPH_TRANSLATE_EXTENT,
   type DefaultFlowHandle,
+  type XY,
 } from './flowConstants'
 
 type DefaultFlowProps = {
@@ -129,36 +127,21 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
     },
   }), [reactFlowApi])
 
-  const [gridColor, setGridColor] = useState<string>(() => getThemeColor('--color-grid-dot'))
-  const [miniMapColors, setMiniMapColors] = useState(() => ({
-    person: getThemeColor('--color-node-person-border'),
-    place: getThemeColor('--color-node-place-border'),
-    group: getThemeColor('--color-border-strong'),
-    moment: getThemeColor('--color-node-moment-border'),
-    fallback: getThemeColor('--color-text-muted'),
-  }))
-  useEffect(() => {
-    return subscribeToThemeChange(() => {
-      const grid = getThemeColor('--color-grid-dot')
-      if (grid) setGridColor(grid)
-      setMiniMapColors({
-        person: getThemeColor('--color-node-person-border'),
-        place: getThemeColor('--color-node-place-border'),
-        group: getThemeColor('--color-border-strong'),
-        moment: getThemeColor('--color-node-moment-border'),
-        fallback: getThemeColor('--color-text-muted'),
-      })
-    })
-  }, [])
+  const gridColor = useThemeColor('--color-grid-dot')
+  const personColor = useThemeColor('--color-node-person-border')
+  const placeColor = useThemeColor('--color-node-place-border')
+  const groupColor = useThemeColor('--color-border-strong')
+  const momentColor = useThemeColor('--color-node-moment-border')
+  const fallbackColor = useThemeColor('--color-text-muted')
 
   const miniMapNodeColor = useCallback((node: Node) => {
     if (node.type === 'anchor') return 'transparent'
-    if (node.type === 'person') return miniMapColors.person
-    if (node.type === 'place') return miniMapColors.place
-    if (node.type === 'group') return miniMapColors.group
-    if (node.type === 'momentsBucket') return miniMapColors.moment
-    return miniMapColors.fallback
-  }, [miniMapColors])
+    if (node.type === 'person') return personColor
+    if (node.type === 'place') return placeColor
+    if (node.type === 'group') return groupColor
+    if (node.type === 'momentsBucket') return momentColor
+    return fallbackColor
+  }, [personColor, placeColor, groupColor, momentColor, fallbackColor])
 
   const flowWidth = useStore((s) => s.width)
   const flowHeight = useStore((s) => s.height)

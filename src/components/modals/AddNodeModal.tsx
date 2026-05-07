@@ -15,6 +15,7 @@ import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHa
 import { SidePanel } from '../ui/SidePanel'
 import formStyles from '../../styles/formActions.module.css'
 import styles from './AddNodeModal.module.css'
+import { getInitialsForAvatar } from '../../util/initials'
 
 type Props = {
   userId: string
@@ -25,19 +26,9 @@ type Props = {
   onSuccess: () => void
 }
 
-/** First+last initial of a name; '' for empty. Mirrors PersonNode's logic. */
-function getInitialsForAvatar(raw: string): string {
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  const parts = trimmed.split(/\s+/)
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-}
-
 export function AddNodePanel({ userId, pickableNodes, initialType = 'person', position, onClose, onSuccess }: Props) {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
-  const [nodeType, setNodeType] = useState<NodeType>(initialType)
   const [name, setName] = useState('')
   const [relationship, setRelationship] = useState('')
   const [email, setEmail] = useState('')
@@ -49,6 +40,8 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const nodeType = initialType
+
   useEffect(() => {
     if (!photoFile) {
       setPhotoPreviewUrl(null)
@@ -58,19 +51,6 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
     setPhotoPreviewUrl(url)
     return () => { URL.revokeObjectURL(url) }
   }, [photoFile])
-
-  const handleTypeChange = (type: NodeType) => {
-    setNodeType(type)
-    setName('')
-    setRelationship('')
-    setEmail('')
-    setPhone('')
-    setAddress('')
-    setPhotoFile(null)
-    setLinkToNodeId(null)
-    setShowLinkList(false)
-    setError(null)
-  }
 
   const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
@@ -132,19 +112,6 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
         avatarImageUrl: photoPreviewUrl ?? undefined,
       }}
     >
-      <div className={styles.typeToggle}>
-        {(['person', 'place'] as NodeType[]).map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => handleTypeChange(type)}
-            className={clsx(styles.typeOption, nodeType === type && styles.typeOptionActive)}
-          >
-            {type === 'person' ? 'Person' : 'Place'}
-          </button>
-        ))}
-      </div>
-
       {/* Form fields */}
       <form onSubmit={handleSubmit} className="form-stack">
         <div className={styles.formRow}>

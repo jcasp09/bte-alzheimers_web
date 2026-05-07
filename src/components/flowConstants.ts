@@ -17,3 +17,6 @@ export const DOCK_NODE_DND_TYPE = 'application/x-memoryjog-dock-node'
 export type DefaultFlowHandle = {
   focusNode: (nodeId: string) => void
 }
+
+/** A point in flow coordinates. */
+export type XY = { x: number; y: number }
