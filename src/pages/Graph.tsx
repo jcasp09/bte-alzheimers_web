@@ -236,6 +236,10 @@ function Graph() {
   const flowRef = useRef<DefaultFlowHandle>(null)
   const [visibleTypes, setVisibleTypes] = useState<VisibleTypes>(DEFAULT_VISIBLE_TYPES)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterExpanded, setFilterExpanded] = useState(false)
+  const [searchExpanded, setSearchExpanded] = useState(false)
+  const [minimapExpanded, setMinimapExpanded] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const flowKeyRef = useRef(0)
   const [flowKey, setFlowKey] = useState(0)
 
@@ -606,6 +610,7 @@ function Graph() {
             onEdgeClick={handleEdgeClick}
             onConnectPersist={handleConnectPersist}
             onDropAtFlowPosition={handleDropAtFlowPosition}
+            showMiniMap={minimapExpanded}
             onSavePositions={(updatedNodes) => {
               void saveNodePositions(
                 user.uid,
@@ -644,61 +649,108 @@ function Graph() {
           </div>
         ) : null}
 
-        <div className={styles.filterRow} role="group" aria-label="Toggle node types">
-          <button
-            type="button"
-            onClick={() => setVisibleTypes((v) => ({ ...v, person: !v.person }))}
-            aria-pressed={visibleTypes.person}
-            className={clsx(styles.filterChip, visibleTypes.person && styles.filterChipActive, visibleTypes.person && styles.filterChipPerson)}
-          >
-            <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-person-border)' }} aria-hidden="true" />
-            People
-          </button>
-          <button
-            type="button"
-            onClick={() => setVisibleTypes((v) => ({ ...v, place: !v.place }))}
-            aria-pressed={visibleTypes.place}
-            className={clsx(styles.filterChip, visibleTypes.place && styles.filterChipActive, visibleTypes.place && styles.filterChipPlace)}
-          >
-            <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-place-border)' }} aria-hidden="true" />
-            Places
-          </button>
-          <button
-            type="button"
-            onClick={() => setVisibleTypes((v) => ({ ...v, group: !v.group }))}
-            aria-pressed={visibleTypes.group}
-            className={clsx(styles.filterChip, visibleTypes.group && styles.filterChipActive, visibleTypes.group && styles.filterChipGroup)}
-          >
-            <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-border-strong)' }} aria-hidden="true" />
-            Groups
-          </button>
-        </div>
-
-        <div className={styles.searchWrap}>
-          <div className={styles.searchInputWrap}>
-            <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-              <circle cx="7" cy="7" r="4.5" />
-              <line x1="10.5" y1="10.5" x2="14" y2="14" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              className={styles.searchInput}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Find a person or place…"
-              aria-label="Search nodes by name"
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                className={styles.searchClear}
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            ) : null}
+        <div
+          className={clsx(styles.filterRow, filterExpanded && styles.filterRowExpanded)}
+          role="group"
+          aria-label="Toggle node types"
+          aria-hidden={!filterExpanded}
+        >
+            <button
+              type="button"
+              onClick={() => setVisibleTypes((v) => ({ ...v, person: !v.person }))}
+              aria-pressed={visibleTypes.person}
+              className={clsx(styles.filterChip, visibleTypes.person && styles.filterChipActive, visibleTypes.person && styles.filterChipPerson)}
+            >
+              <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-person-border)' }} aria-hidden="true" />
+              People
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleTypes((v) => ({ ...v, place: !v.place }))}
+              aria-pressed={visibleTypes.place}
+              className={clsx(styles.filterChip, visibleTypes.place && styles.filterChipActive, visibleTypes.place && styles.filterChipPlace)}
+            >
+              <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-place-border)' }} aria-hidden="true" />
+              Places
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleTypes((v) => ({ ...v, group: !v.group }))}
+              aria-pressed={visibleTypes.group}
+              className={clsx(styles.filterChip, visibleTypes.group && styles.filterChipActive, visibleTypes.group && styles.filterChipGroup)}
+            >
+              <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-border-strong)' }} aria-hidden="true" />
+              Groups
+            </button>
+            <button
+              type="button"
+              className={styles.chromeCloseButton}
+              onClick={() => setFilterExpanded(false)}
+              aria-label="Hide filters"
+              tabIndex={filterExpanded ? 0 : -1}
+            >
+              ✕
+            </button>
           </div>
+          <button
+            type="button"
+            className={clsx(styles.fab, styles.fabFilter, filterExpanded && styles.fabHidden)}
+            onClick={() => setFilterExpanded(true)}
+            aria-label="Show node-type filters"
+            aria-hidden={filterExpanded}
+            tabIndex={filterExpanded ? -1 : 0}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+              <line x1="3" y1="5" x2="15" y2="5" />
+              <line x1="5" y1="9" x2="13" y2="9" />
+              <line x1="7" y1="13" x2="11" y2="13" />
+            </svg>
+          </button>
+
+        <div
+          className={clsx(styles.searchWrap, searchExpanded && styles.searchWrapExpanded)}
+          aria-hidden={!searchExpanded}
+        >
+            <div className={styles.searchInputWrap}>
+              <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                <circle cx="7" cy="7" r="4.5" />
+                <line x1="10.5" y1="10.5" x2="14" y2="14" strokeLinecap="round" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                className={styles.searchInput}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('')
+                    setSearchExpanded(false)
+                  }
+                }}
+                placeholder="Find a person or place…"
+                aria-label="Search nodes by name"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  className={styles.searchClear}
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.searchClear}
+                  onClick={() => setSearchExpanded(false)}
+                  aria-label="Hide search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           {searchQuery ? (
             <ul className={styles.searchResults} role="listbox">
               {searchResults.length === 0 ? (
@@ -724,6 +776,42 @@ function Graph() {
             </ul>
           ) : null}
         </div>
+        <button
+          type="button"
+          className={clsx(styles.fab, styles.fabSearch, searchExpanded && styles.fabHidden)}
+          onClick={() => setSearchExpanded(true)}
+          aria-label="Open search"
+          aria-hidden={searchExpanded}
+          tabIndex={searchExpanded ? -1 : 0}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+            <circle cx="8" cy="8" r="5" />
+            <line x1="11.5" y1="11.5" x2="15" y2="15" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        {minimapExpanded ? (
+          <button
+            type="button"
+            className={styles.minimapClose}
+            onClick={() => setMinimapExpanded(false)}
+            aria-label="Hide minimap"
+          >
+            ✕
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={clsx(styles.fab, styles.fabMinimap)}
+            onClick={() => setMinimapExpanded(true)}
+            aria-label="Show minimap"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <rect x="2.5" y="3.5" width="13" height="11" rx="1.5" />
+              <rect x="6" y="6.5" width="6" height="4" rx="0.5" fill="currentColor" fillOpacity="0.25" stroke="none" />
+            </svg>
+          </button>
+        )}
 
         <div className={styles.dock} role="toolbar" aria-label="Graph actions">
           <button

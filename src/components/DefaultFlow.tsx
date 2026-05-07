@@ -20,6 +20,7 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  useStore,
 } from '@xyflow/react'
 import type {
   Connection,
@@ -34,6 +35,7 @@ import type {
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '../graph/nodeTypes'
 import { getThemeColor, subscribeToThemeChange } from '../services/theme'
+import { getMotionMode } from '../services/motion'
 
 type XY = { x: number; y: number }
 
@@ -63,6 +65,7 @@ type DefaultFlowProps = {
   /** Parent queues the connection locally; do not call addEdge here. */
   onConnectPersist?: (connection: Connection) => void
   onDropAtFlowPosition?: (kind: string, point: XY) => void
+  showMiniMap?: boolean
 }
 
 function PaneFlowClickBridge({
@@ -84,6 +87,11 @@ function PaneFlowClickBridge({
   return null
 }
 
+function prefersReducedMotion(): boolean {
+  return getMotionMode() === 'reduce'
+    || (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+}
+
 const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function FlowCanvas({
   nodes: initialNodes,
   edges: initialEdges,
@@ -99,6 +107,7 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
   onEdgeClick,
   onConnectPersist,
   onDropAtFlowPosition,
+  showMiniMap = true,
 }: DefaultFlowProps, ref) {
   const { screenToFlowPosition } = useReactFlow()
   const [internalNodes, , onInternalNodesChange] = useNodesState(initialNodes)
@@ -115,7 +124,8 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
       const measured = (n as { measured?: { width?: number; height?: number } }).measured
       const w = measured?.width ?? n.width ?? 200
       const h = measured?.height ?? n.height ?? 100
-      reactFlowApi.setCenter(n.position.x + w / 2, n.position.y + h / 2, { duration: 400, zoom: 1.4 })
+      const duration = prefersReducedMotion() ? 0 : 400
+      reactFlowApi.setCenter(n.position.x + w / 2, n.position.y + h / 2, { duration, zoom: 1.4 })
     },
   }), [reactFlowApi])
 
@@ -149,6 +159,26 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
     if (node.type === 'momentsBucket') return miniMapColors.moment
     return miniMapColors.fallback
   }, [miniMapColors])
+
+  const flowWidth = useStore((s) => s.width)
+  const flowHeight = useStore((s) => s.height)
+
+  const onMinimapClick = useCallback(
+    (_event: unknown, point: { x: number; y: number }) => {
+      const { x: tx, y: ty, zoom } = reactFlowApi.getViewport()
+      if (zoom <= 0 || flowWidth <= 0 || flowHeight <= 0) return
+      const left = -tx / zoom
+      const top = -ty / zoom
+      const right = left + flowWidth / zoom
+      const bottom = top + flowHeight / zoom
+      const inside =
+        point.x >= left && point.x <= right && point.y >= top && point.y <= bottom
+      if (inside) return
+      const duration = prefersReducedMotion() ? 0 : 350
+      reactFlowApi.setCenter(point.x, point.y, { duration, zoom })
+    },
+    [reactFlowApi, flowWidth, flowHeight],
+  )
 
   const minimapStyle = { width: 180, height: 180 }
 
@@ -245,15 +275,18 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
         color={gridColor}
         variant={BackgroundVariant.Cross}
       />
-      <MiniMap
-        position="bottom-left"
-        pannable
-        zoomable
-        nodeColor={miniMapNodeColor}
-        nodeStrokeColor={miniMapNodeColor}
-        nodeStrokeWidth={2}
-        style={minimapStyle}
-      />
+      {showMiniMap ? (
+        <MiniMap
+          position="bottom-left"
+          pannable
+          zoomable
+          onClick={onMinimapClick}
+          nodeColor={miniMapNodeColor}
+          nodeStrokeColor={miniMapNodeColor}
+          nodeStrokeWidth={2}
+          style={minimapStyle}
+        />
+      ) : null}
     </ReactFlow>
   )
 })
