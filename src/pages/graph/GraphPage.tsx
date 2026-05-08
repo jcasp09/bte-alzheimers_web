@@ -23,6 +23,7 @@ import { GROUP_NODE_DEFAULT_SIZE } from '../../graph/model/dimensions'
 import { applyReparentOnDragStop } from '../../graph/model/reparent'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../../graph/hooks/useDeferredEdgePersistence'
 import {
+  SYNTH_EDGE_PREFIX,
   getMemoryMillis,
   type MemoryBrushRange,
   type MemorySelection,
@@ -291,6 +292,10 @@ function Graph() {
 
   const handleEdgeClick = (_: MouseEvent, edge: Edge) => {
     if (addGroupPlacementRef.current.status === 'picking')
+      return
+
+    // Memory-layer synth edges aren't backed by Firestore
+    if (edge.id.startsWith(SYNTH_EDGE_PREFIX))
       return
 
     const sourceName = nodes.find((n) => n.id === edge.source)?.data?.name as string ?? edge.source

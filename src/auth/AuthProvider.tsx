@@ -61,7 +61,7 @@ function profileFromSnapshot(data: Record<string, unknown> | undefined): Profile
 /**
  * Latest profile snapshot tagged with the uid it came from. Tagging lets us
  * derive the public `profile` value safely: while a snapshot is in-flight after
- * a user switch, the stale data is hidden until the new uid's snapshot arrives.
+ * a user switch, the stale data is hidden until the new UID's snapshot arrives.
  */
 type ProfileSnapshot = { uid: string; data: Profile }
 

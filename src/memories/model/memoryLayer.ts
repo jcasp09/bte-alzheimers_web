@@ -13,6 +13,9 @@ const MEMORY_SPIRAL_INNER = 220
 /** Per-step spread; tuned so adjacent memories rarely overlap visually. */
 const MEMORY_SPIRAL_STEP = 95
 
+/** Prefix for the IDs of synthesized (non-persisted) memory-layer edges.
+ *  Used by {@link buildMemoryLayerEdges} to mint IDs and by edge-click handlers
+ *  to short-circuit operations that would 404 against Firestore. */
 export const SYNTH_EDGE_PREFIX = 'synth:'
 
 /** UTC midnight ms for a memory's `occurredOn`, or null if it doesn't parse. */
@@ -119,14 +122,20 @@ export function buildMemoryLayerNodes(
 /** Synthesize edges from each memory to its referenced people/places. These are derived, not persisted. */
 export function buildMemoryLayerEdges(memories: MemoryDoc[]): Edge[] {
   const edges: Edge[] = []
+  const baseProps = {
+    sourceHandle: DEFAULT_SOURCE_HANDLE,
+    targetHandle: DEFAULT_TARGET_HANDLE,
+    selectable: false,
+    focusable: false,
+    deletable: false,
+  } as const
   for (const m of memories) {
     for (const personId of m.personNodeIds) {
       edges.push({
         id: `${SYNTH_EDGE_PREFIX}${m.id}->${personId}`,
         source: m.id,
         target: personId,
-        sourceHandle: DEFAULT_SOURCE_HANDLE,
-        targetHandle: DEFAULT_TARGET_HANDLE,
+        ...baseProps,
       })
     }
     for (const placeId of m.placeNodeIds) {
@@ -134,8 +143,7 @@ export function buildMemoryLayerEdges(memories: MemoryDoc[]): Edge[] {
         id: `${SYNTH_EDGE_PREFIX}${m.id}->${placeId}`,
         source: m.id,
         target: placeId,
-        sourceHandle: DEFAULT_SOURCE_HANDLE,
-        targetHandle: DEFAULT_TARGET_HANDLE,
+        ...baseProps,
       })
     }
   }
