@@ -2,7 +2,7 @@ import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { createEdge } from '../../data/edges'
 import { createNode, upsertNode } from '../../data/nodes'
-import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, isAllowedPhotoType, uploadPersonNodePhoto } from '../../data/photos'
+import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, isAllowedPhotoType, uploadNodePhoto } from '../../data/photos'
 import { GRAPH_IDS } from '../../model/types'
 import type { NodeType, PickableNode } from '../../model/types'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../model/edgeHandles'
@@ -64,7 +64,7 @@ export function AddNodePanel({ userId, pickableNodes, initialType = 'person', po
 
       if (nodeType === 'person' && photoFile) {
         setIsUploading(true)
-        const photo = await uploadPersonNodePhoto(userId, newNodeId, photoFile, GRAPH_IDS.context)
+        const photo = await uploadNodePhoto(userId, newNodeId, photoFile, GRAPH_IDS.context)
         await upsertNode(userId, newNodeId, {
           type: 'person',
           name,

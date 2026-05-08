@@ -5,15 +5,20 @@ import {
   MAX_PHOTOS_PER_MEMORY,
   type MemoryDoc,
   deleteMemory,
-  formatOccurredOnDate,
   parseOccurredOn,
   updateMemory,
 } from '../data/memories'
 import { deleteMemoryPhotoByPath, uploadMemoryPhoto } from '../data/photos'
 import { storage } from '../../firebase/storage'
 import { SidePanel } from '../../shared/ui/SidePanel'
-import { ConfirmDialog } from '../../shared/ui/ConfirmDialog'
-import { MultiEntityPicker, type PickerItem } from '../../shared/ui/MultiEntityPicker'
+import { InlineEditableTitle } from '../../shared/ui/InlineEditableTitle'
+import { InlineEditableSubtitle } from '../../shared/ui/InlineEditableSubtitle'
+import { InlineEditableField } from '../../shared/ui/InlineEditableField'
+import { EditableAvatar } from '../../shared/ui/EditableAvatar'
+import { TrashCornerButton } from '../../shared/ui/TrashCornerButton'
+import { SaveCornerButton } from '../../shared/ui/SaveCornerButton'
+import { PhotoGalleryGrid } from '../../shared/ui/PhotoGalleryGrid'
+import { PeoplePicker, type PeoplePickerItem } from '../../shared/ui/PeoplePicker'
 import { getInitialsForAvatar } from '../../shared/util/initials'
 import { usePhotoUrl } from '../../shared/hooks/usePhotoUrl'
 import formStyles from '../../shared/styles/formActions.module.css'
@@ -22,10 +27,18 @@ import styles from './MemoryInfoModal.module.css'
 type Props = {
   userId: string
   memory: MemoryDoc
-  people: PickerItem[]
+  people: PeoplePickerItem[]
   onClose: () => void
   onSaved: () => void
   onDeleted: () => void
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+
+function formatHumanDate(occurredOn: string): string {
+  const parts = parseOccurredOn(occurredOn)
+  if (!parts) return occurredOn
+  return `${MONTHS[parts.m - 1]} ${parts.d}, ${parts.y}`
 }
 
 export function MemoryInfoModal({
@@ -45,13 +58,11 @@ export function MemoryInfoModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [removingPath, setRemovingPath] = useState<string | null>(null)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
 
   const paths = useMemo(() => memory.photoPaths ?? [], [memory.photoPaths])
 
-  // Hydrate local fields when the active memory changes (e.g. user clicks a different node).
   useEffect(() => {
     setTitle(memory.title)
     setOccurredOn(memory.occurredOn)
@@ -66,8 +77,6 @@ export function MemoryInfoModal({
     memory.personNodeIds,
   ])
 
-  // Resolve thumbnail URLs for the photo tiles. The hero photo is fetched
-  // separately via usePhotoUrl so it benefits from the shared cache.
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -94,11 +103,6 @@ export function MemoryInfoModal({
 
   const heroPhotoPath = paths[0] ?? ''
   const heroPhotoUrl = usePhotoUrl(heroPhotoPath || undefined)
-
-  const dateParts = useMemo(() => parseOccurredOn(occurredOn), [occurredOn])
-  const dateInputValue = dateParts
-    ? formatOccurredOnDate(dateParts.y, dateParts.m, dateParts.d)
-    : occurredOn
 
   const busy = isSaving || isDeleting || isUploading
 
@@ -150,9 +154,7 @@ export function MemoryInfoModal({
     }
   }
 
-  const handlePhotoPick = async (fileList: FileList | null) => {
-    const file = fileList?.[0]
-    if (!file) return
+  const handleAddPhoto = async (file: File) => {
     if (paths.length >= MAX_PHOTOS_PER_MEMORY) {
       setError(`You can add at most ${MAX_PHOTOS_PER_MEMORY} photos per memory.`)
       return
@@ -162,6 +164,25 @@ export function MemoryInfoModal({
     try {
       const { path } = await uploadMemoryPhoto(userId, memory.id, file)
       const nextPaths = [...paths, path]
+      await updateMemory(userId, memory.id, { photoPaths: nextPaths })
+      onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleAvatarPhoto = async (file: File) => {
+    if (paths.length >= MAX_PHOTOS_PER_MEMORY) {
+      setError(`You can add at most ${MAX_PHOTOS_PER_MEMORY} photos per memory.`)
+      return
+    }
+    setError(null)
+    setIsUploading(true)
+    try {
+      const { path } = await uploadMemoryPhoto(userId, memory.id, file)
+      const nextPaths = [path, ...paths]
       await updateMemory(userId, memory.id, { photoPaths: nextPaths })
       onSaved()
     } catch (err) {
@@ -186,12 +207,23 @@ export function MemoryInfoModal({
     }
   }
 
+  const handleSetCover = async (path: string) => {
+    if (!paths.includes(path) || paths[0] === path) return
+    setError(null)
+    const nextPaths = [path, ...paths.filter((p) => p !== path)]
+    try {
+      await updateMemory(userId, memory.id, { photoPaths: nextPaths })
+      onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update cover photo')
+    }
+  }
+
   const handleConfirmDelete = async () => {
     setError(null)
     setIsDeleting(true)
     try {
       await deleteMemory(userId, memory.id)
-      setConfirmingDelete(false)
       onDeleted()
       onClose()
     } catch (err) {
@@ -201,150 +233,114 @@ export function MemoryInfoModal({
   }
 
   return (
-    <>
-      <SidePanel
-        title={memory.title || 'Memory'}
-        onClose={onClose}
-        accent="memory"
-        hero={{
-          avatarLabel: getInitialsForAvatar(title || memory.title || 'Memory'),
-          avatarImageUrl: heroPhotoUrl ?? undefined,
-        }}
-      >
-        <form onSubmit={handleSave} className={clsx('form-stack', styles.editForm)}>
-          <label className="field">
-            <span>Name</span>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={busy}
-              aria-label="Memory name"
-            />
-          </label>
+    <SidePanel
+      title={memory.title || 'Memory'}
+      titleSlot={
+        <InlineEditableTitle
+          value={title}
+          onChange={setTitle}
+          placeholder="Untitled memory"
+          ariaLabel="Edit memory name"
+          disabled={busy}
+        />
+      }
+      subtitle={
+        <InlineEditableSubtitle
+          value={occurredOn}
+          onChange={setOccurredOn}
+          placeholder="add a date"
+          ariaLabel="Edit memory date"
+          inputType="date"
+          formatDisplay={formatHumanDate}
+          disabled={busy}
+        />
+      }
+      onClose={onClose}
+      accent="memory"
+      hero={{
+        avatarLabel: getInitialsForAvatar(title || memory.title || 'Memory'),
+        avatarImageUrl: heroPhotoUrl ?? undefined,
+        avatarSlot: (
+          <EditableAvatar
+            imageUrl={heroPhotoUrl}
+            fallbackLabel={getInitialsForAvatar(title || memory.title || 'Memory')}
+            onFilePicked={(file) => void handleAvatarPhoto(file)}
+            uploading={isUploading}
+            disabled={busy}
+            ariaLabel={paths.length === 0 ? 'Add cover photo' : 'Add new cover photo'}
+          />
+        ),
+      }}
+    >
+      <form onSubmit={handleSave} className={clsx('form-stack', styles.editForm)}>
+        <section className={styles.journalSection}>
+          <InlineEditableField
+            label="Journal"
+            kind="textarea"
+            value={description}
+            onChange={setDescription}
+            placeholder="Click to add a note about this memory"
+            disabled={busy}
+          />
+        </section>
 
-          <label className="field">
-            <span>Date</span>
-            <input
-              type="date"
-              required
-              value={dateInputValue}
-              onChange={(e) => setOccurredOn(e.target.value)}
-              disabled={busy}
-              aria-label="Memory date"
-            />
-          </label>
-
-          <label className="field">
-            <span>Journal / description</span>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              disabled={busy}
-              aria-label="Memory description"
-            />
-          </label>
-
-          <section className={styles.photosSection}>
-            <p className={styles.photosLead}>
-              <strong className={styles.photosTitle}>Photos</strong>
-              <span className={styles.photosCount}>
-                {paths.length} / {MAX_PHOTOS_PER_MEMORY} — JPEG or PNG, max 10 MB each
-              </span>
-            </p>
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              disabled={isUploading || isDeleting || paths.length >= MAX_PHOTOS_PER_MEMORY}
-              onChange={(e) => {
-                void handlePhotoPick(e.target.files)
-                e.target.value = ''
-              }}
-            />
+        <section className={styles.photosSection}>
+          <p className={styles.photosLead}>
+            <strong className={styles.photosTitle}>Photos</strong>
+            <span className={styles.photosCount}>
+              {paths.length} / {MAX_PHOTOS_PER_MEMORY} — JPEG or PNG, max 10 MB each
+            </span>
             {isUploading ? (
               <span className={styles.uploadingStatus}>Uploading…</span>
             ) : null}
-            {paths.length > 0 && (
-              <div className={styles.photoGrid}>
-                {paths.map((p) => (
-                  <div key={p} className={styles.photoTile}>
-                    {photoUrls[p] ? (
-                      <img src={photoUrls[p]} alt="" className={styles.photoImage} />
-                    ) : (
-                      <span className={styles.photoLoading}>Loading…</span>
-                    )}
-                    <button
-                      type="button"
-                      disabled={removingPath === p || busy}
-                      onClick={() => void handleRemovePhoto(p)}
-                      className={styles.photoRemoveButton}
-                      aria-label="Remove photo"
-                      title="Remove photo"
-                    >
-                      {removingPath === p ? '…' : '✕'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          </p>
+          <PhotoGalleryGrid
+            paths={paths}
+            urls={photoUrls}
+            max={MAX_PHOTOS_PER_MEMORY}
+            uploading={isUploading}
+            removingPath={removingPath}
+            disabled={busy}
+            onAddPhoto={(file) => void handleAddPhoto(file)}
+            onRemovePhoto={(p) => void handleRemovePhoto(p)}
+            onSetCover={(p) => void handleSetCover(p)}
+          />
+        </section>
 
-          <MultiEntityPicker
-            label="People at this memory"
-            max={10}
+        <section className={styles.peopleSection}>
+          <p className={styles.sectionLabel}>
+            <strong>People</strong>
+            <span className={styles.sectionHelp}>people included in this memory</span>
+          </p>
+          <PeoplePicker
             items={people}
             selectedIds={personNodeIds}
             onChange={setPersonNodeIds}
+            max={10}
             disabled={busy}
           />
+        </section>
 
-          {error ? (
-            <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
-          ) : null}
+        {error ? (
+          <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
+        ) : null}
 
-          <div className={styles.formFooter}>
-            <button
-              type="submit"
-              disabled={busy || !hasUnsavedChanges}
-              className="btn-primary"
-            >
-              {isSaving ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
-        </form>
+        <SaveCornerButton visible={hasUnsavedChanges} busy={isSaving} />
+      </form>
 
-        <div className={formStyles.actionsLeftAligned}>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => setConfirmingDelete(true)}
-            className={formStyles.dangerButton}
-          >
-            {isDeleting ? 'Deleting…' : 'Delete memory'}
-          </button>
-          <button type="button" onClick={onClose} className="btn-ghost" disabled={busy}>
-            Close
-          </button>
-        </div>
-      </SidePanel>
-
-      {confirmingDelete && (
-        <ConfirmDialog
-          title="Delete memory"
-          message={
-            memory.title
-              ? `Permanently delete “${memory.title}” and all attached photos? This cannot be undone.`
-              : 'Permanently delete this memory and all attached photos? This cannot be undone.'
-          }
-          confirmLabel="Delete memory"
-          confirmVariant="danger"
-          isConfirming={isDeleting}
-          onConfirm={() => void handleConfirmDelete()}
-          onCancel={() => setConfirmingDelete(false)}
-        />
-      )}
-    </>
+      <TrashCornerButton
+        onConfirm={handleConfirmDelete}
+        ariaLabel="Delete memory"
+        confirmTitle="Delete memory"
+        confirmMessage={
+          memory.title
+            ? `Permanently delete “${memory.title}” and all attached photos? This cannot be undone.`
+            : 'Permanently delete this memory and all attached photos? This cannot be undone.'
+        }
+        confirmLabel="Delete memory"
+        isBusy={isDeleting}
+        disabled={busy}
+      />
+    </SidePanel>
   )
 }

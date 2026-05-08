@@ -33,6 +33,20 @@
 .formFooter {
   display: flex;
   justify-content: flex-end;
+  padding-right: 3rem;
+}
+
+.fieldList {
+  margin-bottom: 0.75rem;
+}
+
+.photoHintRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }
 
 .photoHint {

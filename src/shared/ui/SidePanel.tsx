@@ -7,6 +7,7 @@ export type SidePanelAccent = 'person' | 'place' | 'group' | 'memory' | 'connect
 export type SidePanelHero = {
   avatarLabel?: string
   avatarImageUrl?: string
+  avatarSlot?: ReactNode
 }
 
 type Props = {
@@ -15,6 +16,8 @@ type Props = {
   children: ReactNode
   accent?: SidePanelAccent
   hero?: SidePanelHero | null
+  subtitle?: ReactNode
+  titleSlot?: ReactNode
 }
 
 const accentClassByName: Record<SidePanelAccent, string> = {
@@ -26,7 +29,15 @@ const accentClassByName: Record<SidePanelAccent, string> = {
   neutral: styles.accentNeutral,
 }
 
-export function SidePanel({ title, onClose, children, accent = 'neutral', hero }: Props) {
+export function SidePanel({
+  title,
+  onClose,
+  children,
+  accent = 'neutral',
+  hero,
+  subtitle,
+  titleSlot,
+}: Props) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape')
@@ -37,24 +48,36 @@ export function SidePanel({ title, onClose, children, accent = 'neutral', hero }
   }, [onClose])
 
   if (hero) {
+    const avatarContent = hero.avatarSlot
+      ?? (hero.avatarImageUrl ? (
+        <img src={hero.avatarImageUrl} alt="" className={styles.avatarImage} />
+      ) : (
+        hero.avatarLabel ?? ''
+      ))
+
     return (
       <aside
         role="dialog"
         aria-labelledby="side-panel-title"
         className={clsx(styles.panel, styles.panelHero, accentClassByName[accent])}
       >
-        <div className={styles.avatar} aria-hidden="true">
-          {hero.avatarImageUrl ? (
-            <img src={hero.avatarImageUrl} alt="" className={styles.avatarImage} />
-          ) : (
-            hero.avatarLabel ?? ''
-          )}
+        <div className={styles.avatar} aria-hidden={hero.avatarSlot ? undefined : 'true'}>
+          {avatarContent}
         </div>
         <div className={styles.panelRect}>
           <header className={styles.headerHero}>
-            <h2 id="side-panel-title" className={styles.titleHero}>
-              {title}
-            </h2>
+            {titleSlot ? (
+              <div id="side-panel-title" className={styles.titleHero}>
+                {titleSlot}
+              </div>
+            ) : (
+              <h2 id="side-panel-title" className={styles.titleHero}>
+                {title}
+              </h2>
+            )}
+            {subtitle ? (
+              <p className={styles.subtitleHero}>{subtitle}</p>
+            ) : null}
             <button
               type="button"
               onClick={onClose}
@@ -80,9 +103,15 @@ export function SidePanel({ title, onClose, children, accent = 'neutral', hero }
     >
       <div className={styles.panelRect}>
         <header className={styles.header}>
-          <h2 id="side-panel-title" className={styles.title}>
-            {title}
-          </h2>
+          {titleSlot ? (
+            <div id="side-panel-title" className={styles.title}>
+              {titleSlot}
+            </div>
+          ) : (
+            <h2 id="side-panel-title" className={styles.title}>
+              {title}
+            </h2>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -92,6 +121,9 @@ export function SidePanel({ title, onClose, children, accent = 'neutral', hero }
             ✕
           </button>
         </header>
+        {subtitle ? (
+          <p className={styles.subtitle}>{subtitle}</p>
+        ) : null}
         <div className={styles.body}>
           {children}
         </div>

@@ -1,0 +1,224 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+}
+
+.rowItem {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: transform 0.08s ease;
+}
+
+.rowItem:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.rowItem:hover:not(:disabled) .removeBadge {
+  background: var(--color-error);
+  color: var(--color-text-inverse);
+  border-color: var(--color-error);
+}
+
+.removeBadge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--color-surface-raised);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  line-height: 1;
+  font-weight: 600;
+  pointer-events: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.rowItem:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.rowItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 2px dashed var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.placeholder:hover:not(:disabled),
+.placeholderOpen {
+  background: var(--color-page-elev);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  border-style: solid;
+}
+
+.placeholder:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.placeholder:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-node-person-soft);
+  color: var(--color-node-person-text);
+  overflow: hidden;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatarInitials {
+  font-size: 0.85rem;
+  font-weight: 600;
+  user-select: none;
+}
+
+.ringSelected {
+  border-color: #2bb673;
+  box-shadow: 0 0 0 2px rgba(43, 182, 115, 0.25);
+}
+
+.popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 24px rgba(var(--color-shadow-rgb), 0.22);
+  padding: 0.65rem;
+  max-height: 18rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.popoverHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.search {
+  flex: 1;
+  font: inherit;
+  font-size: 0.9rem;
+  background: var(--color-page);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.55rem;
+  color: var(--color-text);
+}
+
+.search:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.count {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+  overflow-y: auto;
+  padding: 0.1rem;
+  min-height: 0;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.35rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--color-text);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.tile:hover:not(:disabled) {
+  background: var(--color-page-elev);
+  border-color: var(--color-border-strong);
+}
+
+.tileSelected {
+  background: rgba(43, 182, 115, 0.08);
+  border-color: #2bb673;
+}
+
+.tileAtCap {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tileName {
+  text-align: center;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.empty {
+  margin: 0;
+  padding: 0.6rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}

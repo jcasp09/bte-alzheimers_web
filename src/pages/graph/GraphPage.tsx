@@ -150,10 +150,15 @@ function Graph() {
     })
   }
 
-  /** Clear the memory-layer selection AND any active brush when the user clicks empty pane. */
-  const handleMemoryPaneClick = () => {
-    setMemorySelection(null)
-    setMemoryBrushRange(null)
+  /** Pane-click handler: close any open side panel and clear memory-layer selection/brush. */
+  const handlePaneClick = () => {
+    if (currentLayer === 'memories') {
+      setMemorySelection(null)
+      setMemoryBrushRange(null)
+    }
+    if (isSidePanelOpen) {
+      closeSidePanel()
+    }
   }
 
   const {
@@ -171,15 +176,17 @@ function Graph() {
     nodes, edges, memories,
     currentLayer, visibleTypes,
     memorySelection, memoryBrushRange,
+    relationshipSelectedNodeId: currentLayer === 'memories' ? null : (selectedNode?.id ?? null),
   })
 
   const memoryPeoplePickerItems = useMemo(() => {
-    const out: { id: string; name: string }[] = []
+    const out: { id: string; name: string; photoPath?: string }[] = []
     for (const n of nodes) {
       if (n.type !== 'person') continue
       const name = typeof n.data?.name === 'string' ? n.data.name : ''
       if (!name) continue
-      out.push({ id: n.id, name })
+      const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
+      out.push({ id: n.id, name, photoPath })
     }
     return out
   }, [nodes])
@@ -393,8 +400,8 @@ function Graph() {
             onPaneFlowClick={
               addGroupPlacement.status === 'picking'
                 ? handlePaneFlowClick
-                : currentLayer === 'memories' && (memorySelection != null || memoryBrushRange != null)
-                  ? handleMemoryPaneClick
+                : (isSidePanelOpen || (currentLayer === 'memories' && (memorySelection != null || memoryBrushRange != null)))
+                  ? handlePaneClick
                   : undefined
             }
             groupPlacementPanMode={addGroupPlacement.status === 'picking'}
@@ -538,8 +545,18 @@ function Graph() {
 
         {selectedNode && (
           <NodeInfoModal
+            key={selectedNode.id}
             userId={user.uid}
             nodeId={selectedNode.id}
+            onSizeChanged={(w, h) => {
+              setNodes((nds) =>
+                nds.map((n) =>
+                  n.id === selectedNode.id
+                    ? { ...n, data: { ...n.data, width: w, height: h } }
+                    : n,
+                ),
+              )
+            }}
             nodeName={selectedNode.name}
             nodeType={selectedNode.type}
             nodeRelationship={selectedNode.relationship ?? ''}

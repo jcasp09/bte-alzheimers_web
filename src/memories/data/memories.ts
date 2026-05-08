@@ -20,7 +20,7 @@ import { storage } from '../../firebase/storage'
 
 export const MAX_PEOPLE_PER_MEMORY = 10
 export const MAX_PLACES_PER_MEMORY = 4
-export const MAX_PHOTOS_PER_MEMORY = 10
+export const MAX_PHOTOS_PER_MEMORY = 9
 
 export function parseOccurredOn(s: string): { y: number; m: number; d: number } | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim())

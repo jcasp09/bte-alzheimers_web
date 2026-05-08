@@ -21,7 +21,10 @@ type Inputs = {
   visibleTypes: VisibleTypes
   memorySelection: MemorySelection | null
   memoryBrushRange: MemoryBrushRange | null
+  relationshipSelectedNodeId: string | null
 }
+
+const DIM_OPACITY = 0.35
 
 /** Derive all the memos React Flow needs from canonical state. */
 export function useDisplayElements(input: Inputs) {
@@ -29,6 +32,7 @@ export function useDisplayElements(input: Inputs) {
     nodes, edges, memories,
     currentLayer, visibleTypes,
     memorySelection, memoryBrushRange,
+    relationshipSelectedNodeId,
   } = input
 
   // Apply the timeline brush, if any.
@@ -48,6 +52,17 @@ export function useDisplayElements(input: Inputs) {
     return getConnectedIdsForSelection(memorySelection, visibleMemories, contextToMemories)
   }, [memorySelection, visibleMemories, contextToMemories])
 
+  // Connected node ids for the relationship-layer selection (selected + neighbours via edges).
+  const relationshipConnectedIds = useMemo<Set<string> | null>(() => {
+    if (!relationshipSelectedNodeId) return null
+    const ids = new Set<string>([relationshipSelectedNodeId])
+    for (const e of edges) {
+      if (e.source === relationshipSelectedNodeId) ids.add(e.target)
+      else if (e.target === relationshipSelectedNodeId) ids.add(e.source)
+    }
+    return ids
+  }, [edges, relationshipSelectedNodeId])
+
   const displayNodes = useMemo(() => {
     if (currentLayer === 'memories') {
       const memoryNodes = buildMemoryLayerNodes(visibleMemories, nodes)
@@ -59,7 +74,7 @@ export function useDisplayElements(input: Inputs) {
             const isSelected = memorySelection != null && n.id === memorySelection.id
             const baseStyle = n.style ?? {}
             if (!inScope) {
-              return { ...n, style: { ...baseStyle, opacity: 0.15 } }
+              return { ...n, style: { ...baseStyle, opacity: DIM_OPACITY } }
             }
             if (isSelected) {
               return {
@@ -83,10 +98,29 @@ export function useDisplayElements(input: Inputs) {
       const allowed = (t === 'person' && visibleTypes.person)
         || (t === 'place' && visibleTypes.place)
         || (t === 'group' && visibleTypes.group)
-      return allowed ? n : { ...n, hidden: true }
+      if (!allowed) return { ...n, hidden: true }
+      if (!relationshipConnectedIds) return n
+      const baseStyle = n.style ?? {}
+      const isSelected = n.id === relationshipSelectedNodeId
+      const inScope = relationshipConnectedIds.has(n.id)
+      if (isSelected) {
+        return {
+          ...n,
+          style: {
+            ...baseStyle,
+            opacity: 1,
+            boxShadow: '0 0 0 3px var(--color-accent)',
+            borderRadius: 12,
+          },
+        }
+      }
+      if (inScope) {
+        return { ...n, style: { ...baseStyle, opacity: 1 } }
+      }
+      return { ...n, style: { ...baseStyle, opacity: DIM_OPACITY } }
     })
     return [...ANCHOR_NODES, ...filtered]
-  }, [nodes, visibleMemories, visibleTypes, currentLayer, memoryConnectedIds, memorySelection])
+  }, [nodes, visibleMemories, visibleTypes, currentLayer, memoryConnectedIds, memorySelection, relationshipConnectedIds, relationshipSelectedNodeId])
 
   const displayEdges = useMemo(() => {
     if (currentLayer === 'memories') {
@@ -101,16 +135,22 @@ export function useDisplayElements(input: Inputs) {
         const touches = e.source === memorySelection.id || e.target === memorySelection.id
         return {
           ...e,
-          style: { ...(e.style ?? {}), opacity: touches ? 1 : 0.1 },
+          style: { ...(e.style ?? {}), opacity: touches ? 1 : DIM_OPACITY },
         }
       })
     }
     const visible = new Set(displayNodes.filter((n) => !n.hidden).map((n) => n.id))
-    return edges.map((e) => ({
-      ...e,
-      hidden: !(visible.has(e.source) && visible.has(e.target)),
-    }))
-  }, [edges, displayNodes, visibleMemories, currentLayer, memorySelection])
+    return edges.map((e) => {
+      const hidden = !(visible.has(e.source) && visible.has(e.target))
+      if (hidden) return { ...e, hidden: true }
+      if (!relationshipSelectedNodeId) return e
+      const touches = e.source === relationshipSelectedNodeId || e.target === relationshipSelectedNodeId
+      return {
+        ...e,
+        style: { ...(e.style ?? {}), opacity: touches ? 1 : DIM_OPACITY },
+      }
+    })
+  }, [edges, displayNodes, visibleMemories, currentLayer, memorySelection, relationshipSelectedNodeId])
 
   return {
     visibleMemories,

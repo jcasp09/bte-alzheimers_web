@@ -6,10 +6,11 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 0.25rem;
+  padding-right: 3rem;
 }
 
 .photosSection {
-  margin: 0.25rem 0 0.5rem;
+  margin: 0.25rem 0 0.75rem;
   padding: 0.85rem;
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -17,7 +18,7 @@
 }
 
 .photosLead {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.6rem;
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -35,69 +36,34 @@
 }
 
 .uploadingStatus {
-  margin-left: 0.5rem;
+  margin-left: auto;
   font-size: 0.78rem;
   color: var(--color-text-muted);
 }
 
-.photoGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-  gap: 0.6rem;
-  margin-top: 0.6rem;
+.journalSection {
+  margin: 0.5rem 0 0.75rem;
 }
 
-.photoTile {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-raised);
+.peopleSection {
+  margin-top: 0.5rem;
 }
 
-.photoImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.photoLoading {
-  display: block;
-  padding: 6px;
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-}
-
-/* Frosted control sitting on top of an arbitrary user photo. The white-with-alpha
-   reads as a lightweight overlay regardless of the underlying image, which is why
-   it intentionally doesn't follow the theme tokens. */
-.photoRemoveButton {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.08s ease;
-}
-
-.photoRemoveButton:hover:not(:disabled) {
-  background: #fff;
+.sectionLabel {
+  margin: 0 0 0.4rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.95rem;
   color: var(--color-text);
 }
 
-.photoRemoveButton:disabled {
-  cursor: default;
-  opacity: 0.7;
+.sectionLabel strong {
+  font-weight: 600;
+}
+
+.sectionHelp {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
 }

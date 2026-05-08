@@ -20,7 +20,7 @@ export type UploadNodePhotoResult = {
   photoUpdatedAt: string
 }
 
-export async function uploadPersonNodePhoto(
+export async function uploadNodePhoto(
   uid: string,
   nodeId: string,
   file: File,
@@ -37,7 +37,7 @@ export async function uploadPersonNodePhoto(
   }
 }
 
-export async function deletePersonNodePhotoByPath(photoPath: string): Promise<void> {
+export async function deleteNodePhotoByPath(photoPath: string): Promise<void> {
   const photoRef = ref(storage, photoPath)
   await deleteObject(photoRef)
 }

@@ -21,7 +21,7 @@ import {
   nodesCollection,
   omitUndefinedFields,
 } from './_paths'
-import { deletePersonNodePhotoByPath } from './photos'
+import { deleteNodePhotoByPath } from './photos'
 import { getEdges } from './edges'
 
 export type CreatePersonNodeData = {
@@ -41,6 +41,8 @@ export type CreatePlaceNodeData = {
   type: 'place'
   name: string
   address: string
+  photoPath?: string
+  photoUpdatedAt?: string
   width?: number
   height?: number
   position?: { x: number; y: number }
@@ -112,6 +114,16 @@ export async function upsertNode(
 ): Promise<string> {
   await setDoc(nodeDocRef(uid, graphId, nodeId), omitUndefinedFields(data), { merge: true })
   return nodeId
+}
+
+export async function saveNodeDimensions(
+  uid: string,
+  nodeId: string,
+  width: number,
+  height: number,
+  graphId: GraphId = GRAPH_IDS.context,
+): Promise<void> {
+  await setDoc(nodeDocRef(uid, graphId, nodeId), { width, height }, { merge: true })
 }
 
 export async function getNodes(uid: string, graphId: GraphId = GRAPH_IDS.context): Promise<NodeDoc[]> {
@@ -213,10 +225,10 @@ export async function deleteNodeAndEdges(
 
   if (typeof nodeData?.photoPath === 'string' && nodeData.photoPath.length > 0) {
     try {
-      await deletePersonNodePhotoByPath(nodeData.photoPath)
+      await deleteNodePhotoByPath(nodeData.photoPath)
     } catch (error) {
       // File may already be missing; node/edge deletion should still succeed.
-      console.warn('Failed to delete person node photo from storage', error)
+      console.warn('Failed to delete node photo from storage', error)
     }
   }
 

@@ -1,8 +1,16 @@
-import { type SubmitEvent, useEffect, useState } from 'react'
+import { type SubmitEvent, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { SidePanel } from '../../../shared/ui/SidePanel'
-import { deleteNodeAndEdges, upsertNode } from '../../data/nodes'
-import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, isAllowedPhotoType, uploadPersonNodePhoto } from '../../data/photos'
+import { InlineEditableField } from '../../../shared/ui/InlineEditableField'
+import { InlineEditableTitle } from '../../../shared/ui/InlineEditableTitle'
+import { EditableAvatar } from '../../../shared/ui/EditableAvatar'
+import { TrashCornerButton } from '../../../shared/ui/TrashCornerButton'
+import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
+import { InlineEditableSubtitle } from '../../../shared/ui/InlineEditableSubtitle'
+import { AvatarCornerButton } from '../../../shared/ui/AvatarCornerButton'
+import { MinusIcon, PlusIcon, EqualsIcon } from '../../../shared/ui/icons'
+import { deleteNodeAndEdges, saveNodeDimensions, upsertNode } from '../../data/nodes'
+import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, isAllowedPhotoType, uploadNodePhoto } from '../../data/photos'
 import { GRAPH_IDS } from '../../model/types'
 import {
   GROUP_DIMENSION_BOUNDS,
@@ -33,6 +41,8 @@ type Props = {
   nodeHeight?: number
   onClose: () => void
   onSuccess: () => void
+  /** Called immediately after a size step so the canvas can reflect the change. */
+  onSizeChanged?: (width: number, height: number) => void
 }
 
 export function NodeInfoModal({
@@ -49,6 +59,7 @@ export function NodeInfoModal({
   nodeHeight,
   onClose,
   onSuccess,
+  onSizeChanged,
 }: Props) {
   const [name, setName] = useState(nodeName)
   const [relationship, setRelationship] = useState(nodeRelationship)
@@ -58,6 +69,17 @@ export function NodeInfoModal({
   const [photoPath, setPhotoPath] = useState(nodePhotoPath)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const resolvedAvatarUrl = usePhotoUrl(photoPath)
+
+  const stagedPhotoUrl = useMemo(
+    () => (photoFile ? URL.createObjectURL(photoFile) : null),
+    [photoFile],
+  )
+  useEffect(() => {
+    return () => {
+      if (stagedPhotoUrl) URL.revokeObjectURL(stagedPhotoUrl)
+    }
+  }, [stagedPhotoUrl])
+
   const [sizeW, setSizeW] = useState(() =>
     (nodeType === 'person' || nodeType === 'place')
       ? safeNodeDimensions(nodeType, nodeWidth, nodeHeight).width
@@ -102,6 +124,15 @@ export function NodeInfoModal({
     }
   }, [nodeId, isGroup, nodeWidth, nodeHeight])
 
+  const handleAvatarFilePicked = (file: File) => {
+    if (!isAllowedPhotoType(file)) {
+      setError(`Only ${PHOTO_TYPE_LABEL} photos are supported`)
+      return
+    }
+    setError(null)
+    setPhotoFile(file)
+  }
+
   const handleSaveGroup = async (e: SubmitEvent) => {
     e.preventDefault()
     if (!isGroup) return
@@ -142,16 +173,12 @@ export function NodeInfoModal({
         let nextPhotoUpdatedAt: string | undefined
 
         if (photoFile) {
-          if (!isAllowedPhotoType(photoFile)) {
-            setError(`Only ${PHOTO_TYPE_LABEL} photos are supported`)
-            return
-          }
-
           setIsUploading(true)
-          const uploadedPhoto = await uploadPersonNodePhoto(userId, nodeId, photoFile, GRAPH_IDS.context)
+          const uploadedPhoto = await uploadNodePhoto(userId, nodeId, photoFile, GRAPH_IDS.context)
           nextPhotoPath = uploadedPhoto.photoPath
           nextPhotoUpdatedAt = uploadedPhoto.photoUpdatedAt
           setPhotoPath(uploadedPhoto.photoPath)
+          setPhotoFile(null)
         }
 
         await upsertNode(userId, nodeId, {
@@ -166,10 +193,24 @@ export function NodeInfoModal({
           height: sizeH,
         }, GRAPH_IDS.context)
       } else {
+        let nextPhotoPath = photoPath
+        let nextPhotoUpdatedAt: string | undefined
+
+        if (photoFile) {
+          setIsUploading(true)
+          const uploadedPhoto = await uploadNodePhoto(userId, nodeId, photoFile, GRAPH_IDS.context)
+          nextPhotoPath = uploadedPhoto.photoPath
+          nextPhotoUpdatedAt = uploadedPhoto.photoUpdatedAt
+          setPhotoPath(uploadedPhoto.photoPath)
+          setPhotoFile(null)
+        }
+
         await upsertNode(userId, nodeId, {
           type: 'place',
           name,
           address,
+          photoPath: nextPhotoPath || undefined,
+          photoUpdatedAt: nextPhotoUpdatedAt ?? undefined,
           width: sizeW,
           height: sizeH,
         }, GRAPH_IDS.context)
@@ -203,41 +244,152 @@ export function NodeInfoModal({
   const canDecrease = sizeNodeType ? canDecreaseNodeSize(sizeNodeType, sizeW, sizeH) : false
   const canIncrease = sizeNodeType ? canIncreaseNodeSize(sizeNodeType, sizeW, sizeH) : false
 
+  const supportsPhoto = nodeType === 'person' || nodeType === 'place'
+  const heroImageUrl =
+    supportsPhoto ? (stagedPhotoUrl ?? resolvedAvatarUrl ?? undefined) : undefined
+  const fallbackInitials = getInitialsForAvatar(name || nodeName)
+
+  const initialGroupW = useMemo(
+    () => clampGroupDimension(nodeWidth, GROUP_NODE_DEFAULT_SIZE.width),
+    [nodeWidth],
+  )
+  const initialGroupH = useMemo(
+    () => clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height),
+    [nodeHeight],
+  )
+
+  const hasUnsavedChanges = (() => {
+    if (nodeType === 'person') {
+      return (
+        name !== nodeName ||
+        relationship !== nodeRelationship ||
+        email !== nodeEmail ||
+        phone !== nodePhone ||
+        photoFile != null
+      )
+    }
+    if (nodeType === 'place') {
+      return (
+        name !== nodeName ||
+        address !== nodeAddress ||
+        photoFile != null
+      )
+    }
+    if (nodeType === 'group') {
+      return (
+        name !== nodeName ||
+        groupW !== initialGroupW ||
+        groupH !== initialGroupH
+      )
+    }
+    return false
+  })()
+
+  const sizeControlsDisabled = isSaving || isUploading
+
+  const commitSize = (width: number, height: number) => {
+    setSizeW(width)
+    setSizeH(height)
+    onSizeChanged?.(width, height)
+    void saveNodeDimensions(userId, nodeId, width, height, GRAPH_IDS.context).catch((err) => {
+      console.warn('Failed to persist node size', err)
+    })
+  }
+
+  const avatarSlot =
+    supportsPhoto ? (
+      <EditableAvatar
+        imageUrl={heroImageUrl}
+        fallbackLabel={fallbackInitials}
+        onFilePicked={handleAvatarFilePicked}
+        accept={PHOTO_ACCEPT_ATTR}
+        uploading={isUploading}
+        disabled={busy}
+        ariaLabel="Change photo"
+        cornerLeft={
+          sizeNodeType ? (
+            <AvatarCornerButton
+              icon={<MinusIcon size={14} />}
+              ariaLabel="Decrease node size"
+              disabled={!canDecrease || sizeControlsDisabled}
+              onClick={() => {
+                const next = stepNodeDimensions(sizeNodeType, sizeW, sizeH, -1)
+                commitSize(next.width, next.height)
+              }}
+            />
+          ) : undefined
+        }
+        cornerRight={
+          sizeNodeType ? (
+            <AvatarCornerButton
+              icon={<PlusIcon size={14} />}
+              ariaLabel="Increase node size"
+              disabled={!canIncrease || sizeControlsDisabled}
+              onClick={() => {
+                const next = stepNodeDimensions(sizeNodeType, sizeW, sizeH, 1)
+                commitSize(next.width, next.height)
+              }}
+            />
+          ) : undefined
+        }
+        cornerMiddle={
+          sizeNodeType && defaultDims && !sizeIsAtDefault ? (
+            <AvatarCornerButton
+              icon={<EqualsIcon size={14} />}
+              ariaLabel="Reset node size"
+              variant="reset"
+              disabled={sizeControlsDisabled}
+              onClick={() => {
+                commitSize(defaultDims.width, defaultDims.height)
+              }}
+            />
+          ) : undefined
+        }
+      />
+    ) : undefined
+
+  const accent =
+    nodeType === 'person'
+      ? 'person'
+      : nodeType === 'place'
+        ? 'place'
+        : nodeType === 'group'
+          ? 'group'
+          : 'neutral'
+
   return (
     <SidePanel
-      title={nodeName || 'Node'}
-      onClose={onClose}
-      accent={
-        nodeType === 'person'
-          ? 'person'
-          : nodeType === 'place'
-            ? 'place'
-            : nodeType === 'group'
-              ? 'group'
-              : 'neutral'
+      title={name || nodeName || 'Node'}
+      titleSlot={
+        <InlineEditableTitle
+          value={name}
+          onChange={setName}
+          placeholder={isGroup ? 'Untitled group' : 'Untitled'}
+          ariaLabel="Edit name"
+          disabled={busy}
+        />
       }
+      subtitle={
+        nodeType === 'place' ? (
+          <InlineEditableSubtitle
+            value={address}
+            onChange={setAddress}
+            placeholder="Add an address"
+            ariaLabel="Edit address"
+            disabled={busy}
+          />
+        ) : undefined
+      }
+      onClose={onClose}
+      accent={accent}
       hero={{
-        avatarLabel: getInitialsForAvatar(name || nodeName),
-        avatarImageUrl: resolvedAvatarUrl ?? undefined,
+        avatarLabel: fallbackInitials,
+        avatarImageUrl: supportsPhoto ? heroImageUrl : undefined,
+        avatarSlot,
       }}
     >
-      <p className={styles.typeRow}>
-        Type: <strong>{nodeType}</strong>
-      </p>
-
       {isGroup && (
         <form onSubmit={handleSaveGroup} className={clsx('form-stack', styles.editForm)}>
-          <div className={styles.formRow}>
-            <label className="field">
-              <span>Name</span>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </label>
-          </div>
           <div className={styles.dimensionsGrid}>
             <label className="field">
               <span>Width (px)</span>
@@ -267,150 +419,62 @@ export function NodeInfoModal({
           <p className={styles.helpText}>
             {`Frame size is clamped between ${GROUP_DIMENSION_BOUNDS.min} and ${GROUP_DIMENSION_BOUNDS.max} px on save.`}
           </p>
-          <div className={styles.formFooter}>
-            <button type="submit" disabled={busy} className="btn-primary">
-              {isSaving ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
+          <SaveCornerButton visible={hasUnsavedChanges} busy={isSaving} />
         </form>
       )}
 
-      {canEdit && (
+      {nodeType === 'person' && (
         <form onSubmit={handleSave} className={clsx('form-stack', styles.editForm)}>
-          <div className={styles.formRow}>
-            <label className="field">
-              <span>Name</span>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </label>
+          <div className={styles.fieldList}>
+            <InlineEditableField
+              label="Relationship"
+              value={relationship}
+              onChange={setRelationship}
+              disabled={busy}
+            />
+            <InlineEditableField
+              label="Email"
+              kind="email"
+              value={email}
+              onChange={setEmail}
+              disabled={busy}
+            />
+            <InlineEditableField
+              label="Phone"
+              kind="tel"
+              value={phone}
+              onChange={setPhone}
+              disabled={busy}
+            />
           </div>
 
-          {nodeType === 'person' && (
-            <>
-              <div className={styles.formRow}>
-                <label className="field">
-                  <span>Relationship</span>
-                  <input
-                    type="text"
-                    value={relationship}
-                    onChange={(e) => setRelationship(e.target.value)}
-                  />
-                </label>
-              </div>
-              <div className={styles.formRow}>
-                <label className="field">
-                  <span>Email (optional)</span>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </label>
-              </div>
-              <div className={styles.formRow}>
-                <label className="field">
-                  <span>Phone (optional)</span>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </label>
-              </div>
-              <div className={styles.formRow}>
-                <label className="field">
-                  <span>{photoPath ? `Replace Photo (${PHOTO_TYPE_LABEL})` : `Add Photo (${PHOTO_TYPE_LABEL})`}</span>
-                  <input
-                    type="file"
-                    accept={PHOTO_ACCEPT_ATTR}
-                    onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
-                  />
-                </label>
-                {photoFile && (
-                  <p className={styles.photoHint}>
-                    Selected: {photoFile.name}
-                  </p>
-                )}
-                {!photoFile && photoPath && (
-                  <p className={styles.photoHint}>
-                    A photo is currently attached.
-                  </p>
-                )}
-              </div>
-            </>
-          )}
+          {photoFile ? (
+            <p className={styles.photoHintRow}>
+              New photo selected: {photoFile.name}
+            </p>
+          ) : null}
 
-          {nodeType === 'place' && (
-            <div className={styles.formRow}>
-              <label className="field">
-                <span>Address</span>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-              </label>
-            </div>
-          )}
+          <SaveCornerButton
+            visible={hasUnsavedChanges}
+            busy={isSaving || isUploading}
+            busyLabel={isUploading ? 'Uploading…' : 'Saving…'}
+          />
+        </form>
+      )}
 
-          {sizeNodeType && (
-            <div className={styles.sizeBox}>
-              <p className={styles.sizeBoxTitle}>Node size</p>
-              <p className={styles.sizeBoxStatus}>
-                Each step changes width and height by 10%. Current:{' '}
-                <strong>{sizeW} × {sizeH} px</strong>
-              </p>
-              <div className={styles.sizeButtonRow}>
-                <button
-                  type="button"
-                  className={styles.sizeStepButton}
-                  disabled={!canDecrease || isSaving || isUploading}
-                  onClick={() => {
-                    const next = stepNodeDimensions(sizeNodeType, sizeW, sizeH, -1)
-                    setSizeW(next.width)
-                    setSizeH(next.height)
-                  }}
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  className={styles.sizeStepButton}
-                  disabled={!canIncrease || isSaving || isUploading}
-                  onClick={() => {
-                    const next = stepNodeDimensions(sizeNodeType, sizeW, sizeH, 1)
-                    setSizeW(next.width)
-                    setSizeH(next.height)
-                  }}
-                >
-                  +
-                </button>
-                {defaultDims ? (
-                  <button
-                    type="button"
-                    className={styles.sizeResetButton}
-                    disabled={sizeIsAtDefault || isSaving || isUploading}
-                    onClick={() => {
-                      setSizeW(defaultDims.width)
-                      setSizeH(defaultDims.height)
-                    }}
-                  >
-                    Default size
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          )}
+      {nodeType === 'place' && (
+        <form onSubmit={handleSave} className={clsx('form-stack', styles.editForm)}>
+          {photoFile ? (
+            <p className={styles.photoHintRow}>
+              New photo selected: {photoFile.name}
+            </p>
+          ) : null}
 
-          <div className={styles.formFooter}>
-            <button type="submit" disabled={busy} className="btn-primary">
-              {isUploading ? 'Uploading photo…' : isSaving ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
+          <SaveCornerButton
+            visible={hasUnsavedChanges}
+            busy={isSaving || isUploading}
+            busyLabel={isUploading ? 'Uploading…' : 'Saving…'}
+          />
         </form>
       )}
 
@@ -418,19 +482,15 @@ export function NodeInfoModal({
         <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
       )}
 
-      <div className={formStyles.actionsLeftAligned}>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={handleDelete}
-          className={formStyles.dangerButton}
-        >
-          {isDeleting ? 'Deleting…' : 'Delete node'}
-        </button>
-        <button type="button" onClick={onClose} className="btn-ghost">
-          Close
-        </button>
-      </div>
+      <TrashCornerButton
+        onConfirm={handleDelete}
+        ariaLabel={`Delete ${nodeType}`}
+        confirmTitle={`Delete ${nodeType}`}
+        confirmMessage={`Permanently delete this ${nodeType}? This cannot be undone.`}
+        confirmLabel={`Delete ${nodeType}`}
+        isBusy={isDeleting}
+        disabled={busy}
+      />
     </SidePanel>
   )
 }

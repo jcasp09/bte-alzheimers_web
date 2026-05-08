@@ -1,0 +1,130 @@
+.wrap {
+  width: 100%;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+}
+
+.tile {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.loading {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.addTile {
+  border: 1.5px dashed var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.addTile:hover:not(:disabled) {
+  background: var(--color-page-elev);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.addTile:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.addTile:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.removeButton {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.removeButton:hover:not(:disabled) {
+  background: #fff;
+  color: var(--color-text);
+}
+
+.removeButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.coverButton {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #d4a017;
+  background: rgba(255, 255, 255, 0.9);
+  color: #d4a017;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.08s ease;
+}
+
+.coverButton:hover:not(:disabled) {
+  background: #fff;
+  color: #b88810;
+  transform: scale(1.05);
+}
+
+.coverButton:disabled {
+  cursor: default;
+  opacity: 0.95;
+}
+

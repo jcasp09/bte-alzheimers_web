@@ -1,0 +1,105 @@
+.row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) minmax(0, 2fr);
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowStacked {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  text-align: right;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease;
+  min-width: 0;
+}
+
+.rowStacked .value {
+  justify-content: flex-start;
+  text-align: left;
+  padding-left: 0;
+}
+
+.value:hover:not(:disabled) {
+  color: var(--color-accent);
+}
+
+.value:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.value:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+}
+
+.valueText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowStacked .valueText {
+  white-space: pre-wrap;
+}
+
+.valueEmpty .valueText {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.pencil {
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.value:hover:not(:disabled) .pencil,
+.value:focus-visible .pencil {
+  opacity: 1;
+}
+
+.input {
+  width: 100%;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  background: var(--color-page);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.55rem;
+  box-sizing: border-box;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
