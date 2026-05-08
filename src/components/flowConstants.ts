@@ -20,3 +20,18 @@ export type DefaultFlowHandle = {
 
 /** A point in flow coordinates. */
 export type XY = { x: number; y: number }
+/** Top-level mode for the graph page. Governs which entity types render and
+ *  which supplementary chrome appears (dock, timeline, etc.). */
+export type Layer = 'relationships' | 'memories'
+
+export const LAYER_VALUES: readonly Layer[] = ['relationships', 'memories'] as const
+
+export const DEFAULT_LAYER: Layer = 'relationships'
+
+export function isLayer(value: unknown): value is Layer {
+  return value === 'relationships' || value === 'memories'
+}
+
+/** sessionStorage key for the current layer (per-tab persistence). */
+export const LAYER_STORAGE_KEY = 'bte:graphLayer'
+

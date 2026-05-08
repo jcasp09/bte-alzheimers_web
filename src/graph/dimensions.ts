@@ -1,41 +1,5 @@
 // Default UI/render size for nodes
 export const PERSON_NODE_DEFAULT_SIZE = { width: 220, height: 100 } as const
-/** Moments buckets render as circles; diameter is derived from wrapped text in MomentsBucketNode. */
-export const MOMENTS_BUCKET_NODE_SIZE = {
-  minDiameter: 80,
-  maxTextWidth: 132,
-  innerPadding: 6,
-} as const
-
-export type MomentsImpactfulBucketKind = 'year' | 'month'
-
-/**
- * Impactful year/month: minimum diameter grows with moment count.
- * Months use a much steeper step than years so 1 vs 3 moments reads clearly.
- */
-export function momentsImpactfulCountFloorDiameter(
-  momentCount: number,
-  bucket: MomentsImpactfulBucketKind = 'year',
-): number {
-  const { minDiameter } = MOMENTS_BUCKET_NODE_SIZE
-  const c = Math.max(1, Math.floor(momentCount))
-  const perStep = bucket === 'month' ? 40 : 18
-  const cap = bucket === 'month' ? 300 : 180
-  const extra = Math.min(cap, (c - 1) * perStep)
-  return minDiameter + extra
-}
-
-/**
- * Impactful day: size from richness relative to other days in the same month (0–1).
- * Blend linear + sqrt so the top day is larger but not overwhelming (happy medium vs text-only sizing).
- */
-export function momentsImpactfulDayFloorDiameterFromNorm(impactNorm: number): number {
-  const { minDiameter } = MOMENTS_BUCKET_NODE_SIZE
-  const t = Math.min(1, Math.max(0, impactNorm))
-  const blended = 0.55 * t + 0.45 * Math.sqrt(t)
-  const extra = Math.round(blended * 140)
-  return minDiameter + extra
-}
 export const PLACE_NODE_DEFAULT_SIZE = { width: 120, height: 100 } as const
 export const GROUP_NODE_DEFAULT_SIZE = { width: 400, height: 300 } as const
 

@@ -5,7 +5,16 @@ import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
-import { DOCK_NODE_DND_TYPE, GRAPH_TRANSLATE_EXTENT, type DefaultFlowHandle, type XY } from '../components/flowConstants'
+import {
+  DEFAULT_LAYER,
+  DOCK_NODE_DND_TYPE,
+  GRAPH_TRANSLATE_EXTENT,
+  LAYER_STORAGE_KEY,
+  isLayer,
+  type DefaultFlowHandle,
+  type Layer,
+  type XY,
+} from '../components/flowConstants'
 import { usePhotoUrl } from '../hooks/usePhotoUrl'
 import styles from './Graph.module.css'
 import {
@@ -22,14 +31,28 @@ import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
 import { applyReparentOnDragStop } from '../graph/reparent'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../hooks/useDeferredEdgePersistence'
+import { getMoments, type MomentDoc } from '../firebase/moments'
+import {
+  buildContextToMomentsMap,
+  buildMemoryLayerEdges,
+  buildMemoryLayerNodes,
+  filterMomentsByRange,
+  getConnectedIdsForSelection,
+  getMomentMillis,
+  type MemoryBrushRange,
+  type MemorySelection,
+} from '../moments/memoryLayer'
+import { MemoryTimeline } from '../components/MemoryTimeline'
+import timelineStyles from '../components/MemoryTimeline.module.css'
 import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
 import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'
+import { AddMomentModal } from '../components/modals/AddMomentModal.tsx'
 import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../components/modals/EdgeInfoModal.tsx'
 import * as React from "react";
 
-type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | null
+type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | 'addMoment' | null
 
 type AddGroupPlacement =
   | { status: 'idle' }
@@ -172,13 +195,13 @@ const ANCHOR_NODES: Node[] = (() => {
 })()
 
 /** Lower number = higher priority in the search dropdown. */
-function typePriority(type: string): number {
+function typePriority(type: string, layer: Layer): number {
+  if (layer === 'memories') {
+    return type === 'moment' ? 0 : 99
+  }
   switch (type) {
     case 'person': return 0
     case 'place': return 1
-    case 'group': return 2
-    case 'moment': return 3
-    case 'task': return 4
     default: return 99
   }
 }
@@ -193,6 +216,9 @@ function Graph() {
   const { user } = useAuth()
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
+  const [moments, setMoments] = useState<MomentDoc[]>([])
+  const [memorySelection, setMemorySelection] = useState<MemorySelection | null>(null)
+  const [memoryBrushRange, setMemoryBrushRange] = useState<MemoryBrushRange | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
@@ -210,6 +236,21 @@ function Graph() {
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<SelectedEdge | null>(null)
   const flowRef = useRef<DefaultFlowHandle>(null)
+  const [currentLayer, setCurrentLayer] = useState<Layer>(() => {
+    if (typeof window === 'undefined') return DEFAULT_LAYER
+    try {
+      const fromUrl = new URL(window.location.href).searchParams.get('layer')
+      if (isLayer(fromUrl)) return fromUrl
+    } catch {
+      /* Fall back to sessionStorage */
+    }
+    try {
+      const stored = window.sessionStorage.getItem(LAYER_STORAGE_KEY)
+      return isLayer(stored) ? stored : DEFAULT_LAYER
+    } catch {
+      return DEFAULT_LAYER
+    }
+  })
   const [visibleTypes, setVisibleTypes] = useState<VisibleTypes>(DEFAULT_VISIBLE_TYPES)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterExpanded, setFilterExpanded] = useState(false)
@@ -230,14 +271,16 @@ function Graph() {
     setError(null);
 
     try {
-      const [nodesData, edgesData, viewport] = await Promise.all([
+      const [nodesData, edgesData, viewport, momentsData] = await Promise.all([
         getNodes(user.uid, GRAPH_IDS.context),
         getEdges(user.uid, GRAPH_IDS.context),
-        getGraphViewport(user.uid, GRAPH_IDS.context)
+        getGraphViewport(user.uid, GRAPH_IDS.context),
+        getMoments(user.uid),
       ]);
 
       setNodes(firestoreNodesToReactFlow(nodesData));
       setEdges(firestoreEdgesToReactFlow(edgesData));
+      setMoments(momentsData);
       setInitialViewport(viewport ?? undefined)
 
       flowKeyRef.current += 1
@@ -256,11 +299,36 @@ function Graph() {
       setLoading(false);
       setNodes([]);
       setEdges([]);
+      setMoments([]);
       return;
     }
 
     void loadGraph();
   }, [user?.uid, loadGraph]);
+
+  // Persist the current layer per tab so reloads keep the user on the same layer.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.sessionStorage.setItem(LAYER_STORAGE_KEY, currentLayer)
+    } catch {
+      /* sessionStorage unavailable; layer won't persist this session */
+    }
+  }, [currentLayer])
+
+  // Switching layers should close any open side panel.
+  useEffect(() => {
+    setSelectedNode(null)
+    setSelectedEdge(null)
+    setOpenPanel(null)
+    setPendingNodePosition(null)
+    setPendingGroupRect(null)
+    addGroupPlacementRef.current = { status: 'idle' }
+    setAddGroupPlacement({ status: 'idle' })
+    setMemorySelection(null)
+    setMemoryBrushRange(null)
+    setSearchQuery('')
+  }, [currentLayer])
 
   const onEdgesChange = useCallback<OnEdgesChange>((changes) => {
     setEdges((eds) => applyEdgeChanges(changes, eds))
@@ -296,6 +364,12 @@ function Graph() {
     setAddGroupPlacement({ status: 'idle' })
   }, [])
 
+  /** Clear the memory-layer selection AND any active brush when the user clicks empty pane. */
+  const handleMemoryPaneClick = useCallback(() => {
+    setMemorySelection(null)
+    setMemoryBrushRange(null)
+  }, [])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -319,6 +393,31 @@ function Graph() {
     removePendingEdge,
   } = useDeferredEdgePersistence(user?.uid, GRAPH_IDS.context, setEdges, setSyncEdgeError)
 
+  // Apply the timeline brush, if any.
+  const visibleMoments = useMemo(
+    () => filterMomentsByRange(moments, memoryBrushRange),
+    [moments, memoryBrushRange],
+  )
+
+  const contextToMoments = useMemo(() => buildContextToMomentsMap(visibleMoments), [visibleMoments])
+
+  // Set of node IDs in scope for the current selection.
+  const memoryConnectedIds = useMemo<Set<string> | null>(() => {
+    if (!memorySelection) return null
+    return getConnectedIdsForSelection(memorySelection, visibleMoments, contextToMoments)
+  }, [memorySelection, visibleMoments, contextToMoments])
+
+  const memoryPeoplePickerItems = useMemo(() => {
+    const out: { id: string; name: string }[] = []
+    for (const n of nodes) {
+      if (n.type !== 'person') continue
+      const name = typeof n.data?.name === 'string' ? n.data.name : ''
+      if (!name) continue
+      out.push({ id: n.id, name })
+    }
+    return out
+  }, [nodes])
+
   // Derive the pickable nodes from the graph state
   const pickableNodes = useMemo<PickableNode[]>(() => {
     const out: PickableNode[] = []
@@ -336,6 +435,35 @@ function Graph() {
   }, [nodes])
 
   const displayNodes = useMemo(() => {
+    if (currentLayer === 'memories') {
+      const memoryNodes = buildMemoryLayerNodes(visibleMoments, nodes)
+      // When a selection is active, dim everything not in scope and ring the selected node
+      const styled = memoryConnectedIds
+        ? memoryNodes.map((n) => {
+            if (n.type === 'anchor') return n
+            const inScope = memoryConnectedIds.has(n.id)
+            const isSelected = memorySelection != null && n.id === memorySelection.id
+            const baseStyle = n.style ?? {}
+            if (!inScope) {
+              return { ...n, style: { ...baseStyle, opacity: 0.15 } }
+            }
+            if (isSelected) {
+              return {
+                ...n,
+                style: {
+                  ...baseStyle,
+                  opacity: 1,
+                  boxShadow: '0 0 0 3px var(--color-accent)',
+                  borderRadius: 12,
+                },
+              }
+            }
+            // Connected (in-scope) but not the selection itself
+            return { ...n, style: { ...baseStyle, opacity: 1 } }
+          })
+        : memoryNodes
+      return [...ANCHOR_NODES, ...styled]
+    }
     const filtered = nodes.map((n) => {
       const t = n.type
       const allowed = (t === 'person' && visibleTypes.person)
@@ -344,38 +472,62 @@ function Graph() {
       return allowed ? n : { ...n, hidden: true }
     })
     return [...ANCHOR_NODES, ...filtered]
-  }, [nodes, visibleTypes])
+  }, [nodes, visibleMoments, visibleTypes, currentLayer, memoryConnectedIds, memorySelection])
 
   const displayEdges = useMemo(() => {
+    if (currentLayer === 'memories') {
+      const synth = buildMemoryLayerEdges(visibleMoments)
+      if (!memorySelection) return synth
+      // Dim edges that don't touch the selected node
+      return synth.map((e) => {
+        const touches = e.source === memorySelection.id || e.target === memorySelection.id
+        if (touches) return e
+        return { ...e, style: { ...(e.style ?? {}), opacity: 0.15 } }
+      })
+    }
     const visible = new Set(displayNodes.filter((n) => !n.hidden).map((n) => n.id))
     return edges.map((e) => ({
       ...e,
       hidden: !(visible.has(e.source) && visible.has(e.target)),
     }))
-  }, [edges, displayNodes])
+  }, [edges, displayNodes, visibleMoments, currentLayer, memorySelection])
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return [] as { id: string; name: string; type: string; photoPath: string | undefined }[]
     const all: { id: string; name: string; type: string; photoPath: string | undefined }[] = []
-    for (const n of nodes) {
-      if (n.type !== 'person' && n.type !== 'place' && n.type !== 'group') continue
-      const name = typeof n.data?.name === 'string' ? n.data.name : ''
-      if (!name) continue
-      if (name.toLowerCase().includes(q)) {
-        const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
-        all.push({ id: n.id, name, type: n.type, photoPath })
+
+    if (currentLayer === 'memories') {
+      // Memories layer searches moments only — match on title OR description
+      // so a vague memory ("hospital", "wedding") still finds the right card.
+      for (const m of moments) {
+        const title = m.title.trim().length > 0 ? m.title : m.occurredOn
+        const haystack = `${title}\n${m.description}`.toLowerCase()
+        if (haystack.includes(q)) {
+          all.push({ id: m.id, name: title, type: 'moment', photoPath: m.photoPaths[0] })
+        }
+      }
+    } else {
+      // Relationships layer searches people and places (groups excluded).
+      for (const n of nodes) {
+        if (n.type !== 'person' && n.type !== 'place') continue
+        const name = typeof n.data?.name === 'string' ? n.data.name : ''
+        if (!name) continue
+        if (name.toLowerCase().includes(q)) {
+          const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
+          all.push({ id: n.id, name, type: n.type, photoPath })
+        }
       }
     }
 
     all.sort((a, b) => {
-      const pa = typePriority(a.type)
-      const pb = typePriority(b.type)
+      const pa = typePriority(a.type, currentLayer)
+      const pb = typePriority(b.type, currentLayer)
       if (pa !== pb) return pa - pb
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
     })
     return all.slice(0, 8)
-  }, [nodes, searchQuery])
+  }, [nodes, moments, currentLayer, searchQuery])
 
 
   const togglePanel = (panel: OpenPanel) => {
@@ -387,7 +539,7 @@ function Graph() {
   }
 
   const handleDockDragStart = useCallback(
-    (kind: 'person' | 'place' | 'group') => (e: ReactDragEvent<HTMLButtonElement>) => {
+    (kind: 'person' | 'place' | 'group' | 'moment') => (e: ReactDragEvent<HTMLButtonElement>) => {
       e.dataTransfer.setData(DOCK_NODE_DND_TYPE, kind)
       e.dataTransfer.effectAllowed = 'copy'
     },
@@ -423,6 +575,14 @@ function Graph() {
         setPendingGroupRect(null)
         setPendingNodePosition(point)
         setOpenPanel(kind === 'person' ? 'addPerson' : 'addPlace')
+        return
+      }
+
+      if (kind === 'moment') {
+        // Moments don't have stored positions
+        setPendingGroupRect(null)
+        setPendingNodePosition(null)
+        setOpenPanel('addMoment')
       }
     },
     [],
@@ -432,6 +592,21 @@ function Graph() {
     if (node.type === 'anchor') return
     if (addGroupPlacementRef.current.status === 'picking')
       return
+
+    if (currentLayer === 'memories') {
+      if (node.type === 'moment') {
+        setMemorySelection({ kind: 'moment', id: node.id })
+        return
+      }
+      if (node.type === 'person' || node.type === 'place') {
+        setMemorySelection({ kind: 'context', id: node.id })
+        // fall through to open the existing NodeInfoModal below
+      } else {
+        // Groups in memories layer are filtered out, but be defensive.
+        return
+      }
+    }
+
 
     const name = typeof node.data.name === 'string' ? node.data.name : ''
     const relationship = typeof node.data.relationship === 'string' ? node.data.relationship : ''
@@ -458,7 +633,7 @@ function Graph() {
       width: typeof w === 'number' && Number.isFinite(w) ? w : undefined,
       height: typeof h === 'number' && Number.isFinite(h) ? h : undefined,
     })
-  }, [])
+  }, [currentLayer])
 
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
     if (addGroupPlacementRef.current.status === 'picking')
@@ -561,15 +736,21 @@ function Graph() {
   const isSidePanelOpen =
     openPanel === 'addPerson' ||
     openPanel === 'addPlace' ||
+    openPanel === 'addMoment' ||
     selectedNode != null ||
     selectedEdge != null
 
+  const sectionLabel = currentLayer === 'memories' ? 'Memories graph' : 'Relationship graph'
+
+  const selectedMomentId = memorySelection?.kind === 'moment' ? memorySelection.id : null
+  const highlightedMomentIds = memorySelection?.kind === 'context' ? (contextToMoments.get(memorySelection.id) ?? new Set<string>()) : undefined
+
   // Render the graph
   return (
-    <section className={styles.fullBleedRoot} aria-label="Relationship graph">
-      <h1 className="sr-only">Relationship graph</h1>
+    <section className={styles.fullBleedRoot} aria-label={sectionLabel}>
+      <h1 className="sr-only">{sectionLabel}</h1>
 
-      <div className={clsx(styles.canvasContainer, isSidePanelOpen && styles.canvasContainerPanelOpen)}>
+      <div className={clsx(styles.canvasContainer, isSidePanelOpen && styles.canvasContainerPanelOpen, currentLayer === 'memories' && styles.canvasContainerLayerMemories)}>
         <div className={styles.flowFill}>
           <DefaultFlow
             ref={flowRef}
@@ -579,7 +760,13 @@ function Graph() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
-            onPaneFlowClick={addGroupPlacement.status === 'picking' ? handlePaneFlowClick : undefined}
+            onPaneFlowClick={
+              addGroupPlacement.status === 'picking'
+                ? handlePaneFlowClick
+                : currentLayer === 'memories' && (memorySelection != null || memoryBrushRange != null)
+                  ? handleMemoryPaneClick
+                  : undefined
+            }
             groupPlacementPanMode={addGroupPlacement.status === 'picking'}
             defaultViewport={initialViewport}
             onNodeClick={handleNodeClick}
@@ -604,7 +791,62 @@ function Graph() {
           />
         </div>
 
-        {addGroupPlacement.status === 'picking' ? (
+        <div className={styles.layerSwitcher} role="tablist" aria-label="Graph layer">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={currentLayer === 'relationships'}
+            className={clsx(
+              styles.layerSwitcherSegment,
+              currentLayer === 'relationships' && styles.layerSwitcherSegmentActive,
+            )}
+            onClick={() => setCurrentLayer('relationships')}
+          >
+            Relationships
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={currentLayer === 'memories'}
+            className={clsx(
+              styles.layerSwitcherSegment,
+              currentLayer === 'memories' && styles.layerSwitcherSegmentActive,
+              currentLayer === 'memories' && styles.layerSwitcherSegmentMemories,
+            )}
+            onClick={() => setCurrentLayer('memories')}
+          >
+            Memories
+          </button>
+        </div>
+
+        {currentLayer === 'memories' ? (
+          <MemoryTimeline
+            moments={moments}
+            onMomentClick={(id) => {
+              flowRef.current?.focusNode(id)
+              setMemorySelection({ kind: 'moment', id })
+            }}
+            selectedMomentId={selectedMomentId}
+            highlightedMomentIds={highlightedMomentIds}
+            brushRange={memoryBrushRange}
+            onBrushChange={setMemoryBrushRange}
+            trailingActions={
+              <button
+                type="button"
+                draggable
+                onDragStart={handleDockDragStart('moment')}
+                onClick={() => togglePanel('addMoment')}
+                aria-label="Add a moment. Click to open the form, or drag onto the canvas."
+                className={clsx(timelineStyles.trailingAction, openPanel === 'addMoment' && timelineStyles.trailingActionActive)}
+              >
+                <span className={timelineStyles.trailingActionIcon} aria-hidden="true">+</span>
+                <span className={timelineStyles.trailingActionLabel}>Moment</span>
+              </button>
+            }
+          />
+        ) : null}
+
+        {currentLayer === 'relationships' && addGroupPlacement.status === 'picking' ? (
           <p className={styles.hintFloat}>
             {addGroupPlacement.phase === 1
               ? 'Click the top-left corner of the new group on the graph, then the bottom-right. Pan with middle or right mouse drag, or the scroll wheel. Press Esc to cancel.'
@@ -649,15 +891,17 @@ function Graph() {
               <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-place-border)' }} aria-hidden="true" />
               Places
             </button>
-            <button
-              type="button"
-              onClick={() => setVisibleTypes((v) => ({ ...v, group: !v.group }))}
-              aria-pressed={visibleTypes.group}
-              className={clsx(styles.filterChip, visibleTypes.group && styles.filterChipActive, visibleTypes.group && styles.filterChipGroup)}
-            >
-              <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-border-strong)' }} aria-hidden="true" />
-              Groups
-            </button>
+            {currentLayer === 'relationships' ? (
+              <button
+                type="button"
+                onClick={() => setVisibleTypes((v) => ({ ...v, group: !v.group }))}
+                aria-pressed={visibleTypes.group}
+                className={clsx(styles.filterChip, visibleTypes.group && styles.filterChipActive, visibleTypes.group && styles.filterChipGroup)}
+              >
+                <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-border-strong)' }} aria-hidden="true" />
+                Groups
+              </button>
+            ) : null}
             <button
               type="button"
               className={styles.chromeCloseButton}
@@ -704,7 +948,7 @@ function Graph() {
                     setSearchExpanded(false)
                   }
                 }}
-                placeholder="Find a person or place…"
+                placeholder={currentLayer === 'memories' ? 'Find a memory…' : 'Find a person or place…'}
                 aria-label="Search nodes by name"
               />
               {searchQuery ? (
@@ -738,7 +982,18 @@ function Graph() {
                       type="button"
                       className={styles.searchResultItem}
                       onClick={() => {
-                        flowRef.current?.focusNode(r.id)
+                        if (currentLayer === 'memories') {
+                          // Memories layer search only returns moments.
+                          if (memoryBrushRange) {
+                            const m = moments.find((x) => x.id === r.id)
+                            const ms = m ? getMomentMillis(m) : null
+                            const outOfBrush =
+                              ms == null || ms < memoryBrushRange.start || ms > memoryBrushRange.end
+                            if (outOfBrush) setMemoryBrushRange(null)
+                          }
+                          setMemorySelection({ kind: 'moment', id: r.id })
+                        }
+                        window.setTimeout(() => flowRef.current?.focusNode(r.id), 0)
                         setSearchQuery('')
                       }}
                     >
@@ -847,6 +1102,20 @@ function Graph() {
             <span className={styles.dockLabel}>Link</span>
           </button>
         </div>
+
+        {openPanel === 'addMoment' && (
+          <AddMomentModal
+            userId={user.uid}
+            people={memoryPeoplePickerItems}
+            onClose={() => setOpenPanel(null)}
+            onCreated={() => {
+              void (async () => {
+                await flushPendingEdges()
+                await loadGraph({ skipLoading: true })
+              })()
+            }}
+          />
+        )}
 
         {(openPanel === 'addPerson' || openPanel === 'addPlace') && (
           <AddNodePanel
