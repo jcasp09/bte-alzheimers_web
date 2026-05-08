@@ -13,10 +13,6 @@
   margin-bottom: 1rem;
 }
 
-.formRow {
-  margin-bottom: 0.75rem;
-}
-
 .dimensionsGrid {
   margin-bottom: 0.75rem;
   display: grid;
@@ -30,12 +26,6 @@
   color: var(--color-text-muted);
 }
 
-.formFooter {
-  display: flex;
-  justify-content: flex-end;
-  padding-right: 3rem;
-}
-
 .fieldList {
   margin-bottom: 0.75rem;
 }
@@ -47,91 +37,4 @@
   margin: 0.25rem 0 0.75rem;
   font-size: 0.78rem;
   color: var(--color-text-muted);
-}
-
-.photoHint {
-  margin: 0.35rem 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-}
-
-.sizeBox {
-  margin-bottom: 0.75rem;
-  padding: 0.85rem;
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-}
-
-.sizeBoxTitle {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.sizeBoxStatus {
-  margin: 0 0 0.5rem;
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-}
-
-.sizeBoxStatus strong {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.sizeButtonRow {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.sizeStepButton {
-  min-width: 2.25rem;
-  padding: 0.4rem 0.7rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  line-height: 1;
-  font-weight: 600;
-  font-family: inherit;
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.sizeStepButton:hover:not(:disabled) {
-  background: var(--color-page);
-  border-color: var(--color-border-strong);
-}
-
-.sizeStepButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.sizeResetButton {
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  font-weight: 500;
-  font-family: inherit;
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.sizeResetButton:hover:not(:disabled) {
-  background: var(--color-page);
-  border-color: var(--color-border-strong);
-}
-
-.sizeResetButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }

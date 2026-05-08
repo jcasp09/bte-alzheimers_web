@@ -18,15 +18,17 @@ export function SaveCornerButton({
 }: Props) {
   if (!visible) return null
   return (
-    <button
-      type="submit"
-      className={styles.button}
-      disabled={busy}
-      aria-label={ariaLabel}
-      title={ariaLabel}
-    >
-      <CheckIcon size={16} />
-      <span>{busy ? busyLabel : label}</span>
-    </button>
+    <div className={styles.row}>
+      <button
+        type="submit"
+        className={styles.button}
+        disabled={busy}
+        aria-label={ariaLabel}
+        title={ariaLabel}
+      >
+        <CheckIcon size={16} />
+        <span>{busy ? busyLabel : label}</span>
+      </button>
+    </div>
   )
 }

@@ -2,13 +2,6 @@
   margin-bottom: 1rem;
 }
 
-.formFooter {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.25rem;
-  padding-right: 3rem;
-}
-
 .photosSection {
   margin: 0.25rem 0 0.75rem;
   padding: 0.85rem;

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject, type KeyboardEvent } from 'react'
 import clsx from 'clsx'
 import { PencilIcon } from './icons'
 import styles from './InlineEditableField.module.css'
@@ -43,7 +43,7 @@ export function InlineEditableField({
 
   const commit = () => setEditing(false)
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (kind !== 'textarea' && e.key === 'Enter') {
       e.preventDefault()
       commit()
@@ -63,7 +63,7 @@ export function InlineEditableField({
         kind === 'textarea' ? (
           <textarea
             id={id}
-            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+            ref={inputRef as RefObject<HTMLTextAreaElement>}
             className={styles.input}
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -75,7 +75,7 @@ export function InlineEditableField({
         ) : (
           <input
             id={id}
-            ref={inputRef as React.RefObject<HTMLInputElement>}
+            ref={inputRef as RefObject<HTMLInputElement>}
             type={kind}
             className={styles.input}
             value={value}

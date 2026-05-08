@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import clsx from 'clsx'
 import { PencilIcon } from './icons'
+import { useInlineEditing } from '../hooks/useInlineEditing'
 import styles from './InlineEditableSubtitle.module.css'
 
 type Props = {
@@ -22,30 +22,7 @@ export function InlineEditableSubtitle({
   formatDisplay,
   inputType = 'text',
 }: Props) {
-  const [editing, setEditing] = useState(false)
-  const inputRef = useRef<HTMLInputElement | null>(null)
-
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [editing])
-
-  const startEditing = () => {
-    if (disabled) return
-    setEditing(true)
-  }
-
-  const commit = () => setEditing(false)
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === 'Escape') {
-      e.preventDefault()
-      commit()
-    }
-  }
-
+  const { editing, inputRef, startEditing, commit, handleKeyDown } = useInlineEditing(disabled)
   const displayValue = value ? (formatDisplay ? formatDisplay(value) : value) : ''
 
   if (editing) {

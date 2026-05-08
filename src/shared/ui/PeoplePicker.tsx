@@ -62,16 +62,16 @@ export function PeoplePicker({
   useEffect(() => {
     if (!open) return
     inputRef.current?.focus()
-    const handleDown = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
     }
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
-    window.addEventListener('mousedown', handleDown)
+    window.addEventListener('click', handleClick)
     window.addEventListener('keydown', handleKey)
     return () => {
-      window.removeEventListener('mousedown', handleDown)
+      window.removeEventListener('click', handleClick)
       window.removeEventListener('keydown', handleKey)
     }
   }, [open])
@@ -113,8 +113,11 @@ export function PeoplePicker({
             aria-label={`Remove ${p.name} from this memory`}
             title={`Remove ${p.name}`}
           >
-            <PersonAvatar item={p} />
-            <span className={styles.removeBadge} aria-hidden="true">×</span>
+            <span className={styles.rowAvatarWrap}>
+              <PersonAvatar item={p} size={36} />
+              <span className={styles.removeBadge} aria-hidden="true">×</span>
+            </span>
+            <span className={styles.rowName}>{p.name}</span>
           </button>
         ))}
         <button

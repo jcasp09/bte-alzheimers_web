@@ -40,10 +40,6 @@ export function parseOccurredOn(s: string): { y: number; m: number; d: number } 
   return { y, m: month, d }
 }
 
-export function formatOccurredOnDate(y: number, month: number, day: number): string {
-  return `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-}
-
 export type MemoryDoc = {
   id: string
   title: string

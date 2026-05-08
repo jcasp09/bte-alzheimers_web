@@ -1,8 +1,20 @@
+.row {
+  position: sticky;
+  bottom: -1.25rem;
+  margin-top: 1rem;
+  padding: 0.5rem 0 0.25rem;
+  display: flex;
+  justify-content: flex-end;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--color-shadow-rgb), 0) 0%,
+    var(--color-surface-raised) 35%,
+    var(--color-surface-raised) 100%
+  );
+  z-index: 3;
+}
+
 .button {
-  position: absolute;
-  bottom: 0.7rem;
-  right: 0.7rem;
-  z-index: 4;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
