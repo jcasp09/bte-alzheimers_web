@@ -1,8 +1,8 @@
 import { type SubmitEvent, useState } from 'react'
 import clsx from 'clsx'
 import { GRAPH_IDS, createNode } from '../../services/graph'
-import { Modal } from '../ui/Modal'
-import formStyles from '../../styles/formActions.module.css'
+import { Modal } from '../../shared/ui/Modal'
+import formStyles from '../../shared/styles/formActions.module.css'
 
 type DraftRect = { x: number; y: number; width: number; height: number }
 

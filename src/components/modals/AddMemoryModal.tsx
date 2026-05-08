@@ -1,10 +1,10 @@
-import { type FormEvent, useState } from 'react'
+import { type SubmitEvent, useState } from 'react'
 import clsx from 'clsx'
 import { createMemory, parseOccurredOn } from '../../firebase/memories'
-import { MultiEntityPicker, type PickerItem } from '../MultiEntityPicker'
-import { SidePanel } from '../ui/SidePanel'
-import formStyles from '../../styles/formActions.module.css'
-import { getInitialsForAvatar } from '../../util/initials'
+import { MultiEntityPicker, type PickerItem } from '../../shared/ui/MultiEntityPicker'
+import { SidePanel } from '../../shared/ui/SidePanel'
+import formStyles from '../../shared/styles/formActions.module.css'
+import { getInitialsForAvatar } from '../../shared/util/initials'
 
 type Props = {
   userId: string
@@ -21,7 +21,7 @@ export function AddMemoryModal({ userId, people, onClose, onCreated }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
     setError(null)
 

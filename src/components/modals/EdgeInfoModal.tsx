@@ -3,8 +3,8 @@ import clsx from 'clsx'
 import { GRAPH_IDS, deleteEdge } from '../../services/graph'
 import { edgeHandleLabel } from '../../graph/edgeHandles'
 import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
-import { SidePanel } from '../ui/SidePanel'
-import formStyles from '../../styles/formActions.module.css'
+import { SidePanel } from '../../shared/ui/SidePanel'
+import formStyles from '../../shared/styles/formActions.module.css'
 import styles from './EdgeInfoModal.module.css'
 
 type Props = {

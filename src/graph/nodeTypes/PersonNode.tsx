@@ -1,8 +1,8 @@
 import type { NodeProps } from '@xyflow/react'
 import { NodeEdgeHandles } from '../../components/NodeEdgeHandles'
-import { usePhotoUrl } from '../../hooks/usePhotoUrl'
+import { usePhotoUrl } from '../../shared/hooks/usePhotoUrl'
 import { PERSON_NODE_DEFAULT_SIZE, safeNodeDimensions } from '../dimensions'
-import { getInitialsForAvatar } from '../../util/initials'
+import { getInitialsForAvatar } from '../../shared/util/initials'
 
 function personScale(width: number, height: number) {
   return Math.min(

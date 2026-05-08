@@ -3,8 +3,8 @@ import clsx from 'clsx'
 import type { Connection } from '@xyflow/react'
 import type { PickableNode } from '../../types/graph'
 import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../graph/edgeHandles'
-import { Modal } from '../ui/Modal'
-import formStyles from '../../styles/formActions.module.css'
+import { Modal } from '../../shared/ui/Modal'
+import formStyles from '../../shared/styles/formActions.module.css'
 import styles from './AddConnectionModal.module.css'
 
 type Props = {

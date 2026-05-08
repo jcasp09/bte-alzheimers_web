@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword, 
   signOut
 } from 'firebase/auth'
-import { app } from './firebaseConfig'
+import { app } from './app'
 
 const auth = getAuth(app)
 

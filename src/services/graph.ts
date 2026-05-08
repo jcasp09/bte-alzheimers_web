@@ -14,8 +14,8 @@ import {
   type DocumentReference,
 } from 'firebase/firestore'
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { db } from './firestore'
-import { storage } from './storage'
+import { db } from '../firebase/firestore'
+import { storage } from '../firebase/storage'
 import { removeMemoryReferencesToDeletedNode } from '../firebase/memories'
 import { GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 import type {

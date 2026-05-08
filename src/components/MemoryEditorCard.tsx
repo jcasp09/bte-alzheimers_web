@@ -11,9 +11,9 @@ import {
 } from '../firebase/memories'
 import { deleteMemoryPhotoByPath, uploadMemoryPhoto } from '../firebase/memoryPhotos'
 import type { NodeDoc } from '../types/graph'
-import { storage } from '../services/storage'
-import { MultiEntityPicker, type PickerItem } from './MultiEntityPicker'
-import formStyles from '../styles/formActions.module.css'
+import { storage } from '../firebase/storage'
+import { MultiEntityPicker, type PickerItem } from '../shared/ui/MultiEntityPicker'
+import formStyles from '../shared/styles/formActions.module.css'
 import styles from './MemoryEditorCard.module.css'
 
 type MemoryEditorCardProps = {

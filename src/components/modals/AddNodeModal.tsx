@@ -12,10 +12,10 @@ import {
 } from '../../services/graph'
 import type { NodeType, PickableNode } from '../../types/graph'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
-import { SidePanel } from '../ui/SidePanel'
-import formStyles from '../../styles/formActions.module.css'
+import { SidePanel } from '../../shared/ui/SidePanel'
+import formStyles from '../../shared/styles/formActions.module.css'
 import styles from './AddNodeModal.module.css'
-import { getInitialsForAvatar } from '../../util/initials'
+import { getInitialsForAvatar } from '../../shared/util/initials'
 
 type Props = {
   userId: string

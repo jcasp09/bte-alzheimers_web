@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { useAuth } from '../contexts/AuthContext'
-import type { Profile } from '../contexts/AuthContext'
+import { useAuth } from '../auth/AuthContext'
+import type { Profile } from '../auth/AuthContext'
 import styles from './Header.module.css'
 
 const PRODUCT_NAME = 'Memory Jog'

@@ -34,7 +34,7 @@ import type {
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '../graph/nodeTypes'
 import { getMotionMode } from '../services/motion'
-import { useThemeColor } from '../hooks/useThemeColor'
+import { useThemeColor } from '../shared/hooks/useThemeColor'
 
 import {
   DOCK_NODE_DND_TYPE,

@@ -1,9 +1,7 @@
 import { createContext, useContext } from 'react'
 import { type User } from 'firebase/auth'
 
-/**
- * The user's editable profile, mirrored live from `users/{uid}` in Firestore.
- */
+/** The user's editable profile, mirrored live from `users/{uid}` in Firestore. */
 export type Profile = {
   firstName: string
   lastName: string

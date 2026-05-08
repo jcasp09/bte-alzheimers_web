@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { type User, onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore'
-import { auth } from '../services/auth'
-import { db } from '../services/firestore'
+import { auth } from '../firebase/auth'
+import { db } from '../firebase/firestore'
 import { AuthContext, type Profile } from './AuthContext'
 import { DEFAULT_THEME, THEMES, type Theme, getTheme, setTheme, subscribeToThemeChange } from '../services/theme'
 

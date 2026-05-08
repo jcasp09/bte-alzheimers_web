@@ -1,6 +1,6 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { SidePanel } from '../ui/SidePanel'
+import { SidePanel } from '../../shared/ui/SidePanel'
 import {
   GRAPH_IDS,
   PHOTO_ACCEPT_ATTR,
@@ -20,10 +20,10 @@ import {
   safeNodeDimensions,
   stepNodeDimensions,
 } from '../../graph/dimensions'
-import formStyles from '../../styles/formActions.module.css'
+import formStyles from '../../shared/styles/formActions.module.css'
 import styles from './NodeInfoModal.module.css'
-import { getInitialsForAvatar } from '../../util/initials'
-import { usePhotoUrl } from '../../hooks/usePhotoUrl'
+import { getInitialsForAvatar } from '../../shared/util/initials'
+import { usePhotoUrl } from '../../shared/hooks/usePhotoUrl'
 
 type Props = {
   userId: string

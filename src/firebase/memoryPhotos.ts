@@ -1,5 +1,5 @@
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { storage } from '../services/storage'
+import { storage } from './storage'
 
 const MAX_BYTES = 10 * 1024 * 1024
 

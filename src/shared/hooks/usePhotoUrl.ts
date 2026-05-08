@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getDownloadURL, ref } from 'firebase/storage'
-import { storage } from '../services/storage'
+import { storage } from '../../firebase/storage'
 
 const photoUrlCache = new Map<string, string>()
 

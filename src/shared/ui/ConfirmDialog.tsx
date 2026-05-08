@@ -1,5 +1,5 @@
 import { Modal } from './Modal'
-import formStyles from '../../styles/formActions.module.css'
+import formStyles from '../styles/formActions.module.css'
 
 type ConfirmVariant = 'primary' | 'danger'
 

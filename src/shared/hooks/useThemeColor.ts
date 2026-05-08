@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getThemeColor, subscribeToThemeChange } from '../services/theme'
+import { getThemeColor, subscribeToThemeChange } from '../../services/theme'
 
 /** Returns the resolved value of a theme CSS custom property and re-renders
  *  whenever the active theme changes. Each call subscribes once. */

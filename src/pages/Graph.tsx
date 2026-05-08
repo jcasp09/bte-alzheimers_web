@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../auth/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
 import {
   DEFAULT_LAYER,
@@ -15,7 +15,7 @@ import {
   type Layer,
   type XY,
 } from '../components/flowConstants'
-import { usePhotoUrl } from '../hooks/usePhotoUrl'
+import { usePhotoUrl } from '../shared/hooks/usePhotoUrl'
 import styles from './Graph.module.css'
 import {
   GRAPH_IDS,

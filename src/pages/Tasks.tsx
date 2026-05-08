@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../auth/AuthContext'
 import { GRAPH_IDS, getNodes, removePassedTaskNodes } from '../services/graph'
 import type { NodeDoc } from '../types/graph'
 import styles from './Tasks.module.css'

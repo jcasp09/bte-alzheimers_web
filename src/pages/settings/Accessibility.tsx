@@ -7,8 +7,8 @@ import {
   setMotionMode,
   subscribeToMotionChange,
 } from '../../services/motion'
-import { useRadioGroupKeyboard } from '../../hooks/useRadioGroupKeyboard'
-import PageHeader from '../../components/PageHeader'
+import { useRadioGroupKeyboard } from '../../shared/hooks/useRadioGroupKeyboard'
+import PageHeader from '../../shared/ui/PageHeader'
 import styles from './Accessibility.module.css'
 
 type MotionOption = {
