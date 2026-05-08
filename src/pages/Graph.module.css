@@ -117,10 +117,10 @@
   border-color: var(--color-border-strong);
 }
 
-.dockIconMoment {
-  background-color: var(--color-node-moment-soft);
-  color: var(--color-node-moment-text);
-  border-color: var(--color-node-moment-border);
+.dockIconMemory {
+  background-color: var(--color-node-memory-soft);
+  color: var(--color-node-memory-text);
+  border-color: var(--color-node-memory-border);
 }
 
 .dockIconLink {
@@ -721,13 +721,13 @@
 }
 
 .layerSwitcherSegmentActive.layerSwitcherSegmentMemories {
-  background-color: var(--color-node-moment-soft);
-  color: var(--color-node-moment-text);
+  background-color: var(--color-node-memory-soft);
+  color: var(--color-node-memory-text);
 }
 
 .layerSwitcherSegmentActive.layerSwitcherSegmentMemories:hover {
-  background-color: var(--color-node-moment-soft);
-  color: var(--color-node-moment-text);
+  background-color: var(--color-node-memory-soft);
+  color: var(--color-node-memory-text);
 }
 
 .memoriesPlaceholder {
@@ -764,4 +764,3 @@
 .canvasContainerLayerMemories .dock {
   display: none;
 }
-

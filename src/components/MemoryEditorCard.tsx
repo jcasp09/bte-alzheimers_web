@@ -1,42 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDownloadURL, ref } from 'firebase/storage'
 import clsx from 'clsx'
-import type { MomentDoc } from '../firebase/moments'
+import type { MemoryDoc } from '../firebase/memories'
 import {
-  MAX_PHOTOS_PER_MOMENT,
-  deleteMoment,
+  MAX_PHOTOS_PER_MEMORY,
+  deleteMemory,
   formatOccurredOnDate,
   parseOccurredOn,
-  updateMoment,
-} from '../firebase/moments'
-import { deleteMomentPhotoByPath, uploadMomentPhoto } from '../firebase/momentPhotos'
+  updateMemory,
+} from '../firebase/memories'
+import { deleteMemoryPhotoByPath, uploadMemoryPhoto } from '../firebase/memoryPhotos'
 import type { NodeDoc } from '../types/graph'
 import { storage } from '../services/storage'
 import { MultiEntityPicker, type PickerItem } from './MultiEntityPicker'
 import formStyles from '../styles/formActions.module.css'
-import styles from './MomentEditorCard.module.css'
+import styles from './MemoryEditorCard.module.css'
 
-type MomentEditorCardProps = {
+type MemoryEditorCardProps = {
   uid: string
-  moment: MomentDoc
+  memory: MemoryDoc
   people: NodeDoc[]
   onRemoved: (id: string) => void
-  onUpdated: (m: MomentDoc) => void
+  onUpdated: (m: MemoryDoc) => void
 }
 
 const DEBOUNCE_MS = 500
 
-export function MomentEditorCard({
+export function MemoryEditorCard({
   uid,
-  moment,
+  memory,
   people,
   onRemoved,
   onUpdated,
-}: MomentEditorCardProps) {
-  const [title, setTitle] = useState(moment.title)
-  const [description, setDescription] = useState(moment.description)
-  const [occurredOn, setOccurredOn] = useState(moment.occurredOn)
-  const [personNodeIds, setPersonNodeIds] = useState<string[]>(moment.personNodeIds)
+}: MemoryEditorCardProps) {
+  const [title, setTitle] = useState(memory.title)
+  const [description, setDescription] = useState(memory.description)
+  const [occurredOn, setOccurredOn] = useState(memory.occurredOn)
+  const [personNodeIds, setPersonNodeIds] = useState<string[]>(memory.personNodeIds)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -47,21 +47,21 @@ export function MomentEditorCard({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    setTitle(moment.title)
-    setDescription(moment.description)
-    setOccurredOn(moment.occurredOn)
-    setPersonNodeIds(moment.personNodeIds)
+    setTitle(memory.title)
+    setDescription(memory.description)
+    setOccurredOn(memory.occurredOn)
+    setPersonNodeIds(memory.personNodeIds)
   }, [
-    moment.id,
-    moment.title,
-    moment.description,
-    moment.occurredOn,
-    moment.personNodeIds,
+    memory.id,
+    memory.title,
+    memory.description,
+    memory.occurredOn,
+    memory.personNodeIds,
   ])
 
   useEffect(() => {
     let cancelled = false
-    const paths = moment.photoPaths ?? []
+    const paths = memory.photoPaths ?? []
     void (async () => {
       const results = await Promise.all(
         paths.map(async (p) => {
@@ -82,7 +82,7 @@ export function MomentEditorCard({
     return () => {
       cancelled = true
     }
-  }, [moment.id, moment.photoPaths])
+  }, [memory.id, memory.photoPaths])
 
   useEffect(() => {
     return () => {
@@ -91,17 +91,17 @@ export function MomentEditorCard({
   }, [])
 
   const peopleItems: PickerItem[] = people.map((p) => ({ id: p.id, name: p.name }))
-  const paths = moment.photoPaths ?? []
+  const paths = memory.photoPaths ?? []
 
   const persist = async (scheduledId: string) => {
-    if (scheduledId !== moment.id)
+    if (scheduledId !== memory.id)
       return
 
     setError(null)
-    const patch: Parameters<typeof updateMoment>[2] = {}
-    if (title !== moment.title) patch.title = title
-    if (description !== moment.description) patch.description = description
-    if (occurredOn !== moment.occurredOn) {
+    const patch: Parameters<typeof updateMemory>[2] = {}
+    if (title !== memory.title) patch.title = title
+    if (description !== memory.description) patch.description = description
+    if (occurredOn !== memory.occurredOn) {
       if (!parseOccurredOn(occurredOn)) {
         setError('Use a valid calendar date (YYYY-MM-DD).')
         return
@@ -109,19 +109,19 @@ export function MomentEditorCard({
       patch.occurredOn = occurredOn
     }
     const pJson = JSON.stringify([...personNodeIds].sort())
-    const p0 = JSON.stringify([...moment.personNodeIds].sort())
+    const p0 = JSON.stringify([...memory.personNodeIds].sort())
     if (pJson !== p0) patch.personNodeIds = personNodeIds
 
     if (Object.keys(patch).length === 0) return
 
     setSaving(true)
     try {
-      await updateMoment(uid, moment.id, patch)
+      await updateMemory(uid, memory.id, patch)
       onUpdated({
-        ...moment,
+        ...memory,
         ...patch,
-        personNodeIds: patch.personNodeIds ?? moment.personNodeIds,
-        placeNodeIds: moment.placeNodeIds,
+        personNodeIds: patch.personNodeIds ?? memory.personNodeIds,
+        placeNodeIds: memory.placeNodeIds,
       })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save')
@@ -132,7 +132,7 @@ export function MomentEditorCard({
 
   const scheduleSave = () => {
     if (timer.current) clearTimeout(timer.current)
-    const scheduledId = moment.id
+    const scheduledId = memory.id
     timer.current = setTimeout(() => {
       timer.current = null
       void persist(scheduledId)
@@ -142,17 +142,17 @@ export function MomentEditorCard({
   const handlePhotoPick = async (fileList: FileList | null) => {
     const file = fileList?.[0]
     if (!file) return
-    if (paths.length >= MAX_PHOTOS_PER_MOMENT) {
-      setError(`You can add at most ${MAX_PHOTOS_PER_MOMENT} photos per moment.`)
+    if (paths.length >= MAX_PHOTOS_PER_MEMORY) {
+      setError(`You can add at most ${MAX_PHOTOS_PER_MEMORY} photos per memory.`)
       return
     }
     setError(null)
     setUploadingPhoto(true)
     try {
-      const { path } = await uploadMomentPhoto(uid, moment.id, file)
+      const { path } = await uploadMemoryPhoto(uid, memory.id, file)
       const nextPaths = [...paths, path]
-      await updateMoment(uid, moment.id, { photoPaths: nextPaths })
-      onUpdated({ ...moment, photoPaths: nextPaths })
+      await updateMemory(uid, memory.id, { photoPaths: nextPaths })
+      onUpdated({ ...memory, photoPaths: nextPaths })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed')
     } finally {
@@ -164,10 +164,10 @@ export function MomentEditorCard({
     setError(null)
     setRemovingPath(path)
     try {
-      await deleteMomentPhotoByPath(path)
+      await deleteMemoryPhotoByPath(path)
       const nextPaths = paths.filter((p) => p !== path)
-      await updateMoment(uid, moment.id, { photoPaths: nextPaths })
-      onUpdated({ ...moment, photoPaths: nextPaths })
+      await updateMemory(uid, memory.id, { photoPaths: nextPaths })
+      onUpdated({ ...memory, photoPaths: nextPaths })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to remove photo')
     } finally {
@@ -176,12 +176,12 @@ export function MomentEditorCard({
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this moment permanently?')) return
+    if (!window.confirm('Delete this memory permanently?')) return
     setDeleting(true)
     setError(null)
     try {
-      await deleteMoment(uid, moment.id)
-      onRemoved(moment.id)
+      await deleteMemory(uid, memory.id)
+      onRemoved(memory.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete')
     } finally {
@@ -201,7 +201,7 @@ export function MomentEditorCard({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={scheduleSave}
-          aria-label="Moment name"
+          aria-label="Memory name"
         />
       </label>
 
@@ -212,7 +212,7 @@ export function MomentEditorCard({
           value={dateInputValue}
           onChange={(e) => setOccurredOn(e.target.value)}
           onBlur={scheduleSave}
-          aria-label="Moment date"
+          aria-label="Memory date"
         />
       </label>
 
@@ -223,7 +223,7 @@ export function MomentEditorCard({
           onChange={(e) => setDescription(e.target.value)}
           onBlur={scheduleSave}
           rows={4}
-          aria-label="Moment description"
+          aria-label="Memory description"
         />
       </label>
 
@@ -231,13 +231,13 @@ export function MomentEditorCard({
         <p className={clsx(formStyles.leadText, styles.photosLead)}>
           <strong className={styles.photosTitle}>Photos</strong>
           <span className={styles.photosCount}>
-            {paths.length} / {MAX_PHOTOS_PER_MOMENT} — JPEG or PNG, max 10 MB each
+            {paths.length} / {MAX_PHOTOS_PER_MEMORY} — JPEG or PNG, max 10 MB each
           </span>
         </p>
         <input
           type="file"
           accept="image/jpeg,image/png"
-          disabled={uploadingPhoto || paths.length >= MAX_PHOTOS_PER_MOMENT}
+          disabled={uploadingPhoto || paths.length >= MAX_PHOTOS_PER_MEMORY}
           onChange={(e) => {
             void handlePhotoPick(e.target.files)
             e.target.value = ''
@@ -289,7 +289,7 @@ export function MomentEditorCard({
           disabled={deleting}
           onClick={handleDelete}
         >
-          {deleting ? 'Deleting…' : 'Delete moment'}
+          {deleting ? 'Deleting…' : 'Delete memory'}
         </button>
 
         <div className={styles.savingIndicator}>

@@ -75,9 +75,9 @@
   font-size: 1.1rem;
   font-weight: 500;
   line-height: 1;
-  border: 1.5px solid var(--color-node-moment-border);
-  background-color: var(--color-node-moment-soft);
-  color: var(--color-node-moment-text);
+  border: 1.5px solid var(--color-node-memory-border);
+  background-color: var(--color-node-memory-soft);
+  color: var(--color-node-memory-text);
   user-select: none;
   transition: filter 0.15s ease, transform 0.15s ease;
 }
@@ -129,8 +129,8 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background-color: var(--color-node-moment);
-  border: 1.5px solid var(--color-node-moment-border);
+  background-color: var(--color-node-memory);
+  border: 1.5px solid var(--color-node-memory-border);
   padding: 0;
   cursor: pointer;
   transform: translate(-50%, -50%);
@@ -140,7 +140,7 @@
 
 .dot:hover {
   transform: translate(-50%, -50%) scale(1.35);
-  background-color: var(--color-node-moment-border);
+  background-color: var(--color-node-memory-border);
 }
 
 .dot:focus-visible {
@@ -153,7 +153,7 @@
 }
 
 .dotHighlighted {
-  background-color: var(--color-node-moment-border);
+  background-color: var(--color-node-memory-border);
   transform: translate(-50%, -50%) scale(1.25);
 }
 
@@ -162,7 +162,7 @@
 }
 
 .dotSelected {
-  background-color: var(--color-node-moment-border);
+  background-color: var(--color-node-memory-border);
   transform: translate(-50%, -50%) scale(1.5);
   box-shadow: 0 0 0 3px var(--color-accent);
 }
@@ -196,9 +196,9 @@
   position: absolute;
   top: -10px;
   bottom: -10px;
-  background-color: var(--color-node-moment-soft);
-  border-left: 2px solid var(--color-node-moment-border);
-  border-right: 2px solid var(--color-node-moment-border);
+  background-color: var(--color-node-memory-soft);
+  border-left: 2px solid var(--color-node-memory-border);
+  border-right: 2px solid var(--color-node-memory-border);
   opacity: 0.5;
   pointer-events: none;
   z-index: 0;

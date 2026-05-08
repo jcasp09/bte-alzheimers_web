@@ -31,28 +31,28 @@ import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
 import { applyReparentOnDragStop } from '../graph/reparent'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../hooks/useDeferredEdgePersistence'
-import { getMoments, type MomentDoc } from '../firebase/moments'
+import { getMemories, type MemoryDoc } from '../firebase/memories'
 import {
-  buildContextToMomentsMap,
+  buildContextToMemoriesMap,
   buildMemoryLayerEdges,
   buildMemoryLayerNodes,
-  filterMomentsByRange,
+  filterMemoriesByRange,
   getConnectedIdsForSelection,
-  getMomentMillis,
+  getMemoryMillis,
   type MemoryBrushRange,
   type MemorySelection,
-} from '../moments/memoryLayer'
+} from '../memories/memoryLayer'
 import { MemoryTimeline } from '../components/MemoryTimeline'
 import timelineStyles from '../components/MemoryTimeline.module.css'
 import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
 import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'
-import { AddMomentModal } from '../components/modals/AddMomentModal.tsx'
+import { AddMemoryModal } from '../components/modals/AddMemoryModal.tsx'
 import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../components/modals/EdgeInfoModal.tsx'
 import * as React from "react";
 
-type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | 'addMoment' | null
+type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory' | null
 
 type AddGroupPlacement =
   | { status: 'idle' }
@@ -197,7 +197,7 @@ const ANCHOR_NODES: Node[] = (() => {
 /** Lower number = higher priority in the search dropdown. */
 function typePriority(type: string, layer: Layer): number {
   if (layer === 'memories') {
-    return type === 'moment' ? 0 : 99
+    return type === 'memory' ? 0 : 99
   }
   switch (type) {
     case 'person': return 0
@@ -216,7 +216,7 @@ function Graph() {
   const { user } = useAuth()
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
-  const [moments, setMoments] = useState<MomentDoc[]>([])
+  const [memories, setMemories] = useState<MemoryDoc[]>([])
   const [memorySelection, setMemorySelection] = useState<MemorySelection | null>(null)
   const [memoryBrushRange, setMemoryBrushRange] = useState<MemoryBrushRange | null>(null)
   const [loading, setLoading] = useState(true)
@@ -271,16 +271,16 @@ function Graph() {
     setError(null);
 
     try {
-      const [nodesData, edgesData, viewport, momentsData] = await Promise.all([
+      const [nodesData, edgesData, viewport, memoriesData] = await Promise.all([
         getNodes(user.uid, GRAPH_IDS.context),
         getEdges(user.uid, GRAPH_IDS.context),
         getGraphViewport(user.uid, GRAPH_IDS.context),
-        getMoments(user.uid),
+        getMemories(user.uid),
       ]);
 
       setNodes(firestoreNodesToReactFlow(nodesData));
       setEdges(firestoreEdgesToReactFlow(edgesData));
-      setMoments(momentsData);
+      setMemories(memoriesData);
       setInitialViewport(viewport ?? undefined)
 
       flowKeyRef.current += 1
@@ -299,7 +299,7 @@ function Graph() {
       setLoading(false);
       setNodes([]);
       setEdges([]);
-      setMoments([]);
+      setMemories([]);
       return;
     }
 
@@ -394,18 +394,18 @@ function Graph() {
   } = useDeferredEdgePersistence(user?.uid, GRAPH_IDS.context, setEdges, setSyncEdgeError)
 
   // Apply the timeline brush, if any.
-  const visibleMoments = useMemo(
-    () => filterMomentsByRange(moments, memoryBrushRange),
-    [moments, memoryBrushRange],
+  const visibleMemories = useMemo(
+    () => filterMemoriesByRange(memories, memoryBrushRange),
+    [memories, memoryBrushRange],
   )
 
-  const contextToMoments = useMemo(() => buildContextToMomentsMap(visibleMoments), [visibleMoments])
+  const contextToMemories = useMemo(() => buildContextToMemoriesMap(visibleMemories), [visibleMemories])
 
   // Set of node IDs in scope for the current selection.
   const memoryConnectedIds = useMemo<Set<string> | null>(() => {
     if (!memorySelection) return null
-    return getConnectedIdsForSelection(memorySelection, visibleMoments, contextToMoments)
-  }, [memorySelection, visibleMoments, contextToMoments])
+    return getConnectedIdsForSelection(memorySelection, visibleMemories, contextToMemories)
+  }, [memorySelection, visibleMemories, contextToMemories])
 
   const memoryPeoplePickerItems = useMemo(() => {
     const out: { id: string; name: string }[] = []
@@ -436,7 +436,7 @@ function Graph() {
 
   const displayNodes = useMemo(() => {
     if (currentLayer === 'memories') {
-      const memoryNodes = buildMemoryLayerNodes(visibleMoments, nodes)
+      const memoryNodes = buildMemoryLayerNodes(visibleMemories, nodes)
       // When a selection is active, dim everything not in scope and ring the selected node
       const styled = memoryConnectedIds
         ? memoryNodes.map((n) => {
@@ -472,11 +472,11 @@ function Graph() {
       return allowed ? n : { ...n, hidden: true }
     })
     return [...ANCHOR_NODES, ...filtered]
-  }, [nodes, visibleMoments, visibleTypes, currentLayer, memoryConnectedIds, memorySelection])
+  }, [nodes, visibleMemories, visibleTypes, currentLayer, memoryConnectedIds, memorySelection])
 
   const displayEdges = useMemo(() => {
     if (currentLayer === 'memories') {
-      const synth = buildMemoryLayerEdges(visibleMoments)
+      const synth = buildMemoryLayerEdges(visibleMemories)
       if (!memorySelection) return synth
       // Dim edges that don't touch the selected node
       return synth.map((e) => {
@@ -490,7 +490,7 @@ function Graph() {
       ...e,
       hidden: !(visible.has(e.source) && visible.has(e.target)),
     }))
-  }, [edges, displayNodes, visibleMoments, currentLayer, memorySelection])
+  }, [edges, displayNodes, visibleMemories, currentLayer, memorySelection])
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -498,13 +498,13 @@ function Graph() {
     const all: { id: string; name: string; type: string; photoPath: string | undefined }[] = []
 
     if (currentLayer === 'memories') {
-      // Memories layer searches moments only — match on title OR description
+      // Memories layer searches memories only — match on title OR description
       // so a vague memory ("hospital", "wedding") still finds the right card.
-      for (const m of moments) {
+      for (const m of memories) {
         const title = m.title.trim().length > 0 ? m.title : m.occurredOn
         const haystack = `${title}\n${m.description}`.toLowerCase()
         if (haystack.includes(q)) {
-          all.push({ id: m.id, name: title, type: 'moment', photoPath: m.photoPaths[0] })
+          all.push({ id: m.id, name: title, type: 'memory', photoPath: m.photoPaths[0] })
         }
       }
     } else {
@@ -527,7 +527,7 @@ function Graph() {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
     })
     return all.slice(0, 8)
-  }, [nodes, moments, currentLayer, searchQuery])
+  }, [nodes, memories, currentLayer, searchQuery])
 
 
   const togglePanel = (panel: OpenPanel) => {
@@ -539,7 +539,7 @@ function Graph() {
   }
 
   const handleDockDragStart = useCallback(
-    (kind: 'person' | 'place' | 'group' | 'moment') => (e: ReactDragEvent<HTMLButtonElement>) => {
+    (kind: 'person' | 'place' | 'group' | 'memory') => (e: ReactDragEvent<HTMLButtonElement>) => {
       e.dataTransfer.setData(DOCK_NODE_DND_TYPE, kind)
       e.dataTransfer.effectAllowed = 'copy'
     },
@@ -578,11 +578,11 @@ function Graph() {
         return
       }
 
-      if (kind === 'moment') {
-        // Moments don't have stored positions
+      if (kind === 'memory') {
+        // Memories don't have stored positions
         setPendingGroupRect(null)
         setPendingNodePosition(null)
-        setOpenPanel('addMoment')
+        setOpenPanel('addMemory')
       }
     },
     [],
@@ -594,8 +594,8 @@ function Graph() {
       return
 
     if (currentLayer === 'memories') {
-      if (node.type === 'moment') {
-        setMemorySelection({ kind: 'moment', id: node.id })
+      if (node.type === 'memory') {
+        setMemorySelection({ kind: 'memory', id: node.id })
         return
       }
       if (node.type === 'person' || node.type === 'place') {
@@ -736,14 +736,14 @@ function Graph() {
   const isSidePanelOpen =
     openPanel === 'addPerson' ||
     openPanel === 'addPlace' ||
-    openPanel === 'addMoment' ||
+    openPanel === 'addMemory' ||
     selectedNode != null ||
     selectedEdge != null
 
   const sectionLabel = currentLayer === 'memories' ? 'Memories graph' : 'Relationship graph'
 
-  const selectedMomentId = memorySelection?.kind === 'moment' ? memorySelection.id : null
-  const highlightedMomentIds = memorySelection?.kind === 'context' ? (contextToMoments.get(memorySelection.id) ?? new Set<string>()) : undefined
+  const selectedMemoryId = memorySelection?.kind === 'memory' ? memorySelection.id : null
+  const highlightedMemoryIds = memorySelection?.kind === 'context' ? (contextToMemories.get(memorySelection.id) ?? new Set<string>()) : undefined
 
   // Render the graph
   return (
@@ -821,26 +821,26 @@ function Graph() {
 
         {currentLayer === 'memories' ? (
           <MemoryTimeline
-            moments={moments}
-            onMomentClick={(id) => {
+            memories={memories}
+            onMemoryClick={(id) => {
               flowRef.current?.focusNode(id)
-              setMemorySelection({ kind: 'moment', id })
+              setMemorySelection({ kind: 'memory', id })
             }}
-            selectedMomentId={selectedMomentId}
-            highlightedMomentIds={highlightedMomentIds}
+            selectedMemoryId={selectedMemoryId}
+            highlightedMemoryIds={highlightedMemoryIds}
             brushRange={memoryBrushRange}
             onBrushChange={setMemoryBrushRange}
             trailingActions={
               <button
                 type="button"
                 draggable
-                onDragStart={handleDockDragStart('moment')}
-                onClick={() => togglePanel('addMoment')}
-                aria-label="Add a moment. Click to open the form, or drag onto the canvas."
-                className={clsx(timelineStyles.trailingAction, openPanel === 'addMoment' && timelineStyles.trailingActionActive)}
+                onDragStart={handleDockDragStart('memory')}
+                onClick={() => togglePanel('addMemory')}
+                aria-label="Add a memory. Click to open the form, or drag onto the canvas."
+                className={clsx(timelineStyles.trailingAction, openPanel === 'addMemory' && timelineStyles.trailingActionActive)}
               >
                 <span className={timelineStyles.trailingActionIcon} aria-hidden="true">+</span>
-                <span className={timelineStyles.trailingActionLabel}>Moment</span>
+                <span className={timelineStyles.trailingActionLabel}>Memory</span>
               </button>
             }
           />
@@ -983,15 +983,15 @@ function Graph() {
                       className={styles.searchResultItem}
                       onClick={() => {
                         if (currentLayer === 'memories') {
-                          // Memories layer search only returns moments.
+                          // Memories layer search only returns memories.
                           if (memoryBrushRange) {
-                            const m = moments.find((x) => x.id === r.id)
-                            const ms = m ? getMomentMillis(m) : null
+                            const m = memories.find((x) => x.id === r.id)
+                            const ms = m ? getMemoryMillis(m) : null
                             const outOfBrush =
                               ms == null || ms < memoryBrushRange.start || ms > memoryBrushRange.end
                             if (outOfBrush) setMemoryBrushRange(null)
                           }
-                          setMemorySelection({ kind: 'moment', id: r.id })
+                          setMemorySelection({ kind: 'memory', id: r.id })
                         }
                         window.setTimeout(() => flowRef.current?.focusNode(r.id), 0)
                         setSearchQuery('')
@@ -1103,8 +1103,8 @@ function Graph() {
           </button>
         </div>
 
-        {openPanel === 'addMoment' && (
-          <AddMomentModal
+        {openPanel === 'addMemory' && (
+          <AddMemoryModal
             userId={user.uid}
             people={memoryPeoplePickerItems}
             onClose={() => setOpenPanel(null)}

@@ -53,10 +53,10 @@
   --panel-border-width: 3px;
 }
 
-.accentMoment {
-  --panel-accent: var(--color-node-moment-border);
-  --panel-avatar-bg: var(--color-node-moment-soft);
-  --panel-avatar-text: var(--color-node-moment-text);
+.accentMemory {
+  --panel-accent: var(--color-node-memory-border);
+  --panel-avatar-bg: var(--color-node-memory-soft);
+  --panel-avatar-text: var(--color-node-memory-text);
 }
 
 .accentConnection {

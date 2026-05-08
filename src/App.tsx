@@ -27,7 +27,6 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/graph" element={<Graph />} />
-              <Route path="/moments" element={<Navigate to="/graph?layer=memories" replace />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/settings" element={<Settings />}>
                 <Route index element={<Navigate to="account" replace />} />

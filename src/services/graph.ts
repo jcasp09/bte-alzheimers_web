@@ -16,7 +16,7 @@ import {
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db } from './firestore'
 import { storage } from './storage'
-import { removeMomentReferencesToDeletedNode } from '../firebase/moments'
+import { removeMemoryReferencesToDeletedNode } from '../firebase/memories'
 import { GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 import type {
   EdgeDoc,
@@ -371,7 +371,7 @@ export async function deleteNodeAndEdges(
   }
 
   if (graphId === 'context') {
-    await removeMomentReferencesToDeletedNode(uid, nodeId)
+    await removeMemoryReferencesToDeletedNode(uid, nodeId)
   }
 }
 

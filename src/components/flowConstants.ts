@@ -9,7 +9,7 @@ export const GRAPH_TRANSLATE_EXTENT: [[number, number], [number, number]] = [
 ]
 
 /** dataTransfer MIME type used for dock drag-to-place. The payload is the node
- *  kind ("person" | "place" | "group" | "moment"). */
+ *  kind ("person" | "place" | "group" | "memory"). */
 export const DOCK_NODE_DND_TYPE = 'application/x-memoryjog-dock-node'
 
 /** Imperative handle exposed from DefaultFlow so the parent can drive viewport
@@ -34,4 +34,3 @@ export function isLayer(value: unknown): value is Layer {
 
 /** sessionStorage key for the current layer (per-tab persistence). */
 export const LAYER_STORAGE_KEY = 'bte:graphLayer'
-

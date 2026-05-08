@@ -131,7 +131,7 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
   const personColor = useThemeColor('--color-node-person-border')
   const placeColor = useThemeColor('--color-node-place-border')
   const groupColor = useThemeColor('--color-border-strong')
-  const momentColor = useThemeColor('--color-node-moment-border')
+  const memoryColor = useThemeColor('--color-node-memory-border')
   const fallbackColor = useThemeColor('--color-text-muted')
 
   const miniMapNodeColor = useCallback((node: Node) => {
@@ -139,9 +139,9 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
     if (node.type === 'person') return personColor
     if (node.type === 'place') return placeColor
     if (node.type === 'group') return groupColor
-    if (node.type === 'momentsBucket') return momentColor
+    if (node.type === 'memoryBucket') return memoryColor
     return fallbackColor
-  }, [personColor, placeColor, groupColor, momentColor, fallbackColor])
+  }, [personColor, placeColor, groupColor, memoryColor, fallbackColor])
 
   const flowWidth = useStore((s) => s.width)
   const flowHeight = useStore((s) => s.height)

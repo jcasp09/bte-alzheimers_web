@@ -1,17 +1,17 @@
 import type { Edge, Node } from '@xyflow/react'
-import type { MomentDoc } from '../firebase/moments'
-import { parseOccurredOn } from '../firebase/moments'
+import type { MemoryDoc } from '../firebase/memories'
+import { parseOccurredOn } from '../firebase/memories'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../graph/edgeHandles'
-import { MOMENT_NODE_DEFAULT_SIZE } from '../graph/nodeTypes/MomentNode'
+import { MEMORY_NODE_DEFAULT_SIZE } from '../graph/nodeTypes/MemoryNode'
 
-/** Opacity applied to context nodes that are not connected to any moment. */
+/** Opacity applied to context nodes that are not connected to any memory. */
 const FADED_CONTEXT_OPACITY = 0.25
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
 /** Inner radius before the spiral starts spreading */
-const MOMENT_SPIRAL_INNER = 220
-/** Per-step spread; tuned so adjacent moments rarely overlap visually. */
-const MOMENT_SPIRAL_STEP = 95
+const MEMORY_SPIRAL_INNER = 220
+/** Per-step spread; tuned so adjacent memories rarely overlap visually. */
+const MEMORY_SPIRAL_STEP = 95
 
 export const SYNTH_EDGE_PREFIX = 'synth:'
 
@@ -19,8 +19,8 @@ export function isSynthEdgeId(id: string): boolean {
   return id.startsWith(SYNTH_EDGE_PREFIX)
 }
 
-/** UTC midnight ms for a moment's `occurredOn`, or null if it doesn't parse. */
-export function getMomentMillis(m: MomentDoc): number | null {
+/** UTC midnight ms for a memory's `occurredOn`, or null if it doesn't parse. */
+export function getMemoryMillis(m: MemoryDoc): number | null {
   const p = parseOccurredOn(m.occurredOn)
   if (!p) return null
   return Date.UTC(p.y, p.m - 1, p.d)
@@ -29,41 +29,41 @@ export function getMomentMillis(m: MomentDoc): number | null {
 /** A brush range on the memory timeline, in UTC ms (inclusive on both ends). */
 export type MemoryBrushRange = { start: number; end: number }
 
-/** Filter moments to those falling within [start, end]. */
-export function filterMomentsByRange(
-  moments: readonly MomentDoc[],
+/** Filter memories to those falling within [start, end]. */
+export function filterMemoriesByRange(
+  memories: readonly MemoryDoc[],
   range: MemoryBrushRange | null,
-): MomentDoc[] {
-  if (!range) return [...moments]
-  return moments.filter((m) => {
-    const ms = getMomentMillis(m)
+): MemoryDoc[] {
+  if (!range) return [...memories]
+  return memories.filter((m) => {
+    const ms = getMemoryMillis(m)
     if (ms == null) return false
     return ms >= range.start && ms <= range.end
   })
 }
 
-/** Sort key for a moment's `occurredOn` (YYYY-MM-DD). */
-function momentSortKey(m: MomentDoc): number {
+/** Sort key for a memory's `occurredOn` (YYYY-MM-DD). */
+function memorySortKey(m: MemoryDoc): number {
   const p = parseOccurredOn(m.occurredOn)
   if (!p) return Number.MAX_SAFE_INTEGER
   return p.y * 10000 + p.m * 100 + p.d
 }
 
-export function buildMomentSpiralPositions(moments: MomentDoc[]): Map<string, { x: number; y: number }> {
-  const sorted = [...moments].sort((a, b) => momentSortKey(a) - momentSortKey(b))
+export function buildMemorySpiralPositions(memories: MemoryDoc[]): Map<string, { x: number; y: number }> {
+  const sorted = [...memories].sort((a, b) => memorySortKey(a) - memorySortKey(b))
   const positions = new Map<string, { x: number; y: number }>()
   sorted.forEach((m, rank) => {
-    const r = rank === 0 ? 0 : MOMENT_SPIRAL_INNER + Math.sqrt(rank) * MOMENT_SPIRAL_STEP
+    const r = rank === 0 ? 0 : MEMORY_SPIRAL_INNER + Math.sqrt(rank) * MEMORY_SPIRAL_STEP
     const angle = rank * GOLDEN_ANGLE
     positions.set(m.id, { x: r * Math.cos(angle), y: r * Math.sin(angle) })
   })
   return positions
 }
 
-/** IDs of every person/place a moment touches, deduped across all moments. */
-export function collectConnectedNodeIds(moments: MomentDoc[]): Set<string> {
+/** IDs of every person/place a memory touches, deduped across all memories. */
+export function collectConnectedNodeIds(memories: MemoryDoc[]): Set<string> {
   const ids = new Set<string>()
-  for (const m of moments) {
+  for (const m of memories) {
     for (const id of m.personNodeIds) ids.add(id)
     for (const id of m.placeNodeIds) ids.add(id)
   }
@@ -74,14 +74,14 @@ export function collectConnectedNodeIds(moments: MomentDoc[]): Set<string> {
  *  - Connected people/places appear at full opacity, at their saved positions.
  *  - Unconnected people/places appear faded (still draggable=false to discourage
  *    accidental moves while in this layer).
- *  - Groups are excluded — moments only attach to people/places.
- *  - Moments are added at spiral positions. */
+ *  - Groups are excluded — memories only attach to people/places.
+ *  - Memories are added at spiral positions. */
 export function buildMemoryLayerNodes(
-  moments: MomentDoc[],
+  memories: MemoryDoc[],
   contextNodes: readonly Node[],
 ): Node[] {
-  const positions = buildMomentSpiralPositions(moments)
-  const connected = collectConnectedNodeIds(moments)
+  const positions = buildMemorySpiralPositions(memories)
+  const connected = collectConnectedNodeIds(memories)
 
   const out: Node[] = []
   for (const n of contextNodes) {
@@ -97,14 +97,14 @@ export function buildMemoryLayerNodes(
     }
   }
 
-  for (const m of moments) {
+  for (const m of memories) {
     const pos = positions.get(m.id) ?? { x: 0, y: 0 }
     out.push({
       id: m.id,
-      type: 'moment',
+      type: 'memory',
       position: pos,
-      width: MOMENT_NODE_DEFAULT_SIZE.width,
-      height: MOMENT_NODE_DEFAULT_SIZE.height,
+      width: MEMORY_NODE_DEFAULT_SIZE.width,
+      height: MEMORY_NODE_DEFAULT_SIZE.height,
       draggable: false,
       data: {
         title: m.title,
@@ -120,10 +120,10 @@ export function buildMemoryLayerNodes(
   return out
 }
 
-/** Synthesize edges from each moment to its referenced people/places. These are derived, not persisted. */
-export function buildMemoryLayerEdges(moments: MomentDoc[]): Edge[] {
+/** Synthesize edges from each memory to its referenced people/places. These are derived, not persisted. */
+export function buildMemoryLayerEdges(memories: MemoryDoc[]): Edge[] {
   const edges: Edge[] = []
-  for (const m of moments) {
+  for (const m of memories) {
     for (const personId of m.personNodeIds) {
       edges.push({
         id: `${SYNTH_EDGE_PREFIX}${m.id}->${personId}`,
@@ -146,10 +146,10 @@ export function buildMemoryLayerEdges(moments: MomentDoc[]): Edge[] {
   return edges
 }
 
-/** Reverse index: context node id -> set of moment ids that reference it. */
-export function buildContextToMomentsMap(moments: MomentDoc[]): Map<string, Set<string>> {
+/** Reverse index: context node id -> set of memory ids that reference it. */
+export function buildContextToMemoriesMap(memories: MemoryDoc[]): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>()
-  for (const m of moments) {
+  for (const m of memories) {
     for (const id of m.personNodeIds) {
       let s = out.get(id)
       if (!s) { s = new Set<string>(); out.set(id, s) }
@@ -166,26 +166,25 @@ export function buildContextToMomentsMap(moments: MomentDoc[]): Map<string, Set<
 
 /** A bidirectional selection in the Memories layer. */
 export type MemorySelection =
-  | { kind: 'moment'; id: string }
+  | { kind: 'memory'; id: string }
   | { kind: 'context'; id: string }
 
 /** IDs that are "in scope" for the selection. */
 export function getConnectedIdsForSelection(
   selection: MemorySelection,
-  moments: readonly MomentDoc[],
-  contextToMoments: ReadonlyMap<string, ReadonlySet<string>>,
+  memories: readonly MemoryDoc[],
+  contextToMemories: ReadonlyMap<string, ReadonlySet<string>>,
 ): Set<string> {
   const out = new Set<string>([selection.id])
-  if (selection.kind === 'moment') {
-    const m = moments.find((x) => x.id === selection.id)
+  if (selection.kind === 'memory') {
+    const m = memories.find((x) => x.id === selection.id)
     if (m) {
       for (const id of m.personNodeIds) out.add(id)
       for (const id of m.placeNodeIds) out.add(id)
     }
   } else {
-    const momentIds = contextToMoments.get(selection.id)
-    if (momentIds) for (const id of momentIds) out.add(id)
+    const memoryIds = contextToMemories.get(selection.id)
+    if (memoryIds) for (const id of memoryIds) out.add(id)
   }
   return out
 }
-

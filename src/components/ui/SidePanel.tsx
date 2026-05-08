@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import clsx from 'clsx'
 import styles from './SidePanel.module.css'
 
-export type SidePanelAccent = 'person' | 'place' | 'group' | 'moment' | 'connection' | 'neutral'
+export type SidePanelAccent = 'person' | 'place' | 'group' | 'memory' | 'connection' | 'neutral'
 
 export type SidePanelHero = {
   avatarLabel?: string
@@ -21,7 +21,7 @@ const accentClassByName: Record<SidePanelAccent, string> = {
   person: styles.accentPerson,
   place: styles.accentPlace,
   group: styles.accentGroup,
-  moment: styles.accentMoment,
+  memory: styles.accentMemory,
   connection: styles.accentConnection,
   neutral: styles.accentNeutral,
 }

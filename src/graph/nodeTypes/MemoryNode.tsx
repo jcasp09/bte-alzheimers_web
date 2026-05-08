@@ -2,7 +2,7 @@ import type { NodeProps } from '@xyflow/react'
 import { NodeEdgeHandles } from '../../components/NodeEdgeHandles'
 import { usePhotoUrl } from '../../hooks/usePhotoUrl'
 
-export const MOMENT_NODE_DEFAULT_SIZE = { width: 200, height: 100 } as const
+export const MEMORY_NODE_DEFAULT_SIZE = { width: 200, height: 100 } as const
 
 function formatOccurredOn(occurredOn: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(occurredOn.trim())
@@ -15,7 +15,7 @@ function formatOccurredOn(occurredOn: string): string {
   return `${monthName} ${d}, ${y}`
 }
 
-export function MomentNode({ data }: NodeProps) {
+export function MemoryNode({ data }: NodeProps) {
   const title = typeof data.title === 'string' ? data.title : ''
   const occurredOn = typeof data.occurredOn === 'string' ? data.occurredOn : ''
   const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
@@ -28,22 +28,22 @@ export function MomentNode({ data }: NodeProps) {
     <div
       style={{
         position: 'relative',
-        width: MOMENT_NODE_DEFAULT_SIZE.width,
-        minHeight: MOMENT_NODE_DEFAULT_SIZE.height,
+        width: MEMORY_NODE_DEFAULT_SIZE.width,
+        minHeight: MEMORY_NODE_DEFAULT_SIZE.height,
         boxSizing: 'border-box',
       }}
     >
       <div
         style={{
           width: '100%',
-          minHeight: MOMENT_NODE_DEFAULT_SIZE.height,
+          minHeight: MEMORY_NODE_DEFAULT_SIZE.height,
           boxSizing: 'border-box',
           borderRadius: 12,
-          background: resolvedImageUrl ? `linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%), url(${resolvedImageUrl})` : 'var(--color-node-moment)',
+          background: resolvedImageUrl ? `linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%), url(${resolvedImageUrl})` : 'var(--color-node-memory)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          border: '2px solid var(--color-node-moment-border)',
-          color: resolvedImageUrl ? '#fff' : 'var(--color-node-moment-text)',
+          border: '2px solid var(--color-node-memory-border)',
+          color: resolvedImageUrl ? '#fff' : 'var(--color-node-memory-text)',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'flex-end',
@@ -64,7 +64,7 @@ export function MomentNode({ data }: NodeProps) {
             opacity: showTitleFallback ? 0.7 : 1,
           }}
         >
-          {showTitleFallback ? (dateLabel || 'Moment') : title}
+          {showTitleFallback ? (dateLabel || 'Memory') : title}
         </span>
         {!showTitleFallback && dateLabel ? (
           <span

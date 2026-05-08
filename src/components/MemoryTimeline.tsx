@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useRef, type ReactNode } from 'react'
 import clsx from 'clsx'
-import type { MomentDoc } from '../firebase/moments'
-import { getMomentMillis, type MemoryBrushRange } from '../moments/memoryLayer'
+import type { MemoryDoc } from '../firebase/memories'
+import { getMemoryMillis, type MemoryBrushRange } from '../memories/memoryLayer'
 import styles from './MemoryTimeline.module.css'
 
-type DatedMoment = { moment: MomentDoc; date: number }
+type DatedMemory = { memory: MemoryDoc; date: number }
 
 const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000
 
@@ -12,26 +12,26 @@ const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000
 const CLICK_VS_DRAG_THRESHOLD = 0.005
 
 type Props = {
-  moments: MomentDoc[]
-  onMomentClick: (momentId: string) => void
-  selectedMomentId?: string | null
-  highlightedMomentIds?: ReadonlySet<string>
+  memories: MemoryDoc[]
+  onMemoryClick: (memoryId: string) => void
+  selectedMemoryId?: string | null
+  highlightedMemoryIds?: ReadonlySet<string>
   brushRange?: MemoryBrushRange | null
   onBrushChange?: (range: MemoryBrushRange | null) => void
   trailingActions?: ReactNode
 }
 
-/** Read-only horizontal timeline that lays out moments by date. */
+/** Read-only horizontal timeline that lays out memories by date. */
 export function MemoryTimeline({
-  moments,
-  onMomentClick,
-  selectedMomentId,
-  highlightedMomentIds,
+  memories,
+  onMemoryClick,
+  selectedMemoryId,
+  highlightedMemoryIds,
   brushRange,
   onBrushChange,
   trailingActions,
 }: Props) {
-  const hasSelection = selectedMomentId != null || (highlightedMomentIds != null && highlightedMomentIds.size > 0)
+  const hasSelection = selectedMemoryId != null || (highlightedMemoryIds != null && highlightedMemoryIds.size > 0)
 
   const trackRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{ startFrac: number; pointerId: number } | null>(null)
@@ -42,10 +42,10 @@ export function MemoryTimeline({
   }, [])
 
   const { dated, oldest, newest } = useMemo(() => {
-    const datedList: DatedMoment[] = []
-    for (const m of moments) {
-      const date = getMomentMillis(m)
-      if (date != null) datedList.push({ moment: m, date })
+    const datedList: DatedMemory[] = []
+    for (const m of memories) {
+      const date = getMemoryMillis(m)
+      if (date != null) datedList.push({ memory: m, date })
     }
     datedList.sort((a, b) => a.date - b.date)
 
@@ -61,7 +61,7 @@ export function MemoryTimeline({
       oldest: minDate - pad,
       newest: maxDate + pad,
     }
-  }, [moments, today])
+  }, [memories, today])
 
   const range = Math.max(newest - oldest, 1)
 
@@ -180,18 +180,18 @@ export function MemoryTimeline({
           </div>
         ))}
 
-        {dated.map(({ moment, date }) => {
+        {dated.map(({ memory, date }) => {
           const frac = (date - oldest) / range
-          const label = moment.title.trim().length > 0 ? moment.title : moment.occurredOn
-          const isSelected = selectedMomentId === moment.id
-          const isHighlighted = !isSelected && (highlightedMomentIds?.has(moment.id) ?? false)
+          const label = memory.title.trim().length > 0 ? memory.title : memory.occurredOn
+          const isSelected = selectedMemoryId === memory.id
+          const isHighlighted = !isSelected && (highlightedMemoryIds?.has(memory.id) ?? false)
           const inBrush = brushRange == null || (date >= brushRange.start && date <= brushRange.end)
           // Dim if outside the active brush, or if a selection is active and this
-          // moment is neither the selected one nor part of the highlighted set.
+          // memory is neither the selected one nor part of the highlighted set.
           const isDimmed = !inBrush || (hasSelection && !isSelected && !isHighlighted && inBrush)
           return (
             <button
-              key={moment.id}
+              key={memory.id}
               type="button"
               className={clsx(
                 styles.dot,
@@ -200,9 +200,9 @@ export function MemoryTimeline({
                 isDimmed && styles.dotDimmed,
               )}
               style={{ left: `${frac * 100}%` }}
-              onClick={() => onMomentClick(moment.id)}
+              onClick={() => onMemoryClick(memory.id)}
               onPointerDown={(e) => e.stopPropagation()}
-              aria-label={`Focus moment: ${label}`}
+              aria-label={`Focus memory: ${label}`}
               aria-pressed={isSelected}
               title={label}
             />
