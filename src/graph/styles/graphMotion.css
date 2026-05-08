@@ -26,6 +26,10 @@ html[data-motion='reduce'] .react-flow__node.graph-node-motion > div {
   animation: none;
 }
 
+.react-flow__edge .react-flow__edge-interaction {
+  pointer-events: none;
+}
+
 .react-flow .react-flow__controls {
   box-shadow: 0 4px 12px rgba(var(--color-shadow-rgb), 0.08);
   border-radius: var(--radius-md);

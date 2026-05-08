@@ -91,12 +91,18 @@ export function useDisplayElements(input: Inputs) {
   const displayEdges = useMemo(() => {
     if (currentLayer === 'memories') {
       const synth = buildMemoryLayerEdges(visibleMemories)
-      if (!memorySelection) return synth
-      // Dim edges that don't touch the selected node
+      if (!memorySelection) {
+        return synth.map((e) => ({
+          ...e,
+          style: { ...(e.style ?? {}), opacity: 0.4 },
+        }))
+      }
       return synth.map((e) => {
         const touches = e.source === memorySelection.id || e.target === memorySelection.id
-        if (touches) return e
-        return { ...e, style: { ...(e.style ?? {}), opacity: 0.15 } }
+        return {
+          ...e,
+          style: { ...(e.style ?? {}), opacity: touches ? 1 : 0.1 },
+        }
       })
     }
     const visible = new Set(displayNodes.filter((n) => !n.hidden).map((n) => n.id))
