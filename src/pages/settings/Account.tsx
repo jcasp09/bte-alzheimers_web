@@ -281,13 +281,10 @@ function Account() {
     try {
       const path = `users/${user.uid}/profile-photo`
       const ref = storageRef(storage, path)
-      try {
-        await deleteObject(ref)
-      } catch (err) {
+      await deleteObject(ref).catch((err) => {
         const code = (err as { code?: string } | null)?.code
-        if (code !== 'storage/object-not-found')
-          throw err;
-      }
+        if (code !== 'storage/object-not-found') throw err
+      })
 
       await updateProfile(user, { photoURL: null })
       await setDoc(doc(db, 'users', user.uid), { photoURL: null }, { merge: true })

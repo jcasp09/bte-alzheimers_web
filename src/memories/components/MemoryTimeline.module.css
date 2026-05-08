@@ -75,7 +75,7 @@
   font-size: 1.1rem;
   font-weight: 500;
   line-height: 1;
-  border: 1.5px solid var(--color-node-memory-border);
+  border: 2px solid var(--color-node-memory-border);
   background-color: var(--color-node-memory-soft);
   color: var(--color-node-memory-text);
   user-select: none;
@@ -130,7 +130,7 @@
   height: 14px;
   border-radius: 50%;
   background-color: var(--color-node-memory);
-  border: 1.5px solid var(--color-node-memory-border);
+  border: 2px solid var(--color-node-memory-border);
   padding: 0;
   cursor: pointer;
   transform: translate(-50%, -50%);

@@ -1,4 +1,4 @@
-# BTE-Alzheimers (primary repo)
+# Memory Jog
 
 Preview: `npm run dev`
 
@@ -18,13 +18,13 @@ This application provides preventative and early-stage cognitive support through
 
 #### Demographic
 
-Our app's aim is to adapt to cognitive progression instead of being limited to a single clinical use case. Through customizable UI, both cognitively intact individuals, as well as those looking for preventative-support can find use.
+Our app's aim is to adapt to cognitive progression instead of being limited to a single clinical use case. Through customizable UI, both cognitively intact individuals and those looking for preventative-support can find use.
 
 ---
 
 ### 2. Core Functionality:
 
-Visual Relationship Graphs lie at the heart of this application. They let you represents meaningful entities and their relationships to eachother.
+Visual Relationship Graphs lie at the heart of this application. They let you represent meaningful entities and their relationships to each other.
 
 ### 1. Node Types:
 

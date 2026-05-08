@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
 import type { MemoryDoc } from '../data/memories'
 import { getMemoryMillis, type MemoryBrushRange } from '../model/memoryLayer'
@@ -107,7 +107,7 @@ export function MemoryTimeline({
     return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
   }, [])
 
-  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     if (!onBrushChange) return
     // Only start a brush when the gesture begins on the track itself
     if (e.target !== e.currentTarget) return
@@ -123,7 +123,7 @@ export function MemoryTimeline({
     onBrushChange({ start: ms, end: ms })
   }, [onBrushChange, fracForClientX, oldest, range])
 
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     if (!onBrushChange) return
     const drag = dragStateRef.current
     if (!drag) return
@@ -133,7 +133,7 @@ export function MemoryTimeline({
     onBrushChange({ start: oldest + lo * range, end: oldest + hi * range })
   }, [onBrushChange, fracForClientX, oldest, range])
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     if (!onBrushChange) return
     const drag = dragStateRef.current
     if (!drag) return

@@ -123,7 +123,7 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
       const w = measured?.width ?? n.width ?? 200
       const h = measured?.height ?? n.height ?? 100
       const duration = prefersReducedMotion() ? 0 : 400
-      reactFlowApi.setCenter(n.position.x + w / 2, n.position.y + h / 2, { duration, zoom: 1.4 })
+      void reactFlowApi.setCenter(n.position.x + w / 2, n.position.y + h / 2, { duration, zoom: 1.4 })
     },
   }), [reactFlowApi])
 
@@ -158,7 +158,7 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
         point.x >= left && point.x <= right && point.y >= top && point.y <= bottom
       if (inside) return
       const duration = prefersReducedMotion() ? 0 : 350
-      reactFlowApi.setCenter(point.x, point.y, { duration, zoom })
+      void reactFlowApi.setCenter(point.x, point.y, { duration, zoom })
     },
     [reactFlowApi, flowWidth, flowHeight],
   )
