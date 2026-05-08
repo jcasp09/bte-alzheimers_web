@@ -33,7 +33,7 @@ import type {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '../nodes'
-import { getMotionMode } from '../../services/motion'
+import { getMotionMode } from '../../settings/motion'
 import { useThemeColor } from '../../shared/hooks/useThemeColor'
 
 import {

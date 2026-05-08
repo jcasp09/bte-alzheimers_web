@@ -1,6 +1,6 @@
 import { type SubmitEvent, useState } from 'react'
 import clsx from 'clsx'
-import { createMemory, parseOccurredOn } from '../../../firebase/memories'
+import { createMemory, parseOccurredOn } from '../../../memories/data/memories'
 import { MultiEntityPicker, type PickerItem } from '../../../shared/ui/MultiEntityPicker'
 import { SidePanel } from '../../../shared/ui/SidePanel'
 import formStyles from '../../../shared/styles/formActions.module.css'

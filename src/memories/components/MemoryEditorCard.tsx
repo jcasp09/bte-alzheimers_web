@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDownloadURL, ref } from 'firebase/storage'
 import clsx from 'clsx'
-import type { MemoryDoc } from '../firebase/memories'
+import type { MemoryDoc } from '../data/memories'
 import {
   MAX_PHOTOS_PER_MEMORY,
   deleteMemory,
   formatOccurredOnDate,
   parseOccurredOn,
   updateMemory,
-} from '../firebase/memories'
-import { deleteMemoryPhotoByPath, uploadMemoryPhoto } from '../firebase/memoryPhotos'
-import type { NodeDoc } from '../graph/model/types'
-import { storage } from '../firebase/storage'
-import { MultiEntityPicker, type PickerItem } from '../shared/ui/MultiEntityPicker'
-import formStyles from '../shared/styles/formActions.module.css'
+} from '../data/memories'
+import { deleteMemoryPhotoByPath, uploadMemoryPhoto } from '../data/photos'
+import type { NodeDoc } from '../../graph/model/types'
+import { storage } from '../../firebase/storage'
+import { MultiEntityPicker, type PickerItem } from '../../shared/ui/MultiEntityPicker'
+import formStyles from '../../shared/styles/formActions.module.css'
 import styles from './MemoryEditorCard.module.css'
 
 type MemoryEditorCardProps = {

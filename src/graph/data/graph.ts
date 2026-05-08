@@ -16,7 +16,7 @@ import {
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db } from '../../firebase/firestore'
 import { storage } from '../../firebase/storage'
-import { removeMemoryReferencesToDeletedNode } from '../../firebase/memories'
+import { removeMemoryReferencesToDeletedNode } from '../../memories/data/memories'
 import { GROUP_NODE_DEFAULT_SIZE } from '../model/dimensions'
 import type {
   EdgeDoc,

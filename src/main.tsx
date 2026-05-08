@@ -5,7 +5,7 @@ import './index.css'
 import './shared/styles/utilities.css'
 import './graph/styles/graphMotion.css'
 import App from './App.tsx'
-import { applyThemeColorMeta } from './services/theme'
+import { applyThemeColorMeta } from './settings/theme'
 
 applyThemeColorMeta()
 

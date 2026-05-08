@@ -6,7 +6,7 @@ import {
   getMotionMode,
   setMotionMode,
   subscribeToMotionChange,
-} from '../../services/motion'
+} from '../../settings/motion'
 import { useRadioGroupKeyboard } from '../../shared/hooks/useRadioGroupKeyboard'
 import PageHeader from '../../shared/ui/PageHeader'
 import styles from './Accessibility.module.css'

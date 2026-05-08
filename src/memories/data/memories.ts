@@ -15,8 +15,8 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { deleteObject, ref } from 'firebase/storage'
-import { db } from './firestore'
-import { storage } from './storage'
+import { db } from '../../firebase/firestore'
+import { storage } from '../../firebase/storage'
 
 export const MAX_PEOPLE_PER_MEMORY = 10
 export const MAX_PLACES_PER_MEMORY = 4

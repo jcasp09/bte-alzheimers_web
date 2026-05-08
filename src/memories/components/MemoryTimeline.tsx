@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, type ReactNode } from 'react'
 import clsx from 'clsx'
-import type { MemoryDoc } from '../firebase/memories'
-import { getMemoryMillis, type MemoryBrushRange } from '../memories/memoryLayer'
+import type { MemoryDoc } from '../data/memories'
+import { getMemoryMillis, type MemoryBrushRange } from '../model/memoryLayer'
 import styles from './MemoryTimeline.module.css'
 
 type DatedMemory = { memory: MemoryDoc; date: number }

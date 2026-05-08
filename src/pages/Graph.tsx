@@ -31,7 +31,7 @@ import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../graph/model/dimen
 import { edgeDocToReactFlowEdge } from '../graph/model/edgeHandles'
 import { applyReparentOnDragStop } from '../graph/model/reparent'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../graph/hooks/useDeferredEdgePersistence'
-import { getMemories, type MemoryDoc } from '../firebase/memories'
+import { getMemories, type MemoryDoc } from '../memories/data/memories'
 import {
   buildContextToMemoriesMap,
   buildMemoryLayerEdges,
@@ -41,9 +41,9 @@ import {
   getMemoryMillis,
   type MemoryBrushRange,
   type MemorySelection,
-} from '../memories/memoryLayer'
-import { MemoryTimeline } from '../components/MemoryTimeline'
-import timelineStyles from '../components/MemoryTimeline.module.css'
+} from '../memories/model/memoryLayer'
+import { MemoryTimeline } from '../memories/components/MemoryTimeline'
+import timelineStyles from '../memories/components/MemoryTimeline.module.css'
 import { AddNodePanel } from '../graph/components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../graph/components/modals/AddConnectionModal.tsx'
 import { AddGroupModal } from '../graph/components/modals/AddGroupModal.tsx'

@@ -4,7 +4,7 @@ import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore'
 import { auth } from '../firebase/auth'
 import { db } from '../firebase/firestore'
 import { AuthContext, type Profile } from './AuthContext'
-import { DEFAULT_THEME, THEMES, type Theme, getTheme, setTheme, subscribeToThemeChange } from '../services/theme'
+import { DEFAULT_THEME, THEMES, type Theme, getTheme, setTheme, subscribeToThemeChange } from '../settings/theme'
 
 function isTheme(value: unknown): value is Theme {
   return typeof value === 'string' && (THEMES as readonly string[]).includes(value)

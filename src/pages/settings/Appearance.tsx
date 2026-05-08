@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { type Theme, getTheme, setTheme, subscribeToThemeChange } from '../../services/theme'
+import { type Theme, getTheme, setTheme, subscribeToThemeChange } from '../../settings/theme'
 import { useRadioGroupKeyboard } from '../../shared/hooks/useRadioGroupKeyboard'
 import PageHeader from '../../shared/ui/PageHeader'
 import styles from './Appearance.module.css'
