@@ -9,6 +9,7 @@ export type PeoplePickerItem = {
   id: string
   name: string
   photoPath?: string
+  photoUpdatedAt?: string
 }
 
 type Props = {
@@ -29,7 +30,7 @@ function PersonAvatar({
   size?: number
   ringClassName?: string
 }) {
-  const url = usePhotoUrl(item.photoPath)
+  const url = usePhotoUrl(item.photoPath, item.photoUpdatedAt)
   const initials = getInitialsForAvatar(item.name) || '?'
   return (
     <span

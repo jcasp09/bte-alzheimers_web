@@ -17,8 +17,8 @@ type Props = {
   onSelect: (result: SearchResult) => void
 }
 
-function SearchResultThumb({ photoPath }: { photoPath: string | undefined }) {
-  const url = usePhotoUrl(photoPath)
+function SearchResultThumb({ photoPath, photoUpdatedAt }: { photoPath: string | undefined; photoUpdatedAt: string | undefined }) {
+  const url = usePhotoUrl(photoPath, photoUpdatedAt)
   if (!url) return null
   return <img src={url} alt="" className={styles.searchResultThumb} />
 }
@@ -96,7 +96,7 @@ export function GraphSearch({
                       setSearchQuery('')
                     }}
                   >
-                    <SearchResultThumb photoPath={r.photoPath} />
+                    <SearchResultThumb photoPath={r.photoPath} photoUpdatedAt={r.photoUpdatedAt} />
                     <span className={styles.searchResultName}>{r.name}</span>
                     <span className={styles.searchResultType}>{r.type}</span>
                   </button>

@@ -139,7 +139,7 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
     if (node.type === 'person') return personColor
     if (node.type === 'place') return placeColor
     if (node.type === 'group') return groupColor
-    if (node.type === 'memoryBucket') return memoryColor
+    if (node.type === 'memory') return memoryColor
     return fallbackColor
   }, [personColor, placeColor, groupColor, memoryColor, fallbackColor])
 

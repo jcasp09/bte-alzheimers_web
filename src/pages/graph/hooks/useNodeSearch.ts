@@ -9,6 +9,7 @@ export type SearchResult = {
   name: string
   type: string
   photoPath: string | undefined
+  photoUpdatedAt: string | undefined
 }
 
 /** Top-of-canvas search. Memories layer searches memory titles + descriptions;
@@ -34,7 +35,7 @@ export function useNodeSearch(
         const title = m.title.trim().length > 0 ? m.title : m.occurredOn
         const haystack = `${title}\n${m.description}`.toLowerCase()
         if (haystack.includes(q)) {
-          all.push({ id: m.id, name: title, type: 'memory', photoPath: m.photoPaths[0] })
+          all.push({ id: m.id, name: title, type: 'memory', photoPath: m.photoPaths[0], photoUpdatedAt: undefined })
         }
       }
     } else {
@@ -45,7 +46,8 @@ export function useNodeSearch(
         if (!name) continue
         if (name.toLowerCase().includes(q)) {
           const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
-          all.push({ id: n.id, name, type: n.type, photoPath })
+          const photoUpdatedAt = typeof n.data?.photoUpdatedAt === 'string' ? n.data.photoUpdatedAt : undefined
+          all.push({ id: n.id, name, type: n.type, photoPath, photoUpdatedAt })
         }
       }
     }

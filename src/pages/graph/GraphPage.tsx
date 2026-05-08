@@ -180,13 +180,14 @@ function Graph() {
   })
 
   const memoryPeoplePickerItems = useMemo(() => {
-    const out: { id: string; name: string; photoPath?: string }[] = []
+    const out: { id: string; name: string; photoPath?: string; photoUpdatedAt?: string }[] = []
     for (const n of nodes) {
       if (n.type !== 'person') continue
       const name = typeof n.data?.name === 'string' ? n.data.name : ''
       if (!name) continue
       const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
-      out.push({ id: n.id, name, photoPath })
+      const photoUpdatedAt = typeof n.data?.photoUpdatedAt === 'string' ? n.data.photoUpdatedAt : undefined
+      out.push({ id: n.id, name, photoPath, photoUpdatedAt })
     }
     return out
   }, [nodes])
@@ -264,6 +265,7 @@ function Graph() {
     const phone = typeof node.data.phone === 'string' ? node.data.phone : ''
     const address = typeof node.data.address === 'string' ? node.data.address : ''
     const photoPath = typeof node.data.photoPath === 'string' ? node.data.photoPath : ''
+    const photoUpdatedAt = typeof node.data.photoUpdatedAt === 'string' ? node.data.photoUpdatedAt : undefined
     const w = node.type === 'group' ? node.width : node.data.width
     const h = node.type === 'group' ? node.height : node.data.height
 
@@ -276,6 +278,7 @@ function Graph() {
       phone,
       address,
       photoPath,
+      photoUpdatedAt,
       width: typeof w === 'number' && Number.isFinite(w) ? w : undefined,
       height: typeof h === 'number' && Number.isFinite(h) ? h : undefined,
     })
@@ -564,6 +567,7 @@ function Graph() {
             nodePhone={selectedNode.phone ?? ''}
             nodeAddress={selectedNode.address ?? ''}
             nodePhotoPath={selectedNode.photoPath ?? ''}
+            nodePhotoUpdatedAt={selectedNode.photoUpdatedAt}
             nodeWidth={selectedNode.width}
             nodeHeight={selectedNode.height}
             onClose={closeSidePanel}

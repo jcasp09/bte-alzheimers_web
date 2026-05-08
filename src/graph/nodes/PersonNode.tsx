@@ -17,6 +17,7 @@ export function PersonNode({ data }: NodeProps) {
   const email = typeof data.email === 'string' ? data.email : ''
   const phone = typeof data.phone === 'string' ? data.phone : ''
   const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
+  const photoUpdatedAt = typeof data.photoUpdatedAt === 'string' ? data.photoUpdatedAt : undefined
 
   const { width: w, height: h } = safeNodeDimensions('person', data.width, data.height)
   const sc = personScale(w, h)
@@ -31,7 +32,7 @@ export function PersonNode({ data }: NodeProps) {
   const showRelationship = w >= 165 && h >= 46
   const showEmailPhone = w >= 205 && h >= 72
 
-  const resolvedImageUrl = usePhotoUrl(photoPath) ?? ''
+  const resolvedImageUrl = usePhotoUrl(photoPath, photoUpdatedAt) ?? ''
 
   return (
     <div

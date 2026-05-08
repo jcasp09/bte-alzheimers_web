@@ -14,7 +14,8 @@ export function PlaceNode({ data }: NodeProps) {
   const name = typeof data.name === 'string' ? data.name : ''
   const address = typeof data.address === 'string' ? data.address : ''
   const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
-  const resolvedImageUrl = usePhotoUrl(photoPath) ?? ''
+  const photoUpdatedAt = typeof data.photoUpdatedAt === 'string' ? data.photoUpdatedAt : undefined
+  const resolvedImageUrl = usePhotoUrl(photoPath, photoUpdatedAt) ?? ''
   const { width: w, height: h } = safeNodeDimensions('place', data.width, data.height)
   const sc = placeScale(w, h)
   const nameFont = Math.min(20, Math.max(10, Math.round(12 * sc)))

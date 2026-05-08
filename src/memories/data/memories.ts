@@ -7,8 +7,8 @@ import {
   getDoc,
   getDocs,
   query,
-  runTransaction,
   serverTimestamp,
+  setDoc,
   Timestamp,
   updateDoc,
   where,
@@ -71,10 +71,6 @@ export type UpdateMemoryInput = Partial<{
 
 function memoriesCollection(uid: string) {
   return collection(db, 'users', uid, 'memories')
-}
-
-function memoryDateLockRef(uid: string, occurredOn: string) {
-  return doc(db, 'users', uid, 'memoryDateLocks', occurredOn)
 }
 
 async function validateContextNodeIdsByType(
@@ -150,23 +146,14 @@ export async function createMemory(uid: string, input: CreateMemoryInput): Promi
   ])
 
   const newMemoryRef = doc(memoriesCollection(uid))
-  const lockRef = memoryDateLockRef(uid, input.occurredOn)
-
-  await runTransaction(db, async (tx) => {
-    const lockSnap = await tx.get(lockRef)
-    if (lockSnap.exists()) {
-      throw new Error('You already have a memory on this date. Only one memory per day is allowed.')
-    }
-    tx.set(newMemoryRef, {
-      title: input.title,
-      description: input.description,
-      occurredOn: input.occurredOn,
-      personNodeIds,
-      placeNodeIds,
-      photoPaths: [],
-      createdAt: serverTimestamp(),
-    })
-    tx.set(lockRef, { memoryId: newMemoryRef.id })
+  await setDoc(newMemoryRef, {
+    title: input.title,
+    description: input.description,
+    occurredOn: input.occurredOn,
+    personNodeIds,
+    placeNodeIds,
+    photoPaths: [],
+    createdAt: serverTimestamp(),
   })
   return newMemoryRef.id
 }
@@ -178,34 +165,13 @@ export async function updateMemory(
 ): Promise<void> {
   const memoryRef = doc(db, 'users', uid, 'memories', memoryId)
 
+  const payload: Record<string, unknown> = {}
   if (patch.occurredOn !== undefined) {
     if (!parseOccurredOn(patch.occurredOn)) {
       throw new Error('Use a valid calendar date (YYYY-MM-DD).')
     }
-    const newOccurredOn = patch.occurredOn
-    const newLockRef = memoryDateLockRef(uid, newOccurredOn)
-
-    await runTransaction(db, async (tx) => {
-      const memorySnap = await tx.get(memoryRef)
-      if (!memorySnap.exists())
-        throw new Error('Memory not found.')
-
-      const currentOccurredOn = (memorySnap.data() as { occurredOn?: string }).occurredOn ?? ''
-      if (currentOccurredOn === newOccurredOn)
-        return
-
-      const newLockSnap = await tx.get(newLockRef)
-      if (newLockSnap.exists() && newLockSnap.data().memoryId !== memoryId)
-
-      if (currentOccurredOn) {
-        tx.delete(memoryDateLockRef(uid, currentOccurredOn))
-      }
-      tx.set(newLockRef, { memoryId })
-      tx.update(memoryRef, { occurredOn: newOccurredOn })
-    })
+    payload.occurredOn = patch.occurredOn
   }
-
-  const payload: Record<string, unknown> = {}
   if (patch.title !== undefined) payload.title = patch.title
   if (patch.description !== undefined) payload.description = patch.description
   if (patch.personNodeIds !== undefined) {
@@ -231,9 +197,8 @@ export async function deleteMemory(uid: string, memoryId: string): Promise<void>
   const refDoc = doc(db, 'users', uid, 'memories', memoryId)
   const snap = await getDoc(refDoc)
   if (!snap.exists()) return
-  const data = snap.data() as { photoPaths?: unknown; occurredOn?: string }
+  const data = snap.data() as { photoPaths?: unknown }
   const paths = normalizePhotoPaths(data.photoPaths)
-  const occurredOn = typeof data.occurredOn === 'string' ? data.occurredOn : ''
   await Promise.all(
     paths.map((p) =>
       deleteObject(ref(storage, p)).catch(() => {
@@ -242,9 +207,6 @@ export async function deleteMemory(uid: string, memoryId: string): Promise<void>
     ),
   )
   await deleteDoc(refDoc)
-  if (occurredOn) {
-    await deleteDoc(memoryDateLockRef(uid, occurredOn))
-  }
 }
 
 /** After a person or place graph node is removed, strip its id from all memories. */

@@ -37,6 +37,7 @@ type Props = {
   nodePhone: string
   nodeAddress: string
   nodePhotoPath: string
+  nodePhotoUpdatedAt?: string
   nodeWidth?: number
   nodeHeight?: number
   onClose: () => void
@@ -55,6 +56,7 @@ export function NodeInfoModal({
   nodePhone,
   nodeAddress,
   nodePhotoPath,
+  nodePhotoUpdatedAt,
   nodeWidth,
   nodeHeight,
   onClose,
@@ -67,8 +69,9 @@ export function NodeInfoModal({
   const [phone, setPhone] = useState(nodePhone)
   const [address, setAddress] = useState(nodeAddress)
   const [photoPath, setPhotoPath] = useState(nodePhotoPath)
+  const [photoUpdatedAt, setPhotoUpdatedAt] = useState<string | undefined>(nodePhotoUpdatedAt)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const resolvedAvatarUrl = usePhotoUrl(photoPath)
+  const resolvedAvatarUrl = usePhotoUrl(photoPath, photoUpdatedAt)
 
   const stagedPhotoUrl = useMemo(
     () => (photoFile ? URL.createObjectURL(photoFile) : null),
@@ -178,6 +181,7 @@ export function NodeInfoModal({
           nextPhotoPath = uploadedPhoto.photoPath
           nextPhotoUpdatedAt = uploadedPhoto.photoUpdatedAt
           setPhotoPath(uploadedPhoto.photoPath)
+          setPhotoUpdatedAt(uploadedPhoto.photoUpdatedAt)
           setPhotoFile(null)
         }
 
@@ -202,6 +206,7 @@ export function NodeInfoModal({
           nextPhotoPath = uploadedPhoto.photoPath
           nextPhotoUpdatedAt = uploadedPhoto.photoUpdatedAt
           setPhotoPath(uploadedPhoto.photoPath)
+          setPhotoUpdatedAt(uploadedPhoto.photoUpdatedAt)
           setPhotoFile(null)
         }
 

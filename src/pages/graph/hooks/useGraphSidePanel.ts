@@ -11,6 +11,7 @@ export type SelectedNode = {
   phone?: string
   address?: string
   photoPath?: string
+  photoUpdatedAt?: string
   width?: number
   height?: number
 }
