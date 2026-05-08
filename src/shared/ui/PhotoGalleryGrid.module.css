@@ -36,7 +36,7 @@
 }
 
 .addTile {
-  border: 1.5px dashed var(--color-border-strong);
+  border: 2px dashed var(--color-border-strong);
   background: var(--color-surface);
   color: var(--color-text-muted);
   font: inherit;

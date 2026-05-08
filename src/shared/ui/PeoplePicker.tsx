@@ -120,17 +120,19 @@ export function PeoplePicker({
             <span className={styles.rowName}>{p.name}</span>
           </button>
         ))}
-        <button
-          type="button"
-          className={clsx(styles.placeholder, open && styles.placeholderOpen)}
-          onClick={() => setOpen((v) => !v)}
-          disabled={disabled || (selectedIds.length >= max && !open)}
-          aria-label={addLabel}
-          aria-expanded={open}
-          title={addLabel}
-        >
-          <PlusIcon size={22} />
-        </button>
+        <span className={styles.placeholderTile}>
+          <button
+            type="button"
+            className={clsx(styles.placeholder, open && styles.placeholderOpen)}
+            onClick={() => setOpen((v) => !v)}
+            disabled={disabled || (selectedIds.length >= max && !open)}
+            aria-label={addLabel}
+            aria-expanded={open}
+            title={addLabel}
+          >
+            <PlusIcon size={22} />
+          </button>
+        </span>
       </div>
 
       {open && (

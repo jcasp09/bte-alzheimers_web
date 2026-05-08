@@ -5,10 +5,19 @@
 
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.25rem;
   padding: 0.25rem 0;
+}
+
+.placeholderTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 4.25rem;
+  padding: 0.35rem 0.25rem;
+  box-sizing: border-box;
 }
 
 .rowItem {
