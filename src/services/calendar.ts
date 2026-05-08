@@ -1,4 +1,4 @@
-import { GRAPH_IDS, removePassedTaskNodes, upsertNode } from './graph'
+import { GRAPH_IDS, removePassedTaskNodes, upsertNode } from '../graph/data/graph'
 
 type GoogleTokenResponse = {
   access_token?: string

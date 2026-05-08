@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import clsx from 'clsx'
 import type { Connection } from '@xyflow/react'
-import type { PickableNode } from '../../types/graph'
-import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../graph/edgeHandles'
-import { Modal } from '../../shared/ui/Modal'
-import formStyles from '../../shared/styles/formActions.module.css'
+import type { PickableNode } from '../../model/types'
+import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../model/edgeHandles'
+import { Modal } from '../../../shared/ui/Modal'
+import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './AddConnectionModal.module.css'
 
 type Props = {

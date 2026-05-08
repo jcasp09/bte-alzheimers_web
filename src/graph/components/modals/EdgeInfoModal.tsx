@@ -1,10 +1,10 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { GRAPH_IDS, deleteEdge } from '../../services/graph'
-import { edgeHandleLabel } from '../../graph/edgeHandles'
+import { GRAPH_IDS, deleteEdge } from '../../data/graph'
+import { edgeHandleLabel } from '../../model/edgeHandles'
 import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
-import { SidePanel } from '../../shared/ui/SidePanel'
-import formStyles from '../../shared/styles/formActions.module.css'
+import { SidePanel } from '../../../shared/ui/SidePanel'
+import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './EdgeInfoModal.module.css'
 
 type Props = {

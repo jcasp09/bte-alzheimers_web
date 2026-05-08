@@ -1,8 +1,8 @@
 import type { Edge, Node } from '@xyflow/react'
 import type { MemoryDoc } from '../firebase/memories'
 import { parseOccurredOn } from '../firebase/memories'
-import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../graph/edgeHandles'
-import { MEMORY_NODE_DEFAULT_SIZE } from '../graph/nodeTypes/MemoryNode'
+import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../graph/model/edgeHandles'
+import { MEMORY_NODE_DEFAULT_SIZE } from '../graph/nodes/MemoryNode'
 
 /** Opacity applied to context nodes that are not connected to any memory. */
 const FADED_CONTEXT_OPACITY = 0.25

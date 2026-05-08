@@ -14,17 +14,17 @@ import {
   type DocumentReference,
 } from 'firebase/firestore'
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { db } from '../firebase/firestore'
-import { storage } from '../firebase/storage'
-import { removeMemoryReferencesToDeletedNode } from '../firebase/memories'
-import { GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
+import { db } from '../../firebase/firestore'
+import { storage } from '../../firebase/storage'
+import { removeMemoryReferencesToDeletedNode } from '../../firebase/memories'
+import { GROUP_NODE_DEFAULT_SIZE } from '../model/dimensions'
 import type {
   EdgeDoc,
   GraphId,
   GraphViewport,
   NodeDoc,
   NodeType,
-} from '../types/graph'
+} from '../model/types'
 
 export const GRAPH_IDS = { context: 'context', tasks: 'tasks' } as const
 

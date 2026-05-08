@@ -1,5 +1,5 @@
 import type { Edge } from '@xyflow/react'
-import type { EdgeDoc } from '../types/graph'
+import type { EdgeDoc } from './types'
 
 /** Legacy layout: connect from bottom of source to top of target. */
 export const DEFAULT_SOURCE_HANDLE = 'src-bottom' as const

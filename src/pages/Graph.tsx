@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
 import { useAuth } from '../auth/AuthContext'
-import { DefaultFlow } from '../components/DefaultFlow'
+import { DefaultFlow } from '../graph/components/DefaultFlow'
 import {
   DEFAULT_LAYER,
   DOCK_NODE_DND_TYPE,
@@ -14,7 +14,7 @@ import {
   type DefaultFlowHandle,
   type Layer,
   type XY,
-} from '../components/flowConstants'
+} from '../graph/model/flowConstants'
 import { usePhotoUrl } from '../shared/hooks/usePhotoUrl'
 import styles from './Graph.module.css'
 import {
@@ -25,12 +25,12 @@ import {
   saveGraphViewport,
   saveNodePositions,
   updateEdgeLabel,
-} from '../services/graph'
-import type { NodeDoc, NodeType, PickableNode } from '../types/graph'
-import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
-import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
-import { applyReparentOnDragStop } from '../graph/reparent'
-import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../hooks/useDeferredEdgePersistence'
+} from '../graph/data/graph'
+import type { NodeDoc, NodeType, PickableNode } from '../graph/model/types'
+import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../graph/model/dimensions'
+import { edgeDocToReactFlowEdge } from '../graph/model/edgeHandles'
+import { applyReparentOnDragStop } from '../graph/model/reparent'
+import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../graph/hooks/useDeferredEdgePersistence'
 import { getMemories, type MemoryDoc } from '../firebase/memories'
 import {
   buildContextToMemoriesMap,
@@ -44,12 +44,12 @@ import {
 } from '../memories/memoryLayer'
 import { MemoryTimeline } from '../components/MemoryTimeline'
 import timelineStyles from '../components/MemoryTimeline.module.css'
-import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
-import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
-import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'
-import { AddMemoryModal } from '../components/modals/AddMemoryModal.tsx'
-import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
-import { EdgeInfoModal } from '../components/modals/EdgeInfoModal.tsx'
+import { AddNodePanel } from '../graph/components/modals/AddNodeModal.tsx'
+import { AddConnectionModal } from '../graph/components/modals/AddConnectionModal.tsx'
+import { AddGroupModal } from '../graph/components/modals/AddGroupModal.tsx'
+import { AddMemoryModal } from '../graph/components/modals/AddMemoryModal.tsx'
+import { NodeInfoModal } from '../graph/components/modals/NodeInfoModal.tsx'
+import { EdgeInfoModal } from '../graph/components/modals/EdgeInfoModal.tsx'
 import * as React from "react";
 
 type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory' | null

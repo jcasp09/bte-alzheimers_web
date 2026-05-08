@@ -1,6 +1,6 @@
 import type { NodeProps } from '@xyflow/react'
-import { NodeEdgeHandles } from '../../components/NodeEdgeHandles'
-import { PLACE_NODE_DEFAULT_SIZE, safeNodeDimensions } from '../dimensions'
+import { NodeEdgeHandles } from '../components/NodeEdgeHandles'
+import { PLACE_NODE_DEFAULT_SIZE, safeNodeDimensions } from '../model/dimensions'
 
 function placeScale(width: number, height: number) {
   return Math.min(

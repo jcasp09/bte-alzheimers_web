@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuth } from '../auth/AuthContext'
-import { GRAPH_IDS, getNodes, removePassedTaskNodes } from '../services/graph'
-import type { NodeDoc } from '../types/graph'
+import { GRAPH_IDS, getNodes, removePassedTaskNodes } from '../graph/data/graph'
+import type { NodeDoc } from '../graph/model/types'
 import styles from './Tasks.module.css'
 
 type TaskSummaryItem = {

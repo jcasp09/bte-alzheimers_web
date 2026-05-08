@@ -1,5 +1,5 @@
 import type { NodeProps } from '@xyflow/react'
-import { NodeEdgeHandles } from '../../components/NodeEdgeHandles'
+import { NodeEdgeHandles } from '../components/NodeEdgeHandles'
 import { usePhotoUrl } from '../../shared/hooks/usePhotoUrl'
 
 export const MEMORY_NODE_DEFAULT_SIZE = { width: 200, height: 100 } as const

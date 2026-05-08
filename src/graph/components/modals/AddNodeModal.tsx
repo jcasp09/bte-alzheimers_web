@@ -9,13 +9,13 @@ import {
   isAllowedPhotoType,
   uploadPersonNodePhoto,
   upsertNode,
-} from '../../services/graph'
-import type { NodeType, PickableNode } from '../../types/graph'
-import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
-import { SidePanel } from '../../shared/ui/SidePanel'
-import formStyles from '../../shared/styles/formActions.module.css'
+} from '../../data/graph'
+import type { NodeType, PickableNode } from '../../model/types'
+import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../model/edgeHandles'
+import { SidePanel } from '../../../shared/ui/SidePanel'
+import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './AddNodeModal.module.css'
-import { getInitialsForAvatar } from '../../shared/util/initials'
+import { getInitialsForAvatar } from '../../../shared/util/initials'
 
 type Props = {
   userId: string

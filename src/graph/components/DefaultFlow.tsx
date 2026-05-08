@@ -32,16 +32,16 @@ import type {
   Viewport,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { nodeTypes } from '../graph/nodeTypes'
-import { getMotionMode } from '../services/motion'
-import { useThemeColor } from '../shared/hooks/useThemeColor'
+import { nodeTypes } from '../nodes'
+import { getMotionMode } from '../../services/motion'
+import { useThemeColor } from '../../shared/hooks/useThemeColor'
 
 import {
   DOCK_NODE_DND_TYPE,
   GRAPH_TRANSLATE_EXTENT,
   type DefaultFlowHandle,
   type XY,
-} from './flowConstants'
+} from '../model/flowConstants'
 
 type DefaultFlowProps = {
   nodes: Node[]

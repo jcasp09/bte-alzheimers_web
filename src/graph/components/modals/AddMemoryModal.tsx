@@ -1,10 +1,10 @@
 import { type SubmitEvent, useState } from 'react'
 import clsx from 'clsx'
-import { createMemory, parseOccurredOn } from '../../firebase/memories'
-import { MultiEntityPicker, type PickerItem } from '../../shared/ui/MultiEntityPicker'
-import { SidePanel } from '../../shared/ui/SidePanel'
-import formStyles from '../../shared/styles/formActions.module.css'
-import { getInitialsForAvatar } from '../../shared/util/initials'
+import { createMemory, parseOccurredOn } from '../../../firebase/memories'
+import { MultiEntityPicker, type PickerItem } from '../../../shared/ui/MultiEntityPicker'
+import { SidePanel } from '../../../shared/ui/SidePanel'
+import formStyles from '../../../shared/styles/formActions.module.css'
+import { getInitialsForAvatar } from '../../../shared/util/initials'
 
 type Props = {
   userId: string

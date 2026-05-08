@@ -1,6 +1,6 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { SidePanel } from '../../shared/ui/SidePanel'
+import { SidePanel } from '../../../shared/ui/SidePanel'
 import {
   GRAPH_IDS,
   PHOTO_ACCEPT_ATTR,
@@ -9,7 +9,7 @@ import {
   isAllowedPhotoType,
   uploadPersonNodePhoto,
   upsertNode,
-} from '../../services/graph'
+} from '../../data/graph'
 import {
   GROUP_DIMENSION_BOUNDS,
   GROUP_NODE_DEFAULT_SIZE,
@@ -19,11 +19,11 @@ import {
   defaultNodeSize,
   safeNodeDimensions,
   stepNodeDimensions,
-} from '../../graph/dimensions'
-import formStyles from '../../shared/styles/formActions.module.css'
+} from '../../model/dimensions'
+import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './NodeInfoModal.module.css'
-import { getInitialsForAvatar } from '../../shared/util/initials'
-import { usePhotoUrl } from '../../shared/hooks/usePhotoUrl'
+import { getInitialsForAvatar } from '../../../shared/util/initials'
+import { usePhotoUrl } from '../../../shared/hooks/usePhotoUrl'
 
 type Props = {
   userId: string
