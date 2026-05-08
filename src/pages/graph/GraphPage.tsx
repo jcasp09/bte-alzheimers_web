@@ -116,12 +116,31 @@ function Graph() {
     setCurrentLayer(next)
   }
 
+  // Drop changes that target IDs the parent doesn't own.
   const onEdgesChange: OnEdgesChange = (changes) => {
-    setEdges((eds) => applyEdgeChanges(changes, eds))
+    setEdges((eds) => {
+      const known = new Set(eds.map((e) => e.id))
+      const relevant = changes.filter((c) => {
+        if (c.type === 'add' || c.type === 'replace')
+          return true
+        const id = (c as { id?: string }).id
+        return id != null && known.has(id)
+      })
+      return relevant.length === 0 ? eds : applyEdgeChanges(relevant, eds)
+    })
   }
 
   const onNodesChange: OnNodesChange = (changes) => {
-    setNodes((nds) => applyNodeChanges(changes, nds))
+    setNodes((nds) => {
+      const known = new Set(nds.map((n) => n.id))
+      const relevant = changes.filter((c) => {
+        if (c.type === 'add' || c.type === 'replace')
+          return true
+        const id = (c as { id?: string }).id
+        return id != null && known.has(id)
+      })
+      return relevant.length === 0 ? nds : applyNodeChanges(relevant, nds)
+    })
   }
 
   const onNodeDragStop = (_e: MouseEvent, node: Node) => {
