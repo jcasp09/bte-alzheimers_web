@@ -1,6 +1,6 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { Modal } from '../ui/Modal'
+import { SidePanel } from '../ui/SidePanel'
 import {
   GRAPH_IDS,
   PHOTO_ACCEPT_ATTR,
@@ -20,8 +20,10 @@ import {
   safeNodeDimensions,
   stepNodeDimensions,
 } from '../../graph/dimensions'
-import modalStyles from '../ui/Modal.module.css'
+import formStyles from '../../styles/formActions.module.css'
 import styles from './NodeInfoModal.module.css'
+import { getInitialsForAvatar } from '../../util/initials'
+import { usePhotoUrl } from '../../hooks/usePhotoUrl'
 
 type Props = {
   userId: string
@@ -61,6 +63,7 @@ export function NodeInfoModal({
   const [address, setAddress] = useState(nodeAddress)
   const [photoPath, setPhotoPath] = useState(nodePhotoPath)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const resolvedAvatarUrl = usePhotoUrl(photoPath)
   const [sizeW, setSizeW] = useState(() =>
     (nodeType === 'person' || nodeType === 'place')
       ? safeNodeDimensions(nodeType, nodeWidth, nodeHeight).width
@@ -207,7 +210,23 @@ export function NodeInfoModal({
   const canIncrease = sizeNodeType ? canIncreaseNodeSize(sizeNodeType, sizeW, sizeH) : false
 
   return (
-    <Modal title={nodeName || 'Node'} onClose={onClose}>
+    <SidePanel
+      title={nodeName || 'Node'}
+      onClose={onClose}
+      accent={
+        nodeType === 'person'
+          ? 'person'
+          : nodeType === 'place'
+            ? 'place'
+            : nodeType === 'group'
+              ? 'group'
+              : 'neutral'
+      }
+      hero={{
+        avatarLabel: getInitialsForAvatar(name || nodeName),
+        avatarImageUrl: resolvedAvatarUrl ?? undefined,
+      }}
+    >
       <p className={styles.typeRow}>
         Type: <strong>{nodeType}</strong>
       </p>
@@ -402,22 +421,22 @@ export function NodeInfoModal({
       )}
 
       {error && (
-        <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
+        <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
       )}
 
-      <div className={modalStyles.actionsLeftAligned}>
+      <div className={formStyles.actionsLeftAligned}>
         <button
           type="button"
           disabled={busy}
           onClick={handleDelete}
-          className={modalStyles.dangerButton}
+          className={formStyles.dangerButton}
         >
-          {isDeleting ? 'Deleting…' : isGroup ? 'Delete group (detach members)' : 'Delete node'}
+          {isDeleting ? 'Deleting…' : 'Delete node'}
         </button>
         <button type="button" onClick={onClose} className="btn-ghost">
           Close
         </button>
       </div>
-    </Modal>
+    </SidePanel>
   )
 }

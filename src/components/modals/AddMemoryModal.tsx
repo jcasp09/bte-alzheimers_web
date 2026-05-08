@@ -1,9 +1,10 @@
 import { type FormEvent, useState } from 'react'
 import clsx from 'clsx'
-import { createMoment, parseOccurredOn } from '../../firebase/moments'
+import { createMemory, parseOccurredOn } from '../../firebase/memories'
 import { MultiEntityPicker, type PickerItem } from '../MultiEntityPicker'
-import { Modal } from '../ui/Modal'
-import modalStyles from '../ui/Modal.module.css'
+import { SidePanel } from '../ui/SidePanel'
+import formStyles from '../../styles/formActions.module.css'
+import { getInitialsForAvatar } from '../../util/initials'
 
 type Props = {
   userId: string
@@ -12,11 +13,11 @@ type Props = {
   onCreated: () => Promise<void> | void
 }
 
-export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
-  const [momentTitle, setMomentTitle] = useState('')
-  const [momentDate, setMomentDate] = useState('')
-  const [momentDescription, setMomentDescription] = useState('')
-  const [momentPersonIds, setMomentPersonIds] = useState<string[]>([])
+export function AddMemoryModal({ userId, people, onClose, onCreated }: Props) {
+  const [memoryTitle, setMemoryTitle] = useState('')
+  const [memoryDate, setMemoryDate] = useState('')
+  const [memoryDescription, setMemoryDescription] = useState('')
+  const [memoryPersonIds, setMemoryPersonIds] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,45 +25,50 @@ export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
     e.preventDefault()
     setError(null)
 
-    if (!momentTitle.trim()) {
-      setError('Moment name is required.')
+    if (!memoryTitle.trim()) {
+      setError('Memory name is required.')
       return
     }
-    if (!momentDate || !parseOccurredOn(momentDate)) {
+    if (!memoryDate || !parseOccurredOn(memoryDate)) {
       setError('Choose a valid date.')
       return
     }
 
     setIsSubmitting(true)
     try {
-      await createMoment(userId, {
-        title: momentTitle.trim(),
-        description: momentDescription.trim(),
-        occurredOn: momentDate,
-        personNodeIds: momentPersonIds,
+      await createMemory(userId, {
+        title: memoryTitle.trim(),
+        description: memoryDescription.trim(),
+        occurredOn: memoryDate,
+        personNodeIds: memoryPersonIds,
         placeNodeIds: [],
       })
       await onCreated()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create moment')
+      setError(err instanceof Error ? err.message : 'Failed to create memory')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <Modal title="Add moment" onClose={onClose} dialogClassName={modalStyles.dialogWide}>
+    <SidePanel
+      title="Add a memory"
+      onClose={onClose}
+      accent="memory"
+      hero={{ avatarLabel: getInitialsForAvatar(memoryTitle) }}
+    >
       <form onSubmit={handleSubmit} className="form-stack">
-        {error ? <p className={clsx('text-error', modalStyles.errorText)}>{error}</p> : null}
+        {error ? <p className={clsx('text-error', formStyles.errorText)}>{error}</p> : null}
 
         <label className="field">
           <span>Name</span>
           <input
             type="text"
             required
-            value={momentTitle}
-            onChange={(e) => setMomentTitle(e.target.value)}
+            value={memoryTitle}
+            onChange={(e) => setMemoryTitle(e.target.value)}
             disabled={isSubmitting}
           />
         </label>
@@ -72,8 +78,8 @@ export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
           <input
             type="date"
             required
-            value={momentDate}
-            onChange={(e) => setMomentDate(e.target.value)}
+            value={memoryDate}
+            onChange={(e) => setMemoryDate(e.target.value)}
             disabled={isSubmitting}
           />
         </label>
@@ -81,31 +87,31 @@ export function AddMomentModal({ userId, people, onClose, onCreated }: Props) {
         <label className="field">
           <span>Journal / description (optional)</span>
           <textarea
-            value={momentDescription}
-            onChange={(e) => setMomentDescription(e.target.value)}
+            value={memoryDescription}
+            onChange={(e) => setMemoryDescription(e.target.value)}
             rows={4}
             disabled={isSubmitting}
           />
         </label>
 
         <MultiEntityPicker
-          label="People at this moment"
+          label="People at this memory"
           max={10}
           items={people}
-          selectedIds={momentPersonIds}
-          onChange={setMomentPersonIds}
+          selectedIds={memoryPersonIds}
+          onChange={setMemoryPersonIds}
           disabled={isSubmitting}
         />
 
-        <div className={modalStyles.actions}>
+        <div className={formStyles.actions}>
           <button type="button" onClick={onClose} className="btn-ghost" disabled={isSubmitting}>
             Cancel
           </button>
           <button type="submit" disabled={isSubmitting} className="btn-primary">
-            {isSubmitting ? 'Saving…' : 'Save moment'}
+            {isSubmitting ? 'Saving…' : 'Save memory'}
           </button>
         </div>
       </form>
-    </Modal>
+    </SidePanel>
   )
 }

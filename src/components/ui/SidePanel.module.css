@@ -1,0 +1,196 @@
+.panel {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  width: min(420px, calc(100% - 2rem));
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+  animation: sidePanelSlideIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --panel-accent: var(--color-border-strong);
+  --panel-avatar-bg: var(--color-surface-raised);
+  --panel-avatar-text: var(--color-text);
+  --panel-border-width: 4px;
+}
+
+.panelHero {
+  top: 3.5rem;
+}
+
+.panelNoHero {
+  top: 1rem;
+}
+
+.panelRect {
+  flex: 1;
+  background-color: var(--color-surface-raised);
+  border: var(--panel-border-width) solid var(--panel-accent);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 36px rgba(var(--color-shadow-rgb), 0.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.accentPerson {
+  --panel-accent: var(--color-node-person-border);
+  --panel-avatar-bg: var(--color-node-person-soft);
+  --panel-avatar-text: var(--color-node-person-text);
+}
+
+.accentPlace {
+  --panel-accent: var(--color-node-place-border);
+  --panel-avatar-bg: var(--color-node-place-soft);
+  --panel-avatar-text: var(--color-node-place-text);
+}
+
+.accentGroup {
+  --panel-accent: var(--color-border-strong);
+  --panel-avatar-bg: var(--color-surface-raised);
+  --panel-avatar-text: var(--color-text);
+  --panel-border-width: 3px;
+}
+
+.accentMemory {
+  --panel-accent: var(--color-node-memory-border);
+  --panel-avatar-bg: var(--color-node-memory-soft);
+  --panel-avatar-text: var(--color-node-memory-text);
+}
+
+.accentConnection {
+  --panel-accent: var(--color-accent);
+}
+
+.accentNeutral {
+  --panel-accent: var(--color-accent);
+}
+
+@keyframes sidePanelSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: var(--panel-avatar-bg);
+  border: var(--panel-border-width) solid var(--panel-accent);
+  color: var(--panel-avatar-text);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.headerHero {
+  position: relative;
+  padding: 56px 1rem 0.75rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.titleHero {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.25;
+}
+
+.closeButtonHero {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.closeButtonHero:hover {
+  background-color: var(--color-page-elev);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.closeButtonHero:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.95rem 1rem 0.85rem;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  background-color: var(--color-page);
+  color: var(--color-text);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1rem 1.25rem;
+}

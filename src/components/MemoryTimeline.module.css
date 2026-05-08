@@ -1,0 +1,256 @@
+.timeline {
+  position: absolute;
+  bottom: 1.5rem;
+  left: calc(50% - var(--side-panel-width) / 2);
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(calc(100% - 2rem - var(--side-panel-width)), 800px);
+  padding: 1rem 1rem;
+  border-radius: var(--radius-xl);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 24px rgba(var(--color-shadow-rgb), 0.10);
+  transition: left 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              width 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timelineMain {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.trailingDivider {
+  width: 1px;
+  align-self: stretch;
+  background-color: var(--color-border);
+  margin: -1rem 0;
+  flex-shrink: 0;
+}
+
+.trailingActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.trailingAction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.45rem;
+  border: none;
+  background: transparent;
+  cursor: grab;
+  font-family: inherit;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  transition: background-color 0.15s ease;
+}
+
+.trailingAction:active {
+  cursor: grabbing;
+}
+
+.trailingAction:hover {
+  background-color: var(--color-page-elev);
+}
+
+.trailingAction:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.trailingActionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1.5px solid var(--color-node-memory-border);
+  background-color: var(--color-node-memory-soft);
+  color: var(--color-node-memory-text);
+  user-select: none;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.trailingAction:hover .trailingActionIcon {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+
+.trailingActionLabel {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+}
+
+.trailingActionActive .trailingActionIcon {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-text-inverse);
+  filter: none;
+}
+
+.trailingActionActive:hover .trailingActionIcon {
+  filter: none;
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.trailingActionActive .trailingActionLabel {
+  color: var(--color-accent);
+}
+
+.track {
+  position: relative;
+  height: 24px;
+  background-image: linear-gradient(to right, var(--color-border), var(--color-border));
+  background-size: 100% 1px;
+  background-position: center;
+  background-repeat: no-repeat;
+  cursor: ew-resize;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--color-node-memory);
+  border: 1.5px solid var(--color-node-memory-border);
+  padding: 0;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: transform 120ms ease, background-color 120ms ease;
+  z-index: 2;
+}
+
+.dot:hover {
+  transform: translate(-50%, -50%) scale(1.35);
+  background-color: var(--color-node-memory-border);
+}
+
+.dot:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.dotDimmed {
+  opacity: 0.25;
+}
+
+.dotHighlighted {
+  background-color: var(--color-node-memory-border);
+  transform: translate(-50%, -50%) scale(1.25);
+}
+
+.dotHighlighted:hover {
+  transform: translate(-50%, -50%) scale(1.45);
+}
+
+.dotSelected {
+  background-color: var(--color-node-memory-border);
+  transform: translate(-50%, -50%) scale(1.5);
+  box-shadow: 0 0 0 3px var(--color-accent);
+}
+
+.dotSelected:hover {
+  transform: translate(-50%, -50%) scale(1.6);
+}
+
+.yearTick {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background-color: var(--color-border);
+  transform: translateX(-0.5px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.yearLabel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.brushOverlay {
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  background-color: var(--color-node-memory-soft);
+  border-left: 2px solid var(--color-node-memory-border);
+  border-right: 2px solid var(--color-node-memory-border);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.today {
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  width: 2px;
+  background-color: var(--color-accent);
+  transform: translateX(-1px);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.todayLabel {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  font-size: 0.7rem;
+  color: var(--color-accent);
+  font-weight: 600;
+  white-space: nowrap;
+  background-color: var(--color-surface);
+  padding: 0 0.25rem;
+}
+
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+  padding: 0.4rem 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline,
+  .dot {
+    transition: none !important;
+  }
+  .dot:hover {
+    transform: translate(-50%, -50%);
+  }
+}
+
+:global([data-motion="reduce"]) .timeline,
+:global([data-motion="reduce"]) .dot {
+  transition: none !important;
+}
+
+:global([data-motion="reduce"]) .dot:hover {
+  transform: translate(-50%, -50%);
+}

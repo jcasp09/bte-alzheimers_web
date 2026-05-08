@@ -18,9 +18,9 @@ import { deleteObject, ref } from 'firebase/storage'
 import { db } from '../services/firestore'
 import { storage } from '../services/storage'
 
-export const MAX_PEOPLE_PER_MOMENT = 10
-export const MAX_PLACES_PER_MOMENT = 4
-export const MAX_PHOTOS_PER_MOMENT = 10
+export const MAX_PEOPLE_PER_MEMORY = 10
+export const MAX_PLACES_PER_MEMORY = 4
+export const MAX_PHOTOS_PER_MEMORY = 10
 
 export function parseOccurredOn(s: string): { y: number; m: number; d: number } | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim())
@@ -44,19 +44,19 @@ export function formatOccurredOnDate(y: number, month: number, day: number): str
   return `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-export type MomentDoc = {
+export type MemoryDoc = {
   id: string
   title: string
   description: string
   occurredOn: string
   personNodeIds: string[]
   placeNodeIds: string[]
-  /** Storage object paths under `users/{uid}/moments/{momentId}/…` */
+  /** Storage object paths under `users/{uid}/memories/{memoryId}/…` */
   photoPaths: string[]
   createdAt: Timestamp | null
 }
 
-export type CreateMomentInput = {
+export type CreateMemoryInput = {
   title: string
   description: string
   occurredOn: string
@@ -64,7 +64,7 @@ export type CreateMomentInput = {
   placeNodeIds: string[]
 }
 
-export type UpdateMomentInput = Partial<{
+export type UpdateMemoryInput = Partial<{
   title: string
   description: string
   occurredOn: string
@@ -73,12 +73,12 @@ export type UpdateMomentInput = Partial<{
   photoPaths: string[]
 }>
 
-function momentsCollection(uid: string) {
-  return collection(db, 'users', uid, 'moments')
+function memoriesCollection(uid: string) {
+  return collection(db, 'users', uid, 'memories')
 }
 
-function momentDateLockRef(uid: string, occurredOn: string) {
-  return doc(db, 'users', uid, 'momentDateLocks', occurredOn)
+function memoryDateLockRef(uid: string, occurredOn: string) {
+  return doc(db, 'users', uid, 'memoryDateLocks', occurredOn)
 }
 
 async function validateContextNodeIdsByType(
@@ -112,20 +112,20 @@ function normalizePhotoPaths(paths: unknown): string[] {
   if (!Array.isArray(paths)) return []
   return paths
     .filter((x): x is string => typeof x === 'string' && x.length > 0)
-    .slice(0, MAX_PHOTOS_PER_MOMENT)
+    .slice(0, MAX_PHOTOS_PER_MEMORY)
 }
 
-function validateMomentPhotoPaths(uid: string, momentId: string, paths: string[]): void {
-  const prefix = `users/${uid}/moments/${momentId}/`
+function validateMemoryPhotoPaths(uid: string, memoryId: string, paths: string[]): void {
+  const prefix = `users/${uid}/memories/${memoryId}/`
   for (const p of paths) {
     if (!p.startsWith(prefix)) {
-      throw new Error('Invalid photo path for this moment.')
+      throw new Error('Invalid photo path for this memory.')
     }
   }
 }
 
-/** Richness score for layout at day/moment level (not used for year/month buckets). */
-export function momentRichnessScore(m: Pick<MomentDoc, 'title' | 'description' | 'personNodeIds' | 'placeNodeIds' | 'photoPaths'>): number {
+/** Richness score for layout at day/memory level (not used for year/month buckets). */
+export function memoryRichnessScore(m: Pick<MemoryDoc, 'title' | 'description' | 'personNodeIds' | 'placeNodeIds' | 'photoPaths'>): number {
   const people = m.personNodeIds?.length ?? 0
   const places = m.placeNodeIds?.length ?? 0
   const photos = m.photoPaths?.length ?? 0
@@ -135,10 +135,10 @@ export function momentRichnessScore(m: Pick<MomentDoc, 'title' | 'description' |
   return people + places + photos * 1.5 + descTerm + titleBonus
 }
 
-export async function getMoments(uid: string): Promise<MomentDoc[]> {
-  const snapshot = await getDocs(momentsCollection(uid))
+export async function getMemories(uid: string): Promise<MemoryDoc[]> {
+  const snapshot = await getDocs(memoriesCollection(uid))
   return snapshot.docs.map((d) => {
-    const data = d.data() as Omit<MomentDoc, 'id' | 'createdAt'> & { createdAt?: Timestamp }
+    const data = d.data() as Omit<MemoryDoc, 'id' | 'createdAt'> & { createdAt?: Timestamp }
     const createdAt = data.createdAt instanceof Timestamp ? data.createdAt : null
     return {
       id: d.id,
@@ -153,26 +153,26 @@ export async function getMoments(uid: string): Promise<MomentDoc[]> {
   })
 }
 
-export async function createMoment(uid: string, input: CreateMomentInput): Promise<string> {
+export async function createMemory(uid: string, input: CreateMemoryInput): Promise<string> {
   if (!parseOccurredOn(input.occurredOn)) {
     throw new Error('Choose a valid date.')
   }
-  const personNodeIds = [...new Set(input.personNodeIds)].slice(0, MAX_PEOPLE_PER_MOMENT)
-  const placeNodeIds = [...new Set(input.placeNodeIds)].slice(0, MAX_PLACES_PER_MOMENT)
+  const personNodeIds = [...new Set(input.personNodeIds)].slice(0, MAX_PEOPLE_PER_MEMORY)
+  const placeNodeIds = [...new Set(input.placeNodeIds)].slice(0, MAX_PLACES_PER_MEMORY)
   await Promise.all([
     validateContextNodeIdsByType(uid, personNodeIds, 'person'),
     validateContextNodeIdsByType(uid, placeNodeIds, 'place'),
   ])
 
-  const newMomentRef = doc(momentsCollection(uid))
-  const lockRef = momentDateLockRef(uid, input.occurredOn)
+  const newMemoryRef = doc(memoriesCollection(uid))
+  const lockRef = memoryDateLockRef(uid, input.occurredOn)
 
   await runTransaction(db, async (tx) => {
     const lockSnap = await tx.get(lockRef)
     if (lockSnap.exists()) {
-      throw new Error('You already have a moment on this date. Only one moment per day is allowed.')
+      throw new Error('You already have a memory on this date. Only one memory per day is allowed.')
     }
-    tx.set(newMomentRef, {
+    tx.set(newMemoryRef, {
       title: input.title,
       description: input.description,
       occurredOn: input.occurredOn,
@@ -181,42 +181,42 @@ export async function createMoment(uid: string, input: CreateMomentInput): Promi
       photoPaths: [],
       createdAt: serverTimestamp(),
     })
-    tx.set(lockRef, { momentId: newMomentRef.id })
+    tx.set(lockRef, { memoryId: newMemoryRef.id })
   })
-  return newMomentRef.id
+  return newMemoryRef.id
 }
 
-export async function updateMoment(
+export async function updateMemory(
   uid: string,
-  momentId: string,
-  patch: UpdateMomentInput,
+  memoryId: string,
+  patch: UpdateMemoryInput,
 ): Promise<void> {
-  const momentRef = doc(db, 'users', uid, 'moments', momentId)
+  const memoryRef = doc(db, 'users', uid, 'memories', memoryId)
 
   if (patch.occurredOn !== undefined) {
     if (!parseOccurredOn(patch.occurredOn)) {
       throw new Error('Use a valid calendar date (YYYY-MM-DD).')
     }
     const newOccurredOn = patch.occurredOn
-    const newLockRef = momentDateLockRef(uid, newOccurredOn)
+    const newLockRef = memoryDateLockRef(uid, newOccurredOn)
 
     await runTransaction(db, async (tx) => {
-      const momentSnap = await tx.get(momentRef)
-      if (!momentSnap.exists())
-        throw new Error('Moment not found.')
+      const memorySnap = await tx.get(memoryRef)
+      if (!memorySnap.exists())
+        throw new Error('Memory not found.')
 
-      const currentOccurredOn = (momentSnap.data() as { occurredOn?: string }).occurredOn ?? ''
+      const currentOccurredOn = (memorySnap.data() as { occurredOn?: string }).occurredOn ?? ''
       if (currentOccurredOn === newOccurredOn)
         return
 
       const newLockSnap = await tx.get(newLockRef)
-      if (newLockSnap.exists() && newLockSnap.data().momentId !== momentId)
+      if (newLockSnap.exists() && newLockSnap.data().memoryId !== memoryId)
 
       if (currentOccurredOn) {
-        tx.delete(momentDateLockRef(uid, currentOccurredOn))
+        tx.delete(memoryDateLockRef(uid, currentOccurredOn))
       }
-      tx.set(newLockRef, { momentId })
-      tx.update(momentRef, { occurredOn: newOccurredOn })
+      tx.set(newLockRef, { memoryId })
+      tx.update(memoryRef, { occurredOn: newOccurredOn })
     })
   }
 
@@ -224,26 +224,26 @@ export async function updateMoment(
   if (patch.title !== undefined) payload.title = patch.title
   if (patch.description !== undefined) payload.description = patch.description
   if (patch.personNodeIds !== undefined) {
-    const personNodeIds = [...new Set(patch.personNodeIds)].slice(0, MAX_PEOPLE_PER_MOMENT)
+    const personNodeIds = [...new Set(patch.personNodeIds)].slice(0, MAX_PEOPLE_PER_MEMORY)
     await validateContextNodeIdsByType(uid, personNodeIds, 'person')
     payload.personNodeIds = personNodeIds
   }
   if (patch.placeNodeIds !== undefined) {
-    const placeNodeIds = [...new Set(patch.placeNodeIds)].slice(0, MAX_PLACES_PER_MOMENT)
+    const placeNodeIds = [...new Set(patch.placeNodeIds)].slice(0, MAX_PLACES_PER_MEMORY)
     await validateContextNodeIdsByType(uid, placeNodeIds, 'place')
     payload.placeNodeIds = placeNodeIds
   }
   if (patch.photoPaths !== undefined) {
     const photoPaths = normalizePhotoPaths(patch.photoPaths)
-    validateMomentPhotoPaths(uid, momentId, photoPaths)
+    validateMemoryPhotoPaths(uid, memoryId, photoPaths)
     payload.photoPaths = photoPaths
   }
   if (Object.keys(payload).length === 0) return
-  await updateDoc(momentRef, payload)
+  await updateDoc(memoryRef, payload)
 }
 
-export async function deleteMoment(uid: string, momentId: string): Promise<void> {
-  const refDoc = doc(db, 'users', uid, 'moments', momentId)
+export async function deleteMemory(uid: string, memoryId: string): Promise<void> {
+  const refDoc = doc(db, 'users', uid, 'memories', memoryId)
   const snap = await getDoc(refDoc)
   if (!snap.exists()) return
   const data = snap.data() as { photoPaths?: unknown; occurredOn?: string }
@@ -258,13 +258,13 @@ export async function deleteMoment(uid: string, momentId: string): Promise<void>
   )
   await deleteDoc(refDoc)
   if (occurredOn) {
-    await deleteDoc(momentDateLockRef(uid, occurredOn))
+    await deleteDoc(memoryDateLockRef(uid, occurredOn))
   }
 }
 
-/** After a person or place graph node is removed, strip its id from all moments. */
-export async function removeMomentReferencesToDeletedNode(uid: string, nodeId: string): Promise<void> {
-  const col = momentsCollection(uid)
+/** After a person or place graph node is removed, strip its id from all memories. */
+export async function removeMemoryReferencesToDeletedNode(uid: string, nodeId: string): Promise<void> {
+  const col = memoriesCollection(uid)
   const [snapPerson, snapPlace] = await Promise.all([
     getDocs(query(col, where('personNodeIds', 'array-contains', nodeId))),
     getDocs(query(col, where('placeNodeIds', 'array-contains', nodeId))),

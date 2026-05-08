@@ -19,8 +19,27 @@
   margin: 0 auto;
 }
 
+.mainFullBleed {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mainInnerFullBleed {
+  max-width: none;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 @media (max-width: 640px) {
   .main {
     padding: 1rem 1rem 1.75rem;
+  }
+
+  .mainFullBleed {
+    padding: 0;
   }
 }

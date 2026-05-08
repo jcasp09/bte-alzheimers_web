@@ -1,10 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, Edge, Node, OnEdgesChange, OnNodesChange, Viewport } from '@xyflow/react'
 import { useAuth } from '../contexts/AuthContext'
 import { DefaultFlow } from '../components/DefaultFlow'
+import {
+  DEFAULT_LAYER,
+  DOCK_NODE_DND_TYPE,
+  GRAPH_TRANSLATE_EXTENT,
+  LAYER_STORAGE_KEY,
+  isLayer,
+  type DefaultFlowHandle,
+  type Layer,
+  type XY,
+} from '../components/flowConstants'
+import { usePhotoUrl } from '../hooks/usePhotoUrl'
 import styles from './Graph.module.css'
 import {
   GRAPH_IDS,
@@ -20,15 +31,28 @@ import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../graph/dimensions'
 import { edgeDocToReactFlowEdge } from '../graph/edgeHandles'
 import { applyReparentOnDragStop } from '../graph/reparent'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../hooks/useDeferredEdgePersistence'
+import { getMemories, type MemoryDoc } from '../firebase/memories'
+import {
+  buildContextToMemoriesMap,
+  buildMemoryLayerEdges,
+  buildMemoryLayerNodes,
+  filterMemoriesByRange,
+  getConnectedIdsForSelection,
+  getMemoryMillis,
+  type MemoryBrushRange,
+  type MemorySelection,
+} from '../memories/memoryLayer'
+import { MemoryTimeline } from '../components/MemoryTimeline'
+import timelineStyles from '../components/MemoryTimeline.module.css'
 import { AddNodePanel } from '../components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../components/modals/AddConnectionModal.tsx'
 import { AddGroupModal } from '../components/modals/AddGroupModal.tsx'
+import { AddMemoryModal } from '../components/modals/AddMemoryModal.tsx'
 import { NodeInfoModal } from '../components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../components/modals/EdgeInfoModal.tsx'
+import * as React from "react";
 
-type OpenPanel = 'addNode' | 'addConnection' | null
-
-type XY = { x: number; y: number }
+type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory' | null
 
 type AddGroupPlacement =
   | { status: 'idle' }
@@ -144,15 +168,63 @@ function firestoreEdgesToReactFlow(edges: Awaited<ReturnType<typeof getEdges>>):
   return edges.map(edgeDocToReactFlowEdge)
 }
 
+type VisibleTypes = { person: boolean; place: boolean; group: boolean }
+
+const DEFAULT_VISIBLE_TYPES: VisibleTypes = { person: true, place: true, group: true }
+
+// Four corner nodes to anchor the minimap
+const ANCHOR_NODES: Node[] = (() => {
+  const [[minX, minY], [maxX, maxY]] = GRAPH_TRANSLATE_EXTENT
+  const baseProps = {
+    type: 'anchor',
+    width: 1,
+    height: 1,
+    data: {},
+    draggable: false,
+    selectable: false,
+    connectable: false,
+    deletable: false,
+    focusable: false,
+  } as const
+  return [
+    { id: '__anchor_tl', position: { x: minX, y: minY }, ...baseProps },
+    { id: '__anchor_tr', position: { x: maxX, y: minY }, ...baseProps },
+    { id: '__anchor_bl', position: { x: minX, y: maxY }, ...baseProps },
+    { id: '__anchor_br', position: { x: maxX, y: maxY }, ...baseProps },
+  ]
+})()
+
+/** Lower number = higher priority in the search dropdown. */
+function typePriority(type: string, layer: Layer): number {
+  if (layer === 'memories') {
+    return type === 'memory' ? 0 : 99
+  }
+  switch (type) {
+    case 'person': return 0
+    case 'place': return 1
+    default: return 99
+  }
+}
+
+function SearchResultThumb({ photoPath }: { photoPath: string | undefined }) {
+  const url = usePhotoUrl(photoPath)
+  if (!url) return null
+  return <img src={url} alt="" className={styles.searchResultThumb} />
+}
+
 function Graph() {
   const { user } = useAuth()
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
+  const [memories, setMemories] = useState<MemoryDoc[]>([])
+  const [memorySelection, setMemorySelection] = useState<MemorySelection | null>(null)
+  const [memoryBrushRange, setMemoryBrushRange] = useState<MemoryBrushRange | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
   const [initialViewport, setInitialViewport] = useState<Viewport | undefined>(undefined)
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
+  const [pendingNodePosition, setPendingNodePosition] = useState<XY | null>(null)
   const [addGroupPlacement, setAddGroupPlacement] = useState<AddGroupPlacement>({ status: 'idle' })
   const [pendingGroupRect, setPendingGroupRect] = useState<{
     x: number
@@ -163,6 +235,28 @@ function Graph() {
   const addGroupPlacementRef = useRef<AddGroupPlacement>({ status: 'idle' })
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<SelectedEdge | null>(null)
+  const flowRef = useRef<DefaultFlowHandle>(null)
+  const [currentLayer, setCurrentLayer] = useState<Layer>(() => {
+    if (typeof window === 'undefined') return DEFAULT_LAYER
+    try {
+      const fromUrl = new URL(window.location.href).searchParams.get('layer')
+      if (isLayer(fromUrl)) return fromUrl
+    } catch {
+      /* Fall back to sessionStorage */
+    }
+    try {
+      const stored = window.sessionStorage.getItem(LAYER_STORAGE_KEY)
+      return isLayer(stored) ? stored : DEFAULT_LAYER
+    } catch {
+      return DEFAULT_LAYER
+    }
+  })
+  const [visibleTypes, setVisibleTypes] = useState<VisibleTypes>(DEFAULT_VISIBLE_TYPES)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterExpanded, setFilterExpanded] = useState(false)
+  const [searchExpanded, setSearchExpanded] = useState(false)
+  const [minimapExpanded, setMinimapExpanded] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const flowKeyRef = useRef(0)
   const [flowKey, setFlowKey] = useState(0)
 
@@ -177,14 +271,16 @@ function Graph() {
     setError(null);
 
     try {
-      const [nodesData, edgesData, viewport] = await Promise.all([
+      const [nodesData, edgesData, viewport, memoriesData] = await Promise.all([
         getNodes(user.uid, GRAPH_IDS.context),
         getEdges(user.uid, GRAPH_IDS.context),
-        getGraphViewport(user.uid, GRAPH_IDS.context)
+        getGraphViewport(user.uid, GRAPH_IDS.context),
+        getMemories(user.uid),
       ]);
 
       setNodes(firestoreNodesToReactFlow(nodesData));
       setEdges(firestoreEdgesToReactFlow(edgesData));
+      setMemories(memoriesData);
       setInitialViewport(viewport ?? undefined)
 
       flowKeyRef.current += 1
@@ -203,11 +299,36 @@ function Graph() {
       setLoading(false);
       setNodes([]);
       setEdges([]);
+      setMemories([]);
       return;
     }
 
     void loadGraph();
   }, [user?.uid, loadGraph]);
+
+  // Persist the current layer per tab so reloads keep the user on the same layer.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.sessionStorage.setItem(LAYER_STORAGE_KEY, currentLayer)
+    } catch {
+      /* sessionStorage unavailable; layer won't persist this session */
+    }
+  }, [currentLayer])
+
+  // Switching layers should close any open side panel.
+  useEffect(() => {
+    setSelectedNode(null)
+    setSelectedEdge(null)
+    setOpenPanel(null)
+    setPendingNodePosition(null)
+    setPendingGroupRect(null)
+    addGroupPlacementRef.current = { status: 'idle' }
+    setAddGroupPlacement({ status: 'idle' })
+    setMemorySelection(null)
+    setMemoryBrushRange(null)
+    setSearchQuery('')
+  }, [currentLayer])
 
   const onEdgesChange = useCallback<OnEdgesChange>((changes) => {
     setEdges((eds) => applyEdgeChanges(changes, eds))
@@ -243,6 +364,12 @@ function Graph() {
     setAddGroupPlacement({ status: 'idle' })
   }, [])
 
+  /** Clear the memory-layer selection AND any active brush when the user clicks empty pane. */
+  const handleMemoryPaneClick = useCallback(() => {
+    setMemorySelection(null)
+    setMemoryBrushRange(null)
+  }, [])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -266,6 +393,31 @@ function Graph() {
     removePendingEdge,
   } = useDeferredEdgePersistence(user?.uid, GRAPH_IDS.context, setEdges, setSyncEdgeError)
 
+  // Apply the timeline brush, if any.
+  const visibleMemories = useMemo(
+    () => filterMemoriesByRange(memories, memoryBrushRange),
+    [memories, memoryBrushRange],
+  )
+
+  const contextToMemories = useMemo(() => buildContextToMemoriesMap(visibleMemories), [visibleMemories])
+
+  // Set of node IDs in scope for the current selection.
+  const memoryConnectedIds = useMemo<Set<string> | null>(() => {
+    if (!memorySelection) return null
+    return getConnectedIdsForSelection(memorySelection, visibleMemories, contextToMemories)
+  }, [memorySelection, visibleMemories, contextToMemories])
+
+  const memoryPeoplePickerItems = useMemo(() => {
+    const out: { id: string; name: string }[] = []
+    for (const n of nodes) {
+      if (n.type !== 'person') continue
+      const name = typeof n.data?.name === 'string' ? n.data.name : ''
+      if (!name) continue
+      out.push({ id: n.id, name })
+    }
+    return out
+  }, [nodes])
+
   // Derive the pickable nodes from the graph state
   const pickableNodes = useMemo<PickableNode[]>(() => {
     const out: PickableNode[] = []
@@ -282,13 +434,179 @@ function Graph() {
     return out
   }, [nodes])
 
+  const displayNodes = useMemo(() => {
+    if (currentLayer === 'memories') {
+      const memoryNodes = buildMemoryLayerNodes(visibleMemories, nodes)
+      // When a selection is active, dim everything not in scope and ring the selected node
+      const styled = memoryConnectedIds
+        ? memoryNodes.map((n) => {
+            if (n.type === 'anchor') return n
+            const inScope = memoryConnectedIds.has(n.id)
+            const isSelected = memorySelection != null && n.id === memorySelection.id
+            const baseStyle = n.style ?? {}
+            if (!inScope) {
+              return { ...n, style: { ...baseStyle, opacity: 0.15 } }
+            }
+            if (isSelected) {
+              return {
+                ...n,
+                style: {
+                  ...baseStyle,
+                  opacity: 1,
+                  boxShadow: '0 0 0 3px var(--color-accent)',
+                  borderRadius: 12,
+                },
+              }
+            }
+            // Connected (in-scope) but not the selection itself
+            return { ...n, style: { ...baseStyle, opacity: 1 } }
+          })
+        : memoryNodes
+      return [...ANCHOR_NODES, ...styled]
+    }
+    const filtered = nodes.map((n) => {
+      const t = n.type
+      const allowed = (t === 'person' && visibleTypes.person)
+        || (t === 'place' && visibleTypes.place)
+        || (t === 'group' && visibleTypes.group)
+      return allowed ? n : { ...n, hidden: true }
+    })
+    return [...ANCHOR_NODES, ...filtered]
+  }, [nodes, visibleMemories, visibleTypes, currentLayer, memoryConnectedIds, memorySelection])
+
+  const displayEdges = useMemo(() => {
+    if (currentLayer === 'memories') {
+      const synth = buildMemoryLayerEdges(visibleMemories)
+      if (!memorySelection) return synth
+      // Dim edges that don't touch the selected node
+      return synth.map((e) => {
+        const touches = e.source === memorySelection.id || e.target === memorySelection.id
+        if (touches) return e
+        return { ...e, style: { ...(e.style ?? {}), opacity: 0.15 } }
+      })
+    }
+    const visible = new Set(displayNodes.filter((n) => !n.hidden).map((n) => n.id))
+    return edges.map((e) => ({
+      ...e,
+      hidden: !(visible.has(e.source) && visible.has(e.target)),
+    }))
+  }, [edges, displayNodes, visibleMemories, currentLayer, memorySelection])
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return [] as { id: string; name: string; type: string; photoPath: string | undefined }[]
+    const all: { id: string; name: string; type: string; photoPath: string | undefined }[] = []
+
+    if (currentLayer === 'memories') {
+      // Memories layer searches memories only — match on title OR description
+      // so a vague memory ("hospital", "wedding") still finds the right card.
+      for (const m of memories) {
+        const title = m.title.trim().length > 0 ? m.title : m.occurredOn
+        const haystack = `${title}\n${m.description}`.toLowerCase()
+        if (haystack.includes(q)) {
+          all.push({ id: m.id, name: title, type: 'memory', photoPath: m.photoPaths[0] })
+        }
+      }
+    } else {
+      // Relationships layer searches people and places (groups excluded).
+      for (const n of nodes) {
+        if (n.type !== 'person' && n.type !== 'place') continue
+        const name = typeof n.data?.name === 'string' ? n.data.name : ''
+        if (!name) continue
+        if (name.toLowerCase().includes(q)) {
+          const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
+          all.push({ id: n.id, name, type: n.type, photoPath })
+        }
+      }
+    }
+
+    all.sort((a, b) => {
+      const pa = typePriority(a.type, currentLayer)
+      const pb = typePriority(b.type, currentLayer)
+      if (pa !== pb) return pa - pb
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    })
+    return all.slice(0, 8)
+  }, [nodes, memories, currentLayer, searchQuery])
+
+
   const togglePanel = (panel: OpenPanel) => {
     setOpenPanel((prev) => (prev === panel ? null : panel))
+    setPendingNodePosition(null)
+    // Side-panel slots are mutually exclusive
+    setSelectedNode(null)
+    setSelectedEdge(null)
   }
 
+  const handleDockDragStart = useCallback(
+    (kind: 'person' | 'place' | 'group' | 'memory') => (e: ReactDragEvent<HTMLButtonElement>) => {
+      e.dataTransfer.setData(DOCK_NODE_DND_TYPE, kind)
+      e.dataTransfer.effectAllowed = 'copy'
+    },
+    [],
+  )
+
+  const handleDropAtFlowPosition = useCallback(
+    (kind: string, point: XY) => {
+      if (addGroupPlacementRef.current.status === 'picking') {
+        addGroupPlacementRef.current = { status: 'idle' }
+        setAddGroupPlacement({ status: 'idle' })
+      }
+
+      // Side-panel slots are mutually exclusive — close any open node/edge detail.
+      setSelectedNode(null)
+      setSelectedEdge(null)
+
+      if (kind === 'group') {
+        const w = GROUP_NODE_DEFAULT_SIZE.width
+        const h = GROUP_NODE_DEFAULT_SIZE.height
+        setOpenPanel(null)
+        setPendingNodePosition(null)
+        setPendingGroupRect({
+          x: point.x - w / 2,
+          y: point.y - h / 2,
+          width: w,
+          height: h,
+        })
+        return
+      }
+
+      if (kind === 'person' || kind === 'place') {
+        setPendingGroupRect(null)
+        setPendingNodePosition(point)
+        setOpenPanel(kind === 'person' ? 'addPerson' : 'addPlace')
+        return
+      }
+
+      if (kind === 'memory') {
+        // Memories don't have stored positions
+        setPendingGroupRect(null)
+        setPendingNodePosition(null)
+        setOpenPanel('addMemory')
+      }
+    },
+    [],
+  )
+
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    if (node.type === 'anchor') return
     if (addGroupPlacementRef.current.status === 'picking')
       return
+
+    if (currentLayer === 'memories') {
+      if (node.type === 'memory') {
+        setMemorySelection({ kind: 'memory', id: node.id })
+        return
+      }
+      if (node.type === 'person' || node.type === 'place') {
+        setMemorySelection({ kind: 'context', id: node.id })
+        // fall through to open the existing NodeInfoModal below
+      } else {
+        // Groups in memories layer are filtered out, but be defensive.
+        return
+      }
+    }
+
 
     const name = typeof node.data.name === 'string' ? node.data.name : ''
     const relationship = typeof node.data.relationship === 'string' ? node.data.relationship : ''
@@ -298,6 +616,10 @@ function Graph() {
     const photoPath = typeof node.data.photoPath === 'string' ? node.data.photoPath : ''
     const w = node.type === 'group' ? node.width : node.data.width
     const h = node.type === 'group' ? node.height : node.data.height
+
+    setOpenPanel(null)
+    setPendingNodePosition(null)
+    setSelectedEdge(null)
 
     setSelectedNode({
       id: node.id,
@@ -311,7 +633,7 @@ function Graph() {
       width: typeof w === 'number' && Number.isFinite(w) ? w : undefined,
       height: typeof h === 'number' && Number.isFinite(h) ? h : undefined,
     })
-  }, [])
+  }, [currentLayer])
 
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
     if (addGroupPlacementRef.current.status === 'picking')
@@ -321,6 +643,10 @@ function Graph() {
     const targetName = nodes.find((n) => n.id === edge.target)?.data?.name as string ?? edge.target
     const rawLabel = edge.label
     const label = typeof rawLabel === 'string' ? rawLabel : typeof rawLabel === 'number' ? String(rawLabel) : ''
+
+    setOpenPanel(null)
+    setPendingNodePosition(null)
+    setSelectedNode(null)
 
     setSelectedEdge({
       id: edge.id,
@@ -374,7 +700,7 @@ function Graph() {
   // If user is not logged in, send to login page
   if (!user) {
     return (
-      <section>
+      <section className={styles.statusFrame}>
         <h1>Graph</h1>
         <p>Sign in to view your graph.</p>
         <Link to="/">Go to Home</Link>
@@ -385,7 +711,7 @@ function Graph() {
   // Loading state
   if (loading) {
     return (
-      <section>
+      <section className={styles.statusFrame}>
         <h1>Graph</h1>
         <p>Loading your relationship graph…</p>
       </section>
@@ -395,7 +721,7 @@ function Graph() {
   // Error state
   if (error) {
     return (
-      <section>
+      <section className={styles.statusFrame}>
         <h1>Graph</h1>
         <p className="text-error">{error}</p>
       </section>
@@ -407,31 +733,346 @@ function Graph() {
     await loadGraph({ skipLoading: true })
   }
 
+  const isSidePanelOpen =
+    openPanel === 'addPerson' ||
+    openPanel === 'addPlace' ||
+    openPanel === 'addMemory' ||
+    selectedNode != null ||
+    selectedEdge != null
+
+  const sectionLabel = currentLayer === 'memories' ? 'Memories graph' : 'Relationship graph'
+
+  const selectedMemoryId = memorySelection?.kind === 'memory' ? memorySelection.id : null
+  const highlightedMemoryIds = memorySelection?.kind === 'context' ? (contextToMemories.get(memorySelection.id) ?? new Set<string>()) : undefined
+
   // Render the graph
   return (
-    <section>
-      <div className={styles.headerRow}>
-        <h1 className={styles.pageTitle}>Relationship Graph</h1>
+    <section className={styles.fullBleedRoot} aria-label={sectionLabel}>
+      <h1 className="sr-only">{sectionLabel}</h1>
 
-        <div className={styles.toolbar}>
+      <div className={clsx(styles.canvasContainer, isSidePanelOpen && styles.canvasContainerPanelOpen, currentLayer === 'memories' && styles.canvasContainerLayerMemories)}>
+        <div className={styles.flowFill}>
+          <DefaultFlow
+            ref={flowRef}
+            key={`${user.uid}-${flowKey}`}
+            nodes={displayNodes}
+            edges={displayEdges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeDragStop={onNodeDragStop}
+            onPaneFlowClick={
+              addGroupPlacement.status === 'picking'
+                ? handlePaneFlowClick
+                : currentLayer === 'memories' && (memorySelection != null || memoryBrushRange != null)
+                  ? handleMemoryPaneClick
+                  : undefined
+            }
+            groupPlacementPanMode={addGroupPlacement.status === 'picking'}
+            defaultViewport={initialViewport}
+            onNodeClick={handleNodeClick}
+            onEdgeClick={handleEdgeClick}
+            onConnectPersist={handleConnectPersist}
+            onDropAtFlowPosition={handleDropAtFlowPosition}
+            showMiniMap={minimapExpanded}
+            onSavePositions={(updatedNodes) => {
+              void saveNodePositions(
+                user.uid,
+                updatedNodes.map((n) => ({
+                  id: n.id,
+                  position: n.position,
+                  parentId: n.parentId ?? null,
+                })),
+                GRAPH_IDS.context,
+              )
+            }}
+            onSaveViewport={(viewport) => {
+              void saveGraphViewport(user.uid, viewport, GRAPH_IDS.context)
+            }}
+          />
+        </div>
+
+        <div className={styles.layerSwitcher} role="tablist" aria-label="Graph layer">
           <button
             type="button"
-            onClick={() => togglePanel('addNode')}
-            className={clsx(styles.toolbarButton, openPanel === 'addNode' && styles.toolbarButtonActive)}
+            role="tab"
+            aria-selected={currentLayer === 'relationships'}
+            className={clsx(
+              styles.layerSwitcherSegment,
+              currentLayer === 'relationships' && styles.layerSwitcherSegmentActive,
+            )}
+            onClick={() => setCurrentLayer('relationships')}
           >
-            + Add Node
+            Relationships
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={currentLayer === 'memories'}
+            className={clsx(
+              styles.layerSwitcherSegment,
+              currentLayer === 'memories' && styles.layerSwitcherSegmentActive,
+              currentLayer === 'memories' && styles.layerSwitcherSegmentMemories,
+            )}
+            onClick={() => setCurrentLayer('memories')}
+          >
+            Memories
+          </button>
+        </div>
+
+        {currentLayer === 'memories' ? (
+          <MemoryTimeline
+            memories={memories}
+            onMemoryClick={(id) => {
+              flowRef.current?.focusNode(id)
+              setMemorySelection({ kind: 'memory', id })
+            }}
+            selectedMemoryId={selectedMemoryId}
+            highlightedMemoryIds={highlightedMemoryIds}
+            brushRange={memoryBrushRange}
+            onBrushChange={setMemoryBrushRange}
+            trailingActions={
+              <button
+                type="button"
+                draggable
+                onDragStart={handleDockDragStart('memory')}
+                onClick={() => togglePanel('addMemory')}
+                aria-label="Add a memory. Click to open the form, or drag onto the canvas."
+                className={clsx(timelineStyles.trailingAction, openPanel === 'addMemory' && timelineStyles.trailingActionActive)}
+              >
+                <span className={timelineStyles.trailingActionIcon} aria-hidden="true">+</span>
+                <span className={timelineStyles.trailingActionLabel}>Memory</span>
+              </button>
+            }
+          />
+        ) : null}
+
+        {currentLayer === 'relationships' && addGroupPlacement.status === 'picking' ? (
+          <p className={styles.hintFloat}>
+            {addGroupPlacement.phase === 1
+              ? 'Click the top-left corner of the new group on the graph, then the bottom-right. Pan with middle or right mouse drag, or the scroll wheel. Press Esc to cancel.'
+              : 'Now click the bottom-right corner. Esc to cancel.'}
+          </p>
+        ) : null}
+
+        {syncEdgeError ? (
+          <div className={styles.bannerFloat}>
+            <p className={clsx('text-error', styles.bannerFloatError)}>{syncEdgeError}</p>
+            <button
+              type="button"
+              className={clsx('btn-ghost', styles.bannerFloatDismiss)}
+              onClick={() => setSyncEdgeError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
+        <div
+          className={clsx(styles.filterRow, filterExpanded && styles.filterRowExpanded)}
+          role="group"
+          aria-label="Toggle node types"
+          aria-hidden={!filterExpanded}
+        >
+            <button
+              type="button"
+              onClick={() => setVisibleTypes((v) => ({ ...v, person: !v.person }))}
+              aria-pressed={visibleTypes.person}
+              className={clsx(styles.filterChip, visibleTypes.person && styles.filterChipActive, visibleTypes.person && styles.filterChipPerson)}
+            >
+              <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-person-border)' }} aria-hidden="true" />
+              People
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleTypes((v) => ({ ...v, place: !v.place }))}
+              aria-pressed={visibleTypes.place}
+              className={clsx(styles.filterChip, visibleTypes.place && styles.filterChipActive, visibleTypes.place && styles.filterChipPlace)}
+            >
+              <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-node-place-border)' }} aria-hidden="true" />
+              Places
+            </button>
+            {currentLayer === 'relationships' ? (
+              <button
+                type="button"
+                onClick={() => setVisibleTypes((v) => ({ ...v, group: !v.group }))}
+                aria-pressed={visibleTypes.group}
+                className={clsx(styles.filterChip, visibleTypes.group && styles.filterChipActive, visibleTypes.group && styles.filterChipGroup)}
+              >
+                <span className={styles.filterChipDot} style={{ backgroundColor: 'var(--color-border-strong)' }} aria-hidden="true" />
+                Groups
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={styles.chromeCloseButton}
+              onClick={() => setFilterExpanded(false)}
+              aria-label="Hide filters"
+              tabIndex={filterExpanded ? 0 : -1}
+            >
+              ✕
+            </button>
+          </div>
+          <button
+            type="button"
+            className={clsx(styles.fab, styles.fabFilter, filterExpanded && styles.fabHidden)}
+            onClick={() => setFilterExpanded(true)}
+            aria-label="Show node-type filters"
+            aria-hidden={filterExpanded}
+            tabIndex={filterExpanded ? -1 : 0}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+              <line x1="3" y1="5" x2="15" y2="5" />
+              <line x1="5" y1="9" x2="13" y2="9" />
+              <line x1="7" y1="13" x2="11" y2="13" />
+            </svg>
+          </button>
+
+        <div
+          className={clsx(styles.searchWrap, searchExpanded && styles.searchWrapExpanded)}
+          aria-hidden={!searchExpanded}
+        >
+            <div className={styles.searchInputWrap}>
+              <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                <circle cx="7" cy="7" r="4.5" />
+                <line x1="10.5" y1="10.5" x2="14" y2="14" strokeLinecap="round" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                className={styles.searchInput}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('')
+                    setSearchExpanded(false)
+                  }
+                }}
+                placeholder={currentLayer === 'memories' ? 'Find a memory…' : 'Find a person or place…'}
+                aria-label="Search nodes by name"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  className={styles.searchClear}
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.searchClear}
+                  onClick={() => setSearchExpanded(false)}
+                  aria-label="Hide search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          {searchQuery ? (
+            <ul className={styles.searchResults} role="listbox">
+              {searchResults.length === 0 ? (
+                <li className={styles.searchEmpty}>No matches</li>
+              ) : (
+                searchResults.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      className={styles.searchResultItem}
+                      onClick={() => {
+                        if (currentLayer === 'memories') {
+                          // Memories layer search only returns memories.
+                          if (memoryBrushRange) {
+                            const m = memories.find((x) => x.id === r.id)
+                            const ms = m ? getMemoryMillis(m) : null
+                            const outOfBrush =
+                              ms == null || ms < memoryBrushRange.start || ms > memoryBrushRange.end
+                            if (outOfBrush) setMemoryBrushRange(null)
+                          }
+                          setMemorySelection({ kind: 'memory', id: r.id })
+                        }
+                        window.setTimeout(() => flowRef.current?.focusNode(r.id), 0)
+                        setSearchQuery('')
+                      }}
+                    >
+                      <SearchResultThumb photoPath={r.photoPath} />
+                      <span className={styles.searchResultName}>{r.name}</span>
+                      <span className={styles.searchResultType}>{r.type}</span>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className={clsx(styles.fab, styles.fabSearch, searchExpanded && styles.fabHidden)}
+          onClick={() => setSearchExpanded(true)}
+          aria-label="Open search"
+          aria-hidden={searchExpanded}
+          tabIndex={searchExpanded ? -1 : 0}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+            <circle cx="8" cy="8" r="5" />
+            <line x1="11.5" y1="11.5" x2="15" y2="15" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        {minimapExpanded ? (
+          <button
+            type="button"
+            className={styles.minimapClose}
+            onClick={() => setMinimapExpanded(false)}
+            aria-label="Hide minimap"
+          >
+            ✕
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={clsx(styles.fab, styles.fabMinimap)}
+            onClick={() => setMinimapExpanded(true)}
+            aria-label="Show minimap"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <rect x="2.5" y="3.5" width="13" height="11" rx="1.5" />
+              <rect x="6" y="6.5" width="6" height="4" rx="0.5" fill="currentColor" fillOpacity="0.25" stroke="none" />
+            </svg>
+          </button>
+        )}
+
+        <div className={styles.dock} role="toolbar" aria-label="Graph actions">
+          <button
+            type="button"
+            draggable
+            onDragStart={handleDockDragStart('person')}
+            onClick={() => togglePanel('addPerson')}
+            aria-label="Add a person. Click to place at default position, or drag onto the canvas to choose a spot."
+            className={clsx(styles.dockItem, styles.dockItemDraggable, openPanel === 'addPerson' && styles.dockItemActive)}
+          >
+            <span className={clsx(styles.dockIcon, styles.dockIconPerson)} aria-hidden="true">+</span>
+            <span className={styles.dockLabel}>Person</span>
           </button>
 
           <button
             type="button"
-            onClick={() => togglePanel('addConnection')}
-            className={clsx(styles.toolbarButton, openPanel === 'addConnection' && styles.toolbarButtonActive)}
+            draggable
+            onDragStart={handleDockDragStart('place')}
+            onClick={() => togglePanel('addPlace')}
+            aria-label="Add a place. Click to place at default position, or drag onto the canvas to choose a spot."
+            className={clsx(styles.dockItem, styles.dockItemDraggable, openPanel === 'addPlace' && styles.dockItemActive)}
           >
-            + Add Connection
+            <span className={clsx(styles.dockIcon, styles.dockIconPlace)} aria-hidden="true">+</span>
+            <span className={styles.dockLabel}>Place</span>
           </button>
 
           <button
             type="button"
+            draggable
+            onDragStart={handleDockDragStart('group')}
             onClick={() => {
               if (addGroupPlacement.status === 'picking') {
                 addGroupPlacementRef.current = { status: 'idle' }
@@ -442,38 +1083,100 @@ function Graph() {
               addGroupPlacementRef.current = { status: 'picking', phase: 1 }
               setAddGroupPlacement({ status: 'picking', phase: 1 })
             }}
-            className={clsx(styles.toolbarButton, addGroupPlacement.status === 'picking' && styles.toolbarButtonActive)}
+            aria-label={addGroupPlacement.status === 'picking' ? 'Cancel group placement' : 'Add a group. Click to draw a region, or drag onto the canvas to drop a default-sized group.'}
+            className={clsx(styles.dockItem, styles.dockItemDraggable, addGroupPlacement.status === 'picking' && styles.dockItemActive)}
           >
-            + Add group
+            <span className={clsx(styles.dockIcon, styles.dockIconGroup)} aria-hidden="true">+</span>
+            <span className={styles.dockLabel}>Group</span>
           </button>
-        </div>
-      </div>
 
-      <p className={styles.pageSubtitle}>
-        Your personal map of the people and places around you.
-      </p>
+          <span className={styles.dockDivider} aria-hidden="true" />
 
-      {syncEdgeError ? (
-        <div className={styles.syncBanner}>
-          <p className={clsx('text-error', styles.syncBannerError)}>{syncEdgeError}</p>
           <button
             type="button"
-            className={clsx('btn-ghost', styles.syncBannerDismiss)}
-            onClick={() => setSyncEdgeError(null)}
+            onClick={() => togglePanel('addConnection')}
+            aria-label="Link two nodes"
+            className={clsx(styles.dockItem, openPanel === 'addConnection' && styles.dockItemActive)}
           >
-            Dismiss
+            <span className={clsx(styles.dockIcon, styles.dockIconLink)} aria-hidden="true">↔</span>
+            <span className={styles.dockLabel}>Link</span>
           </button>
         </div>
-      ) : null}
 
-      {openPanel === 'addNode' && (
-        <AddNodePanel
-          userId={user.uid}
-          pickableNodes={pickableNodes}
-          onClose={() => setOpenPanel(null)}
-          onSuccess={() => void handleAddNodeSuccess()}
-        />
-      )}
+        {openPanel === 'addMemory' && (
+          <AddMemoryModal
+            userId={user.uid}
+            people={memoryPeoplePickerItems}
+            onClose={() => setOpenPanel(null)}
+            onCreated={() => {
+              void (async () => {
+                await flushPendingEdges()
+                await loadGraph({ skipLoading: true })
+              })()
+            }}
+          />
+        )}
+
+        {(openPanel === 'addPerson' || openPanel === 'addPlace') && (
+          <AddNodePanel
+            key={openPanel}
+            userId={user.uid}
+            pickableNodes={pickableNodes}
+            initialType={openPanel === 'addPerson' ? 'person' : 'place'}
+            position={pendingNodePosition ?? undefined}
+            onClose={() => {
+              setOpenPanel(null)
+              setPendingNodePosition(null)
+            }}
+            onSuccess={() => {
+              setPendingNodePosition(null)
+              void handleAddNodeSuccess()
+            }}
+          />
+        )}
+
+        {selectedNode && (
+          <NodeInfoModal
+            userId={user.uid}
+            nodeId={selectedNode.id}
+            nodeName={selectedNode.name}
+            nodeType={selectedNode.type}
+            nodeRelationship={selectedNode.relationship ?? ''}
+            nodeEmail={selectedNode.email ?? ''}
+            nodePhone={selectedNode.phone ?? ''}
+            nodeAddress={selectedNode.address ?? ''}
+            nodePhotoPath={selectedNode.photoPath ?? ''}
+            nodeWidth={selectedNode.width}
+            nodeHeight={selectedNode.height}
+            onClose={() => setSelectedNode(null)}
+            onSuccess={() => {
+              void (async () => {
+                await flushPendingEdges()
+                await loadGraph({ skipLoading: true })
+                setSelectedNode(null)
+              })()
+            }}
+          />
+        )}
+
+        {selectedEdge && (
+          <EdgeInfoModal
+            userId={user.uid}
+            edgeId={selectedEdge.id}
+            sourceName={selectedEdge.sourceName}
+            targetName={selectedEdge.targetName}
+            sourceHandle={selectedEdge.sourceHandle}
+            targetHandle={selectedEdge.targetHandle}
+            edgeLabel={selectedEdge.label ?? ''}
+            onClose={() => setSelectedEdge(null)}
+            onEdgeDeleted={(edgeId) => {
+              removePendingEdge(edgeId)
+              setSelectedEdge(null)
+            }}
+            onSaveEdgeLabel={handleSaveEdgeLabel}
+          />
+        )}
+      </div>
 
       {openPanel === 'addConnection' && (
         <AddConnectionModal
@@ -498,87 +1201,6 @@ function Graph() {
           }}
         />
       )}
-
-      {selectedNode && (
-        <NodeInfoModal
-          userId={user.uid}
-          nodeId={selectedNode.id}
-          nodeName={selectedNode.name}
-          nodeType={selectedNode.type}
-          nodeRelationship={selectedNode.relationship ?? ''}
-          nodeEmail={selectedNode.email ?? ''}
-          nodePhone={selectedNode.phone ?? ''}
-          nodeAddress={selectedNode.address ?? ''}
-          nodePhotoPath={selectedNode.photoPath ?? ''}
-          nodeWidth={selectedNode.width}
-          nodeHeight={selectedNode.height}
-          onClose={() => setSelectedNode(null)}
-          onSuccess={() => {
-            void (async () => {
-              await flushPendingEdges()
-              await loadGraph({ skipLoading: true })
-              setSelectedNode(null)
-            })()
-          }}
-        />
-      )}
-
-      {selectedEdge && (
-        <EdgeInfoModal
-          userId={user.uid}
-          edgeId={selectedEdge.id}
-          sourceName={selectedEdge.sourceName}
-          targetName={selectedEdge.targetName}
-          sourceHandle={selectedEdge.sourceHandle}
-          targetHandle={selectedEdge.targetHandle}
-          edgeLabel={selectedEdge.label ?? ''}
-          onClose={() => setSelectedEdge(null)}
-          onEdgeDeleted={(edgeId) => {
-            removePendingEdge(edgeId)
-            setSelectedEdge(null)
-          }}
-          onSaveEdgeLabel={handleSaveEdgeLabel}
-        />
-      )}
-
-      {addGroupPlacement.status === 'picking' ? (
-        <p className={styles.placementHint}>
-          {addGroupPlacement.phase === 1
-            ? 'Click the top-left corner of the new group on the graph, then the bottom-right. Pan with middle or right mouse drag, or the scroll wheel. Press Esc to cancel.'
-            : 'Now click the bottom-right corner. Esc to cancel.'}
-        </p>
-      ) : null}
-
-      <div className={styles.flowContainer}>
-        <DefaultFlow
-          key={`${user.uid}-${flowKey}`}
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeDragStop={onNodeDragStop}
-          onPaneFlowClick={addGroupPlacement.status === 'picking' ? handlePaneFlowClick : undefined}
-          groupPlacementPanMode={addGroupPlacement.status === 'picking'}
-          defaultViewport={initialViewport}
-          onNodeClick={handleNodeClick}
-          onEdgeClick={handleEdgeClick}
-          onConnectPersist={handleConnectPersist}
-          onSavePositions={(updatedNodes) => {
-            void saveNodePositions(
-              user.uid,
-              updatedNodes.map((n) => ({
-                id: n.id,
-                position: n.position,
-                parentId: n.parentId ?? null,
-              })),
-              GRAPH_IDS.context,
-            )
-          }}
-          onSaveViewport={(viewport) => {
-            void saveGraphViewport(user.uid, viewport, GRAPH_IDS.context)
-          }}
-        />
-      </div>
     </section>
   )
 }

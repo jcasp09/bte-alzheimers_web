@@ -1,4 +1,4 @@
-import { type SubmitEvent, useState } from 'react'
+import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import {
   GRAPH_IDS,
@@ -12,20 +12,23 @@ import {
 } from '../../services/graph'
 import type { NodeType, PickableNode } from '../../types/graph'
 import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/edgeHandles'
-import { Modal } from '../ui/Modal'
-import modalStyles from '../ui/Modal.module.css'
+import { SidePanel } from '../ui/SidePanel'
+import formStyles from '../../styles/formActions.module.css'
 import styles from './AddNodeModal.module.css'
+import { getInitialsForAvatar } from '../../util/initials'
 
 type Props = {
   userId: string
   pickableNodes: PickableNode[]
+  initialType?: NodeType
+  position?: { x: number; y: number }
   onClose: () => void
   onSuccess: () => void
 }
 
-export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Props) {
+export function AddNodePanel({ userId, pickableNodes, initialType = 'person', position, onClose, onSuccess }: Props) {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [nodeType, setNodeType] = useState<NodeType>('person')
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [relationship, setRelationship] = useState('')
   const [email, setEmail] = useState('')
@@ -37,18 +40,17 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleTypeChange = (type: NodeType) => {
-    setNodeType(type)
-    setName('')
-    setRelationship('')
-    setEmail('')
-    setPhone('')
-    setAddress('')
-    setPhotoFile(null)
-    setLinkToNodeId(null)
-    setShowLinkList(false)
-    setError(null)
-  }
+  const nodeType = initialType
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(photoFile)
+    setPhotoPreviewUrl(url)
+    return () => { URL.revokeObjectURL(url) }
+  }, [photoFile])
 
   const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
@@ -62,8 +64,8 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
       }
 
       const data = nodeType === 'person'
-        ? { type: 'person' as const, name, relationship, email, phone }
-        : { type: 'place' as const, name, address }
+        ? { type: 'person' as const, name, relationship, email, phone, position }
+        : { type: 'place' as const, name, address, position }
       const newNodeId = await createNode(userId, data)
 
       if (nodeType === 'person' && photoFile) {
@@ -97,21 +99,19 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
     }
   }
 
-  return (
-    <Modal title="Add Node" onClose={onClose}>
-      <div className={styles.typeToggle}>
-        {(['person', 'place'] as NodeType[]).map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => handleTypeChange(type)}
-            className={clsx(styles.typeOption, nodeType === type && styles.typeOptionActive)}
-          >
-            {type === 'person' ? 'Person' : 'Place'}
-          </button>
-        ))}
-      </div>
+  const panelTitle = nodeType === 'person' ? 'Add a person' : 'Add a place'
+  const panelAccent = nodeType === 'person' ? 'person' : 'place'
 
+  return (
+    <SidePanel
+      title={panelTitle}
+      onClose={onClose}
+      accent={panelAccent}
+      hero={{
+        avatarLabel: getInitialsForAvatar(name),
+        avatarImageUrl: photoPreviewUrl ?? undefined,
+      }}
+    >
       {/* Form fields */}
       <form onSubmit={handleSubmit} className="form-stack">
         <div className={styles.formRow}>
@@ -229,10 +229,10 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
         </div>
 
         {error != null && (
-          <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
+          <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
         )}
 
-        <div className={modalStyles.actions}>
+        <div className={formStyles.actions}>
           <button type="button" onClick={onClose} className="btn-ghost">
             Cancel
           </button>
@@ -241,6 +241,6 @@ export function AddNodePanel({ userId, pickableNodes, onClose, onSuccess }: Prop
           </button>
         </div>
       </form>
-    </Modal>
+    </SidePanel>
   )
 }

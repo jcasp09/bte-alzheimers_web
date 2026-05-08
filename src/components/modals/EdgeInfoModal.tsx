@@ -3,8 +3,8 @@ import clsx from 'clsx'
 import { GRAPH_IDS, deleteEdge } from '../../services/graph'
 import { edgeHandleLabel } from '../../graph/edgeHandles'
 import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
-import { Modal } from '../ui/Modal'
-import modalStyles from '../ui/Modal.module.css'
+import { SidePanel } from '../ui/SidePanel'
+import formStyles from '../../styles/formActions.module.css'
 import styles from './EdgeInfoModal.module.css'
 
 type Props = {
@@ -81,7 +81,7 @@ export function EdgeInfoModal({
   const busy = isDeleting || isSavingLabel
 
   return (
-    <Modal title="Connection" onClose={onClose}>
+    <SidePanel title="Connection" onClose={onClose} accent="connection">
       <p className={styles.summary}>
         <strong>{sourceName}</strong>
         {' → '}
@@ -124,15 +124,15 @@ export function EdgeInfoModal({
       </form>
 
       {error && (
-        <p className={clsx('text-error', modalStyles.errorText)}>{error}</p>
+        <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
       )}
 
-      <div className={modalStyles.actionsLeftAligned}>
+      <div className={formStyles.actionsLeftAligned}>
         <button
           type="button"
           disabled={busy}
           onClick={() => { void handleDelete() }}
-          className={modalStyles.dangerButton}
+          className={formStyles.dangerButton}
         >
           {isDeleting ? 'Deleting…' : 'Delete connection'}
         </button>
@@ -140,6 +140,6 @@ export function EdgeInfoModal({
           Close
         </button>
       </div>
-    </Modal>
+    </SidePanel>
   )
 }

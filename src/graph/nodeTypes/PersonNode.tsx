@@ -1,9 +1,8 @@
 import type { NodeProps } from '@xyflow/react'
-import { useEffect, useState } from 'react'
-import { getDownloadURL, ref } from 'firebase/storage'
 import { NodeEdgeHandles } from '../../components/NodeEdgeHandles'
+import { usePhotoUrl } from '../../hooks/usePhotoUrl'
 import { PERSON_NODE_DEFAULT_SIZE, safeNodeDimensions } from '../dimensions'
-import { storage } from '../../services/storage'
+import { getInitialsForAvatar } from '../../util/initials'
 
 function personScale(width: number, height: number) {
   return Math.min(
@@ -12,26 +11,12 @@ function personScale(width: number, height: number) {
   )
 }
 
-/** Up to two letters from a person's name; falls back to '?' for blank names. */
-function getInitials(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed)
-    return '?'
-
-  const parts = trimmed.split(/\s+/)
-  if (parts.length === 1)
-    return parts[0].charAt(0).toUpperCase()
-
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-}
-
 export function PersonNode({ data }: NodeProps) {
   const name = typeof data.name === 'string' ? data.name : ''
   const relationship = typeof data.relationship === 'string' ? data.relationship : ''
   const email = typeof data.email === 'string' ? data.email : ''
   const phone = typeof data.phone === 'string' ? data.phone : ''
   const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
-  const [fetchedPhoto, setFetchedPhoto] = useState<{ path: string; url: string } | null>(null)
 
   const { width: w, height: h } = safeNodeDimensions('person', data.width, data.height)
   const sc = personScale(w, h)
@@ -46,27 +31,7 @@ export function PersonNode({ data }: NodeProps) {
   const showRelationship = w >= 165 && h >= 46
   const showEmailPhone = w >= 205 && h >= 72
 
-  useEffect(() => {
-    if (!photoPath)
-      return
-
-    let isCancelled = false
-    void getDownloadURL(ref(storage, photoPath))
-      .then((url) => {
-        if (!isCancelled) {
-          setFetchedPhoto({ path: photoPath, url })
-        }
-      })
-      .catch(() => {
-        // Ignore lookup failures and use initials fallback.
-      })
-
-    return () => {
-      isCancelled = true
-    }
-  }, [photoPath])
-
-  const resolvedImageUrl = fetchedPhoto?.path === photoPath ? fetchedPhoto.url : ''
+  const resolvedImageUrl = usePhotoUrl(photoPath) ?? ''
 
   return (
     <div
@@ -83,8 +48,9 @@ export function PersonNode({ data }: NodeProps) {
           minHeight: h,
           boxSizing: 'border-box',
           borderRadius,
-          background: '#f9fafb',
-          border: '2px solid #9ca3af',
+          background: 'var(--color-node-person)',
+          border: '2px solid var(--color-node-person-border)',
+          color: 'var(--color-node-person-text)',
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
@@ -101,22 +67,22 @@ export function PersonNode({ data }: NodeProps) {
             height: avatar,
             borderRadius: '9999px',
             backgroundImage: resolvedImageUrl ? `url(${resolvedImageUrl})` : undefined,
-            backgroundColor: resolvedImageUrl ? undefined : 'var(--color-accent-soft)',
+            backgroundColor: resolvedImageUrl ? undefined : 'var(--color-node-person-soft)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            border: '2px solid var(--color-border-strong)',
+            border: '2px solid var(--color-node-person-border)',
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--color-accent-hover)',
+            color: 'var(--color-node-person-text)',
             fontSize: Math.round(avatar * 0.4),
             fontWeight: 600,
             userSelect: 'none',
           }}
           aria-label={name ? `${name} avatar` : 'Person avatar'}
         >
-          {resolvedImageUrl ? null : getInitials(name)}
+          {resolvedImageUrl ? null : getInitialsForAvatar(name) || '?'}
         </div>
         <div
           style={{
