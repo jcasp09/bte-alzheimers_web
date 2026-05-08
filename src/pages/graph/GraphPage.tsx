@@ -34,6 +34,7 @@ import { AddGroupModal } from '../../graph/components/modals/AddGroupModal.tsx'
 import { AddMemoryModal } from '../../graph/components/modals/AddMemoryModal.tsx'
 import { NodeInfoModal } from '../../graph/components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../../graph/components/modals/EdgeInfoModal.tsx'
+import { MemoryInfoModal } from '../../memories/components/MemoryInfoModal.tsx'
 import {
   DEFAULT_VISIBLE_TYPES,
   type VisibleTypes,
@@ -79,12 +80,14 @@ function Graph() {
     openPanel,
     selectedNode,
     selectedEdge,
+    memoryInfoId,
     pendingNodePosition,
     isSidePanelOpen,
     close: closeSidePanel,
     openAddPanel,
     openNodeInfo,
     openEdgeInfo,
+    openMemoryInfo,
     togglePanel,
   } = useGraphSidePanel()
   const flowRef = useRef<DefaultFlowHandle>(null)
@@ -217,6 +220,7 @@ function Graph() {
     if (currentLayer === 'memories') {
       if (node.type === 'memory') {
         setMemorySelection({ kind: 'memory', id: node.id })
+        openMemoryInfo(node.id)
         return
       }
       if (node.type === 'person' || node.type === 'place') {
@@ -348,6 +352,9 @@ function Graph() {
 
   const selectedMemoryId = memorySelection?.kind === 'memory' ? memorySelection.id : null
   const highlightedMemoryIds = memorySelection?.kind === 'context' ? (contextToMemories.get(memorySelection.id) ?? new Set<string>()) : undefined
+  const selectedMemory = memoryInfoId
+    ? memories.find((m) => m.id === memoryInfoId) ?? null
+    : null
 
   // Render the graph
   return (
@@ -530,6 +537,23 @@ function Graph() {
                 await loadGraph({ skipLoading: true })
                 closeSidePanel()
               })()
+            }}
+          />
+        )}
+
+        {selectedMemory && (
+          <MemoryInfoModal
+            userId={user.uid}
+            memory={selectedMemory}
+            people={memoryPeoplePickerItems}
+            onClose={closeSidePanel}
+            onSaved={() => {
+              void loadGraph({ skipLoading: true })
+            }}
+            onDeleted={() => {
+              setMemorySelection(null)
+              setMemoryBrushRange(null)
+              void loadGraph({ skipLoading: true })
             }}
           />
         )}
