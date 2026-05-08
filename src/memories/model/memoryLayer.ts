@@ -15,10 +15,6 @@ const MEMORY_SPIRAL_STEP = 95
 
 export const SYNTH_EDGE_PREFIX = 'synth:'
 
-export function isSynthEdgeId(id: string): boolean {
-  return id.startsWith(SYNTH_EDGE_PREFIX)
-}
-
 /** UTC midnight ms for a memory's `occurredOn`, or null if it doesn't parse. */
 export function getMemoryMillis(m: MemoryDoc): number | null {
   const p = parseOccurredOn(m.occurredOn)
