@@ -29,21 +29,6 @@ export function getTheme(): Theme {
 }
 
 /**
- * Read the persisted theme from localStorage.
- */
-export function getStoredTheme(): Theme | null {
-  if (typeof window === 'undefined')
-    return null
-
-  try {
-    const value = window.localStorage.getItem(STORAGE_KEY)
-    return isTheme(value) ? value : null
-  } catch {
-    return null
-  }
-}
-
-/**
  * Sync the <meta name="theme-color"> tag with the active theme's page color.
  */
 export function applyThemeColorMeta(): void {

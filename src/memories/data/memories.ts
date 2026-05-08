@@ -124,17 +124,6 @@ function validateMemoryPhotoPaths(uid: string, memoryId: string, paths: string[]
   }
 }
 
-/** Richness score for layout at day/memory level (not used for year/month buckets). */
-export function memoryRichnessScore(m: Pick<MemoryDoc, 'title' | 'description' | 'personNodeIds' | 'placeNodeIds' | 'photoPaths'>): number {
-  const people = m.personNodeIds?.length ?? 0
-  const places = m.placeNodeIds?.length ?? 0
-  const photos = m.photoPaths?.length ?? 0
-  const descLen = (m.description ?? '').trim().length
-  const descTerm = Math.min(descLen / 200, 1) * 2
-  const titleBonus = (m.title ?? '').trim().length > 0 ? 0.5 : 0
-  return people + places + photos * 1.5 + descTerm + titleBonus
-}
-
 export async function getMemories(uid: string): Promise<MemoryDoc[]> {
   const snapshot = await getDocs(memoriesCollection(uid))
   return snapshot.docs.map((d) => {

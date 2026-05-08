@@ -32,21 +32,6 @@ export function getMotionMode(): MotionMode {
 }
 
 /**
- * Read the persisted motion mode from localStorage.
- */
-export function getStoredMotionMode(): MotionMode | null {
-  if (typeof window === 'undefined')
-    return null
-
-  try {
-    const value = window.localStorage.getItem(STORAGE_KEY)
-    return isMotionMode(value) ? value : null
-  } catch {
-    return null
-  }
-}
-
-/**
  * Apply a motion mode by setting `data-motion` on the <html> element.
  * Persists to localStorage and notifies subscribers.
  */
