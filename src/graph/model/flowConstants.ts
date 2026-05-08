@@ -24,8 +24,6 @@ export type XY = { x: number; y: number }
  *  which supplementary chrome appears (dock, timeline, etc.). */
 export type Layer = 'relationships' | 'memories'
 
-export const LAYER_VALUES: readonly Layer[] = ['relationships', 'memories'] as const
-
 export const DEFAULT_LAYER: Layer = 'relationships'
 
 export function isLayer(value: unknown): value is Layer {

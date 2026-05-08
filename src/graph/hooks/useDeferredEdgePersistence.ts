@@ -186,7 +186,6 @@ export function useDeferredEdgePersistence(
   const onBeforeUnload = useCallback((e: BeforeUnloadEvent) => {
     if (pendingRef.current.length > 0) {
       e.preventDefault()
-      e.returnValue = ''
     }
   }, [])
 
