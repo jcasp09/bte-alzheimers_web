@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { useAuth } from '../../contexts/AuthContext'
-import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarTasks } from '../../services/calendar'
-import PageHeader from '../../components/PageHeader'
-import Banner from '../../components/Banner'
+import { useAuth } from '../../auth/AuthContext'
+import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarTasks } from '../../calendar/calendar'
+import PageHeader from '../../shared/ui/PageHeader'
+import Banner from '../../shared/ui/Banner'
 import styles from './Integrations.module.css'
 
 /** How long success banners stay visible before auto-dismissing. */

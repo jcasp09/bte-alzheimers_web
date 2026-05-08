@@ -3,8 +3,8 @@
  * Imports design tokens and themes for global use.
  */
 
-@import './styles/tokens.css';
-@import './styles/themes.css';
+@import './shared/styles/tokens.css';
+@import './shared/styles/themes.css';
 
 :root {
   font-family: var(--font-sans, sans-serif), sans-serif;

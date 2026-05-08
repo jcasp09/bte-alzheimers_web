@@ -2,10 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
-import './styles/utilities.css'
-import './graph/graphMotion.css'
+import './shared/styles/utilities.css'
+import './graph/styles/graphMotion.css'
 import App from './App.tsx'
-import { applyThemeColorMeta } from './services/theme'
+import { applyThemeColorMeta } from './settings/theme'
 
 applyThemeColorMeta()
 

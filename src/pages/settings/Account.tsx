@@ -4,13 +4,13 @@ import clsx from 'clsx'
 import { updateProfile } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { useAuth } from '../../contexts/AuthContext'
-import { signOutUser } from '../../services/auth'
-import { db } from '../../services/firestore'
-import { storage } from '../../services/storage'
-import PageHeader from '../../components/PageHeader'
-import Banner from '../../components/Banner'
-import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { useAuth } from '../../auth/AuthContext'
+import { signOutUser } from '../../firebase/auth'
+import { db } from '../../firebase/firestore'
+import { storage } from '../../firebase/storage'
+import PageHeader from '../../shared/ui/PageHeader'
+import Banner from '../../shared/ui/Banner'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog'
 import styles from './Account.module.css'
 
 type ProfileForm = {
@@ -281,13 +281,10 @@ function Account() {
     try {
       const path = `users/${user.uid}/profile-photo`
       const ref = storageRef(storage, path)
-      try {
-        await deleteObject(ref)
-      } catch (err) {
+      await deleteObject(ref).catch((err) => {
         const code = (err as { code?: string } | null)?.code
-        if (code !== 'storage/object-not-found')
-          throw err;
-      }
+        if (code !== 'storage/object-not-found') throw err
+      })
 
       await updateProfile(user, { photoURL: null })
       await setDoc(doc(db, 'users', user.uid), { photoURL: null }, { merge: true })

@@ -9,13 +9,13 @@
     <script>
       (function () {
         try {
-          var t = localStorage.getItem('memoryJogTheme');
-          if (t && /^[a-z-]+$/.test(t)) {
-            document.documentElement.setAttribute('data-theme', t);
+          const theme = localStorage.getItem('memoryJogTheme');
+          if (theme && /^[a-z-]+$/.test(theme)) {
+            document.documentElement.setAttribute('data-theme', theme);
           }
-          var m = localStorage.getItem('memoryJogMotion');
-          if (m && /^[a-z-]+$/.test(m)) {
-            document.documentElement.setAttribute('data-motion', m);
+          const motion = localStorage.getItem('memoryJogMotion');
+          if (motion && /^[a-z-]+$/.test(motion)) {
+            document.documentElement.setAttribute('data-motion', motion);
           }
         } catch (_) {}
       })();
