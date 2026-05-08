@@ -1,15 +1,9 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { SidePanel } from '../../../shared/ui/SidePanel'
-import {
-  GRAPH_IDS,
-  PHOTO_ACCEPT_ATTR,
-  PHOTO_TYPE_LABEL,
-  deleteNodeAndEdges,
-  isAllowedPhotoType,
-  uploadPersonNodePhoto,
-  upsertNode,
-} from '../../data/graph'
+import { deleteNodeAndEdges, upsertNode } from '../../data/nodes'
+import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, isAllowedPhotoType, uploadPersonNodePhoto } from '../../data/photos'
+import { GRAPH_IDS } from '../../model/types'
 import {
   GROUP_DIMENSION_BOUNDS,
   GROUP_NODE_DEFAULT_SIZE,

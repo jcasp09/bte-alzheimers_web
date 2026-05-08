@@ -1,6 +1,9 @@
 // Keep this file read-only exports
 
 export type GraphId = 'context' | 'tasks'
+
+export const GRAPH_IDS = { context: 'context', tasks: 'tasks' } as const
+
 export type NodeType = 'person' | 'place' | 'task' | 'group'
 export type PickableNode = {
   id: string

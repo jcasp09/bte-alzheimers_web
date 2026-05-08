@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import type { Connection, Edge } from '@xyflow/react'
-import { createEdge } from '../data/graph'
+import { createEdge } from '../data/edges'
 import type { GraphId } from '../model/types'
 
 export type PendingEdgeRow = {

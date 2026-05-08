@@ -12,12 +12,10 @@ import {
   type XY,
 } from '../../graph/model/flowConstants'
 import styles from './Graph.module.css'
-import {
-  GRAPH_IDS,
-  saveGraphViewport,
-  saveNodePositions,
-  updateEdgeLabel,
-} from '../../graph/data/graph'
+import { updateEdgeLabel } from '../../graph/data/edges'
+import { saveNodePositions } from '../../graph/data/nodes'
+import { saveGraphViewport } from '../../graph/data/viewport'
+import { GRAPH_IDS } from '../../graph/model/types'
 import type { PickableNode } from '../../graph/model/types'
 import { GROUP_NODE_DEFAULT_SIZE } from '../../graph/model/dimensions'
 import { applyReparentOnDragStop } from '../../graph/model/reparent'
@@ -45,6 +43,7 @@ import { useLayerState } from './hooks/useLayerState'
 import { useGroupPlacement } from './hooks/useGroupPlacement'
 import { useDisplayElements } from './hooks/useDisplayElements'
 import { useNodeSearch } from './hooks/useNodeSearch'
+import { useGraphSidePanel } from './hooks/useGraphSidePanel'
 import { LayerSwitcher } from './components/LayerSwitcher'
 import { GroupPlacementHint } from './components/GroupPlacementHint'
 import { SyncErrorBanner } from './components/SyncErrorBanner'
@@ -52,30 +51,6 @@ import { MinimapToggle } from './components/MinimapToggle'
 import { GraphFilterBar } from './components/GraphFilterBar'
 import { GraphSearch } from './components/GraphSearch'
 import { GraphDock } from './components/GraphDock'
-
-type OpenPanel = 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory' | null
-
-type SelectedNode = {
-  id: string
-  name: string
-  type: string
-  relationship?: string
-  email?: string
-  phone?: string
-  address?: string
-  photoPath?: string
-  width?: number
-  height?: number
-}
-
-type SelectedEdge = {
-  id: string
-  sourceName: string
-  targetName: string
-  sourceHandle?: string
-  targetHandle?: string
-  label?: string
-}
 
 function Graph() {
   const { user } = useAuth()
@@ -92,8 +67,6 @@ function Graph() {
   const [memorySelection, setMemorySelection] = useState<MemorySelection | null>(null)
   const [memoryBrushRange, setMemoryBrushRange] = useState<MemoryBrushRange | null>(null)
   const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
-  const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
-  const [pendingNodePosition, setPendingNodePosition] = useState<XY | null>(null)
   const {
     addGroupPlacement,
     addGroupPlacementRef,
@@ -102,8 +75,18 @@ function Graph() {
     setPendingGroupRect,
     handlePaneFlowClick,
   } = useGroupPlacement()
-  const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null)
-  const [selectedEdge, setSelectedEdge] = useState<SelectedEdge | null>(null)
+  const {
+    openPanel,
+    selectedNode,
+    selectedEdge,
+    pendingNodePosition,
+    isSidePanelOpen,
+    close: closeSidePanel,
+    openAddPanel,
+    openNodeInfo,
+    openEdgeInfo,
+    togglePanel,
+  } = useGraphSidePanel()
   const flowRef = useRef<DefaultFlowHandle>(null)
   const { currentLayer, setCurrentLayer } = useLayerState()
   const [visibleTypes, setVisibleTypes] = useState<VisibleTypes>(DEFAULT_VISIBLE_TYPES)
@@ -121,10 +104,7 @@ function Graph() {
   // Switching layers closes any open side panel and clears search/selection.
   // Done synchronously alongside setCurrentLayer so we don’t setState in an effect.
   function changeLayer(next: Layer) {
-    setSelectedNode(null)
-    setSelectedEdge(null)
-    setOpenPanel(null)
-    setPendingNodePosition(null)
+    closeSidePanel()
     setPendingGroupRect(null)
     setAddGroupPlacement({ status: 'idle' })
     setMemorySelection(null)
@@ -198,50 +178,35 @@ function Graph() {
     return out
   }, [nodes])
 
-  const togglePanel = (panel: OpenPanel) => {
-    setOpenPanel((prev) => (prev === panel ? null : panel))
-    setPendingNodePosition(null)
-    // Side-panel slots are mutually exclusive
-    setSelectedNode(null)
-    setSelectedEdge(null)
-  }
-
   const handleDropAtFlowPosition = (kind: string, point: XY) => {
-      if (addGroupPlacementRef.current.status === 'picking') {
-        setAddGroupPlacement({ status: 'idle' })
-      }
+    if (addGroupPlacementRef.current.status === 'picking') {
+      setAddGroupPlacement({ status: 'idle' })
+    }
 
-      // Side-panel slots are mutually exclusive.
-      setSelectedNode(null)
-      setSelectedEdge(null)
+    if (kind === 'group') {
+      const w = GROUP_NODE_DEFAULT_SIZE.width
+      const h = GROUP_NODE_DEFAULT_SIZE.height
+      closeSidePanel()
+      setPendingGroupRect({
+        x: point.x - w / 2,
+        y: point.y - h / 2,
+        width: w,
+        height: h,
+      })
+      return
+    }
 
-      if (kind === 'group') {
-        const w = GROUP_NODE_DEFAULT_SIZE.width
-        const h = GROUP_NODE_DEFAULT_SIZE.height
-        setOpenPanel(null)
-        setPendingNodePosition(null)
-        setPendingGroupRect({
-          x: point.x - w / 2,
-          y: point.y - h / 2,
-          width: w,
-          height: h,
-        })
-        return
-      }
+    if (kind === 'person' || kind === 'place') {
+      setPendingGroupRect(null)
+      openAddPanel(kind === 'person' ? 'addPerson' : 'addPlace', point)
+      return
+    }
 
-      if (kind === 'person' || kind === 'place') {
-        setPendingGroupRect(null)
-        setPendingNodePosition(point)
-        setOpenPanel(kind === 'person' ? 'addPerson' : 'addPlace')
-        return
-      }
-
-      if (kind === 'memory') {
-        // Memories don't have stored positions
-        setPendingGroupRect(null)
-        setPendingNodePosition(null)
-        setOpenPanel('addMemory')
-      }
+    if (kind === 'memory') {
+      // Memories don't have stored positions
+      setPendingGroupRect(null)
+      openAddPanel('addMemory')
+    }
   }
 
   const handleNodeClick = (_: MouseEvent, node: Node) => {
@@ -272,11 +237,7 @@ function Graph() {
     const w = node.type === 'group' ? node.width : node.data.width
     const h = node.type === 'group' ? node.height : node.data.height
 
-    setOpenPanel(null)
-    setPendingNodePosition(null)
-    setSelectedEdge(null)
-
-    setSelectedNode({
+    openNodeInfo({
       id: node.id,
       name,
       type: node.type ?? 'unknown',
@@ -303,11 +264,7 @@ function Graph() {
     const rawLabel = edge.label
     const label = typeof rawLabel === 'string' ? rawLabel : typeof rawLabel === 'number' ? String(rawLabel) : ''
 
-    setOpenPanel(null)
-    setPendingNodePosition(null)
-    setSelectedNode(null)
-
-    setSelectedEdge({
+    openEdgeInfo({
       id: edge.id,
       sourceName,
       targetName,
@@ -386,12 +343,6 @@ function Graph() {
     await loadGraph({ skipLoading: true })
   }
 
-  const isSidePanelOpen =
-    openPanel === 'addPerson' ||
-    openPanel === 'addPlace' ||
-    openPanel === 'addMemory' ||
-    selectedNode != null ||
-    selectedEdge != null
 
   const sectionLabel = currentLayer === 'memories' ? 'Memories graph' : 'Relationship graph'
 
@@ -535,7 +486,7 @@ function Graph() {
           <AddMemoryModal
             userId={user.uid}
             people={memoryPeoplePickerItems}
-            onClose={() => setOpenPanel(null)}
+            onClose={closeSidePanel}
             onCreated={() => {
               void (async () => {
                 await flushPendingEdges()
@@ -552,12 +503,8 @@ function Graph() {
             pickableNodes={pickableNodes}
             initialType={openPanel === 'addPerson' ? 'person' : 'place'}
             position={pendingNodePosition ?? undefined}
-            onClose={() => {
-              setOpenPanel(null)
-              setPendingNodePosition(null)
-            }}
+            onClose={closeSidePanel}
             onSuccess={() => {
-              setPendingNodePosition(null)
               void handleAddNodeSuccess()
             }}
           />
@@ -576,12 +523,12 @@ function Graph() {
             nodePhotoPath={selectedNode.photoPath ?? ''}
             nodeWidth={selectedNode.width}
             nodeHeight={selectedNode.height}
-            onClose={() => setSelectedNode(null)}
+            onClose={closeSidePanel}
             onSuccess={() => {
               void (async () => {
                 await flushPendingEdges()
                 await loadGraph({ skipLoading: true })
-                setSelectedNode(null)
+                closeSidePanel()
               })()
             }}
           />
@@ -596,10 +543,10 @@ function Graph() {
             sourceHandle={selectedEdge.sourceHandle}
             targetHandle={selectedEdge.targetHandle}
             edgeLabel={selectedEdge.label ?? ''}
-            onClose={() => setSelectedEdge(null)}
+            onClose={closeSidePanel}
             onEdgeDeleted={(edgeId) => {
               removePendingEdge(edgeId)
-              setSelectedEdge(null)
+              closeSidePanel()
             }}
             onSaveEdgeLabel={handleSaveEdgeLabel}
           />
@@ -609,7 +556,7 @@ function Graph() {
       {openPanel === 'addConnection' && (
         <AddConnectionModal
           pickableNodes={pickableNodes}
-          onClose={() => setOpenPanel(null)}
+          onClose={closeSidePanel}
           onQueueConnection={queueConnection}
         />
       )}

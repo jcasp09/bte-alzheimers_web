@@ -1,6 +1,7 @@
 import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { GRAPH_IDS, deleteEdge } from '../../data/graph'
+import { deleteEdge } from '../../data/edges'
+import { GRAPH_IDS } from '../../model/types'
 import { edgeHandleLabel } from '../../model/edgeHandles'
 import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
 import { SidePanel } from '../../../shared/ui/SidePanel'

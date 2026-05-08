@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Edge, Node, Viewport } from '@xyflow/react'
-import {
-  GRAPH_IDS,
-  getEdges,
-  getGraphViewport,
-  getNodes,
-} from '../../../graph/data/graph'
+import { getEdges } from '../../../graph/data/edges'
+import { getNodes } from '../../../graph/data/nodes'
+import { getGraphViewport } from '../../../graph/data/viewport'
+import { GRAPH_IDS } from '../../../graph/model/types'
 import { getMemories, type MemoryDoc } from '../../../memories/data/memories'
 import {
   firestoreEdgesToReactFlow,

@@ -1,6 +1,7 @@
 import { type SubmitEvent, useState } from 'react'
 import clsx from 'clsx'
-import { GRAPH_IDS, createNode } from '../../data/graph'
+import { createNode } from '../../data/nodes'
+import { GRAPH_IDS } from '../../model/types'
 import { Modal } from '../../../shared/ui/Modal'
 import formStyles from '../../../shared/styles/formActions.module.css'
 
