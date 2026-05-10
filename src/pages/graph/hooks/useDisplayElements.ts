@@ -22,9 +22,14 @@ type Inputs = {
   memorySelection: MemorySelection | null
   memoryBrushRange: MemoryBrushRange | null
   relationshipSelectedNodeId: string | null
+  canvasLinkMode: {
+    eligibleTypes: ReadonlySet<string>
+    selectedIds: ReadonlySet<string>
+  } | null
 }
 
 const DIM_OPACITY = 0.35
+const LINK_RING_COLOR = '#2bb673'
 
 /** Derive all the memos React Flow needs from canonical state. */
 export function useDisplayElements(input: Inputs) {
@@ -33,6 +38,7 @@ export function useDisplayElements(input: Inputs) {
     currentLayer, visibleTypes,
     memorySelection, memoryBrushRange,
     relationshipSelectedNodeId,
+    canvasLinkMode,
   } = input
 
   // Apply the timeline brush, if any.
@@ -99,8 +105,38 @@ export function useDisplayElements(input: Inputs) {
         || (t === 'place' && visibleTypes.place)
         || (t === 'group' && visibleTypes.group)
       if (!allowed) return { ...n, hidden: true }
-      if (!relationshipConnectedIds) return n
       const baseStyle = n.style ?? {}
+
+      if (canvasLinkMode) {
+        const isLinked = canvasLinkMode.selectedIds.has(n.id)
+        const isEligible = typeof n.type === 'string' && canvasLinkMode.eligibleTypes.has(n.type)
+        if (isLinked) {
+          return {
+            ...n,
+            style: {
+              ...baseStyle,
+              opacity: 1,
+              boxShadow: `0 0 0 3px ${LINK_RING_COLOR}`,
+              borderRadius: 12,
+            },
+          }
+        }
+        if (isEligible) {
+          return {
+            ...n,
+            style: {
+              ...baseStyle,
+              opacity: 1,
+              cursor: 'pointer',
+              boxShadow: `0 0 0 2px rgba(43, 182, 115, 0.28)`,
+              borderRadius: 12,
+            },
+          }
+        }
+        return { ...n, style: { ...baseStyle, opacity: DIM_OPACITY } }
+      }
+
+      if (!relationshipConnectedIds) return n
       const isSelected = n.id === relationshipSelectedNodeId
       const inScope = relationshipConnectedIds.has(n.id)
       if (isSelected) {
@@ -120,7 +156,7 @@ export function useDisplayElements(input: Inputs) {
       return { ...n, style: { ...baseStyle, opacity: DIM_OPACITY } }
     })
     return [...ANCHOR_NODES, ...filtered]
-  }, [nodes, visibleMemories, visibleTypes, currentLayer, memoryConnectedIds, memorySelection, relationshipConnectedIds, relationshipSelectedNodeId])
+  }, [nodes, visibleMemories, visibleTypes, currentLayer, memoryConnectedIds, memorySelection, relationshipConnectedIds, relationshipSelectedNodeId, canvasLinkMode])
 
   const displayEdges = useMemo(() => {
     if (currentLayer === 'memories') {
@@ -143,6 +179,9 @@ export function useDisplayElements(input: Inputs) {
     return edges.map((e) => {
       const hidden = !(visible.has(e.source) && visible.has(e.target))
       if (hidden) return { ...e, hidden: true }
+      if (canvasLinkMode) {
+        return { ...e, style: { ...(e.style ?? {}), opacity: DIM_OPACITY } }
+      }
       if (!relationshipSelectedNodeId) return e
       const touches = e.source === relationshipSelectedNodeId || e.target === relationshipSelectedNodeId
       return {
@@ -150,7 +189,7 @@ export function useDisplayElements(input: Inputs) {
         style: { ...(e.style ?? {}), opacity: touches ? 1 : DIM_OPACITY },
       }
     })
-  }, [edges, displayNodes, visibleMemories, currentLayer, memorySelection, relationshipSelectedNodeId])
+  }, [edges, displayNodes, visibleMemories, currentLayer, memorySelection, relationshipSelectedNodeId, canvasLinkMode])
 
   return {
     visibleMemories,

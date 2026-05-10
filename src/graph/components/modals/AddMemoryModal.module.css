@@ -1,0 +1,76 @@
+.editForm {
+  margin-bottom: 1rem;
+}
+
+.journalSection {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.photosSection {
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.photosLead {
+  margin: 0 0 0.6rem;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.photosTitle {
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.photosCount {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.uploadingStatus {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.connectionsHelp {
+  margin: 0.1rem 0 0.4rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.linkSection {
+  margin-top: 0.25rem;
+}
+
+.sectionLabel {
+  margin: 0 0 0.4rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.sectionLabel strong {
+  font-weight: 600;
+}
+
+.sectionHelp {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.linksEmpty {
+  margin: 0;
+  padding: 0.25rem 0.1rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}

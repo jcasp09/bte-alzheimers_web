@@ -52,7 +52,7 @@ export function useGraphSidePanel() {
       state.kind === 'nodeInfo' ||
       state.kind === 'edgeInfo' ||
       state.kind === 'memoryInfo' ||
-      (state.kind === 'add' && state.panel !== 'addConnection'),
+      state.kind === 'add',
 
     close: () => setState({ kind: 'none' }),
     openAddPanel: (panel: AddPanelKind, position: XY | null = null) =>

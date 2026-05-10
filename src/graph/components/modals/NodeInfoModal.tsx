@@ -5,6 +5,7 @@ import { InlineEditableField } from '../../../shared/ui/InlineEditableField'
 import { InlineEditableTitle } from '../../../shared/ui/InlineEditableTitle'
 import { EditableAvatar } from '../../../shared/ui/EditableAvatar'
 import { TrashCornerButton } from '../../../shared/ui/TrashCornerButton'
+import { LinkedAvatarRow, type LinkedAvatarItem } from '../../../shared/ui/LinkedAvatarRow'
 import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
 import { InlineEditableSubtitle } from '../../../shared/ui/InlineEditableSubtitle'
 import { AvatarCornerButton } from '../../../shared/ui/AvatarCornerButton'
@@ -44,6 +45,11 @@ type Props = {
   onSuccess: () => void
   /** Called immediately after a size step so the canvas can reflect the change. */
   onSizeChanged?: (width: number, height: number) => void
+  connectedPeople?: LinkedAvatarItem[]
+  connectedPlaces?: LinkedAvatarItem[]
+  connectedMemories?: LinkedAvatarItem[]
+  onFocusConnectedNode?: (nodeId: string) => void
+  onFocusConnectedMemory?: (memoryId: string) => void
 }
 
 export function NodeInfoModal({
@@ -62,6 +68,11 @@ export function NodeInfoModal({
   onClose,
   onSuccess,
   onSizeChanged,
+  connectedPeople,
+  connectedPlaces,
+  connectedMemories,
+  onFocusConnectedNode,
+  onFocusConnectedMemory,
 }: Props) {
   const [name, setName] = useState(nodeName)
   const [relationship, setRelationship] = useState(nodeRelationship)
@@ -481,6 +492,50 @@ export function NodeInfoModal({
             busyLabel={isUploading ? 'Uploading…' : 'Saving…'}
           />
         </form>
+      )}
+
+      {(nodeType === 'person' || nodeType === 'place') && (
+        <>
+          {connectedPeople && connectedPeople.length > 0 ? (
+            <section className={styles.connectedSection}>
+              <p className={styles.connectedLabel}>
+                <strong>Connected people</strong>
+              </p>
+              <LinkedAvatarRow
+                items={connectedPeople}
+                mode="focus"
+                onItemClick={(id) => onFocusConnectedNode?.(id)}
+                disabled={busy}
+              />
+            </section>
+          ) : null}
+          {connectedPlaces && connectedPlaces.length > 0 ? (
+            <section className={styles.connectedSection}>
+              <p className={styles.connectedLabel}>
+                <strong>Connected places</strong>
+              </p>
+              <LinkedAvatarRow
+                items={connectedPlaces}
+                mode="focus"
+                onItemClick={(id) => onFocusConnectedNode?.(id)}
+                disabled={busy}
+              />
+            </section>
+          ) : null}
+          {connectedMemories && connectedMemories.length > 0 ? (
+            <section className={styles.connectedSection}>
+              <p className={styles.connectedLabel}>
+                <strong>Connected memories</strong>
+              </p>
+              <LinkedAvatarRow
+                items={connectedMemories}
+                mode="focus"
+                onItemClick={(id) => onFocusConnectedMemory?.(id)}
+                disabled={busy}
+              />
+            </section>
+          ) : null}
+        </>
       )}
 
       {error && (

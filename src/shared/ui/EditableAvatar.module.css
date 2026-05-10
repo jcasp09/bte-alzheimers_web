@@ -107,3 +107,13 @@
   left: 50%;
   transform: translateX(-50%);
 }
+
+.overlayAlways {
+  opacity: 0.85;
+}
+
+.button:hover:not(:disabled) .overlayAlways,
+.button:focus-visible .overlayAlways {
+  opacity: 1;
+}
+

@@ -38,3 +38,18 @@
   font-size: 0.78rem;
   color: var(--color-text-muted);
 }
+
+.connectedSection {
+  margin-top: 0.4rem;
+}
+
+.connectedLabel {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.connectedLabel strong {
+  font-weight: 600;
+}
+

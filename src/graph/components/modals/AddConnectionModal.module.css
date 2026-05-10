@@ -1,150 +1,86 @@
-.pickerRow {
-  display: flex;
-  gap: 1rem;
+.editForm {
   margin-bottom: 1rem;
 }
 
-.pickerColumn {
-  flex: 1;
-  min-width: 0;
-}
-
-.pickerLabel {
-  margin-bottom: 0.4rem;
-  font-weight: 600;
-  font-size: 0.8rem;
+.help {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
   color: var(--color-text-muted);
+  font-style: italic;
 }
 
-.pickerList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  max-height: 200px;
-  overflow-y: auto;
-  background-color: var(--color-surface);
-}
-
-.pickerEmpty {
-  padding: 0.55rem 0.75rem;
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-}
-
-.pickerItem {
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
-  border-bottom: 1px solid var(--color-border);
-  font-size: 0.85rem;
-  background-color: transparent;
+.sectionLabel {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
   color: var(--color-text);
-  transition: background-color 0.1s ease;
 }
 
-.pickerItem:hover {
-  background-color: var(--color-page);
+.sectionLabel strong {
+  font-weight: 600;
 }
 
-.pickerItem:last-child {
-  border-bottom: none;
+.endSection {
+  margin-bottom: 0.5rem;
 }
 
-.pickerItemSelected {
-  background-color: var(--color-accent-soft);
+.emptyEnd {
+  margin: 0;
+  padding: 0.25rem 0.1rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
-.pickerItemSelected:hover {
-  background-color: var(--color-accent-soft);
+.sidesSection {
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
-.pickerItemTypeLabel {
-  color: var(--color-text-subtle);
-  margin-left: 0.4rem;
-  font-size: 0.7rem;
-}
-
-.arrowSeparator {
+.sidePickerRow {
   display: flex;
   align-items: center;
-  padding-top: 1.5rem;
-  color: var(--color-text-subtle);
-  font-size: 1.1rem;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
 }
 
-.sidePickerGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem 1rem;
-  margin-bottom: 1rem;
-}
-
-.sidePicker {
-  margin-bottom: 0.75rem;
+.sidePickerRow:first-of-type {
+  margin-top: 0;
 }
 
 .sidePickerLabel {
-  margin: 0 0 0.35rem;
-  font-weight: 600;
   font-size: 0.8rem;
   color: var(--color-text-muted);
+  flex-shrink: 0;
+  min-width: 4.25rem;
 }
 
-.sideOptionRow {
+.sideOptions {
   display: flex;
+  gap: 0.25rem;
   flex-wrap: wrap;
-  gap: 0.35rem;
 }
 
 .sideOption {
-  padding: 0.35rem 0.65rem;
-  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.55rem;
   border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  font: inherit;
   font-size: 0.78rem;
-  font-weight: 500;
-  font-family: inherit;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.sideOption:hover {
-  background: var(--color-surface-raised);
+.sideOption:hover:not(:disabled) {
   border-color: var(--color-border-strong);
   color: var(--color-text);
 }
 
 .sideOptionSelected {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-  color: var(--color-accent-hover);
-  font-weight: 600;
-}
-
-.labelField {
-  margin-bottom: 1rem;
-}
-
-.preview {
-  padding: 0.55rem 0.85rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.previewName {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.previewArrow {
-  color: var(--color-text-subtle);
 }

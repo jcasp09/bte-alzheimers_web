@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { PlusIcon } from './icons'
+import { PlusIcon, XIcon } from './icons'
 import { usePhotoUrl } from '../hooks/usePhotoUrl'
 import { getInitialsForAvatar } from '../util/initials'
-import styles from './PeoplePicker.module.css'
+import styles from './EntityPicker.module.css'
 
-export type PeoplePickerItem = {
+export type EntityPickerItem = {
   id: string
   name: string
   photoPath?: string
@@ -13,7 +13,7 @@ export type PeoplePickerItem = {
 }
 
 type Props = {
-  items: PeoplePickerItem[]
+  items: EntityPickerItem[]
   selectedIds: string[]
   onChange: (ids: string[]) => void
   max?: number
@@ -21,12 +21,12 @@ type Props = {
   addLabel?: string
 }
 
-function PersonAvatar({
+function ItemAvatar({
   item,
   size = 40,
   ringClassName,
 }: {
-  item: PeoplePickerItem
+  item: EntityPickerItem
   size?: number
   ringClassName?: string
 }) {
@@ -47,7 +47,7 @@ function PersonAvatar({
   )
 }
 
-export function PeoplePicker({
+export function EntityPicker({
   items,
   selectedIds,
   onChange,
@@ -82,7 +82,7 @@ export function PeoplePicker({
     () =>
       selectedIds
         .map((id) => items.find((it) => it.id === id))
-        .filter((it): it is PeoplePickerItem => it != null),
+        .filter((it): it is EntityPickerItem => it != null),
     [items, selectedIds],
   )
   const filtered = useMemo(() => {
@@ -115,8 +115,8 @@ export function PeoplePicker({
             title={`Remove ${p.name}`}
           >
             <span className={styles.rowAvatarWrap}>
-              <PersonAvatar item={p} size={36} />
-              <span className={styles.removeBadge} aria-hidden="true">×</span>
+              <ItemAvatar item={p} size={36} />
+              <span className={styles.removeBadge} aria-hidden="true"><XIcon size={10} /></span>
             </span>
             <span className={styles.rowName}>{p.name}</span>
           </button>
@@ -167,7 +167,7 @@ export function PeoplePicker({
                     disabled={disabled || atCap}
                     aria-pressed={isSelected}
                   >
-                    <PersonAvatar
+                    <ItemAvatar
                       item={it}
                       size={44}
                       ringClassName={isSelected ? styles.ringSelected : undefined}

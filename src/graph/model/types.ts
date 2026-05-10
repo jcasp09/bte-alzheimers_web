@@ -9,6 +9,7 @@ export type PickableNode = {
   id: string
   type: NodeType
   name: string
+  photoPath?: string
 }
 
 /** Firestore document shape for a node. Optional fields vary by `type`. */

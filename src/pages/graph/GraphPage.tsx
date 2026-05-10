@@ -68,6 +68,11 @@ function Graph() {
   const [memorySelection, setMemorySelection] = useState<MemorySelection | null>(null)
   const [memoryBrushRange, setMemoryBrushRange] = useState<MemoryBrushRange | null>(null)
   const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
+  const [canvasLinkMode, setCanvasLinkMode] = useState<{
+    eligibleTypes: ReadonlySet<string>
+    selectedIds: ReadonlySet<string>
+    onToggle: (nodeId: string) => void
+  } | null>(null)
   const {
     addGroupPlacement,
     addGroupPlacementRef,
@@ -152,6 +157,7 @@ function Graph() {
 
   /** Pane-click handler: close any open side panel and clear memory-layer selection/brush. */
   const handlePaneClick = () => {
+    if (canvasLinkMode) return
     if (currentLayer === 'memories') {
       setMemorySelection(null)
       setMemoryBrushRange(null)
@@ -168,6 +174,14 @@ function Graph() {
     removePendingEdge,
   } = useDeferredEdgePersistence(user?.uid, GRAPH_IDS.context, setEdges, setSyncEdgeError)
 
+  const linkModeForDisplay = useMemo(
+    () =>
+      canvasLinkMode
+        ? { eligibleTypes: canvasLinkMode.eligibleTypes, selectedIds: canvasLinkMode.selectedIds }
+        : null,
+    [canvasLinkMode],
+  )
+
   const {
     contextToMemories,
     displayNodes,
@@ -177,6 +191,7 @@ function Graph() {
     currentLayer, visibleTypes,
     memorySelection, memoryBrushRange,
     relationshipSelectedNodeId: currentLayer === 'memories' ? null : (selectedNode?.id ?? null),
+    canvasLinkMode: linkModeForDisplay,
   })
 
   const memoryPeoplePickerItems = useMemo(() => {
@@ -192,6 +207,18 @@ function Graph() {
     return out
   }, [nodes])
 
+  const memoryPlacesPickerItems = useMemo(() => {
+    const out: { id: string; name: string; photoPath?: string }[] = []
+    for (const n of nodes) {
+      if (n.type !== 'place') continue
+      const name = typeof n.data?.name === 'string' ? n.data.name : ''
+      if (!name) continue
+      const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
+      out.push({ id: n.id, name, photoPath })
+    }
+    return out
+  }, [nodes])
+
   // Derive the pickable nodes from the graph state
   const pickableNodes = useMemo<PickableNode[]>(() => {
     const out: PickableNode[] = []
@@ -203,10 +230,41 @@ function Graph() {
       if (!name)
         continue
 
-      out.push({ id: n.id, type: n.type, name })
+      const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
+      out.push({ id: n.id, type: n.type, name, photoPath })
     }
     return out
   }, [nodes])
+
+  const connectedForSelectedNode = useMemo(() => {
+    if (!selectedNode) return null
+    const id = selectedNode.id
+    const neighbourIds = new Set<string>()
+    for (const e of edges) {
+      if (e.source === id) neighbourIds.add(e.target)
+      else if (e.target === id) neighbourIds.add(e.source)
+    }
+    const people: { id: string; name: string; photoPath?: string }[] = []
+    const places: { id: string; name: string; photoPath?: string }[] = []
+    for (const n of nodes) {
+      if (!neighbourIds.has(n.id)) continue
+      if (n.type !== 'person' && n.type !== 'place') continue
+      const name = typeof n.data?.name === 'string' ? n.data.name : ''
+      if (!name) continue
+      const photoPath = typeof n.data?.photoPath === 'string' ? n.data.photoPath : undefined
+      const item = { id: n.id, name, photoPath }
+      if (n.type === 'person') people.push(item)
+      else places.push(item)
+    }
+    const linkedMemories = memories
+      .filter((m) => m.personNodeIds.includes(id) || m.placeNodeIds.includes(id))
+      .map((m) => ({
+        id: m.id,
+        name: m.title || 'Memory',
+        photoPath: m.photoPaths[0],
+      }))
+    return { people, places, memories: linkedMemories }
+  }, [selectedNode, edges, nodes, memories])
 
   const handleDropAtFlowPosition = (kind: string, point: XY) => {
     if (addGroupPlacementRef.current.status === 'picking') {
@@ -243,6 +301,12 @@ function Graph() {
     if (node.type === 'anchor') return
     if (addGroupPlacementRef.current.status === 'picking')
       return
+    if (canvasLinkMode) {
+      if (typeof node.type === 'string' && canvasLinkMode.eligibleTypes.has(node.type)) {
+        canvasLinkMode.onToggle(node.id)
+      }
+      return
+    }
 
     if (currentLayer === 'memories') {
       if (node.type === 'memory') {
@@ -385,6 +449,44 @@ function Graph() {
     ? memories.find((m) => m.id === memoryInfoId) ?? null
     : null
 
+  const focusConnectedNode = (nodeId: string) => {
+    const n = nodes.find((x) => x.id === nodeId)
+    if (!n || (n.type !== 'person' && n.type !== 'place' && n.type !== 'group')) return
+    const data = n.data ?? {}
+    const name = typeof data.name === 'string' ? data.name : ''
+    const relationship = typeof data.relationship === 'string' ? data.relationship : ''
+    const email = typeof data.email === 'string' ? data.email : ''
+    const phone = typeof data.phone === 'string' ? data.phone : ''
+    const address = typeof data.address === 'string' ? data.address : ''
+    const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
+    const photoUpdatedAt = typeof data.photoUpdatedAt === 'string' ? data.photoUpdatedAt : undefined
+    const w = n.type === 'group' ? n.width : data.width
+    const h = n.type === 'group' ? n.height : data.height
+    openNodeInfo({
+      id: n.id,
+      name,
+      type: n.type ?? 'unknown',
+      relationship,
+      email,
+      phone,
+      address,
+      photoPath,
+      photoUpdatedAt,
+      width: typeof w === 'number' && Number.isFinite(w) ? w : undefined,
+      height: typeof h === 'number' && Number.isFinite(h) ? h : undefined,
+    })
+    window.setTimeout(() => flowRef.current?.focusNode(n.id), 0)
+  }
+
+  const focusConnectedMemory = (memoryId: string) => {
+    if (currentLayer !== 'memories') {
+      changeLayer('memories')
+    }
+    setMemorySelection({ kind: 'memory', id: memoryId })
+    openMemoryInfo(memoryId)
+    window.setTimeout(() => flowRef.current?.focusNode(memoryId), 0)
+  }
+
   // Render the graph
   return (
     <section className={styles.fullBleedRoot} aria-label={sectionLabel}>
@@ -403,8 +505,10 @@ function Graph() {
             onPaneFlowClick={
               addGroupPlacement.status === 'picking'
                 ? handlePaneFlowClick
-                : (isSidePanelOpen || (currentLayer === 'memories' && (memorySelection != null || memoryBrushRange != null)))
+                : canvasLinkMode
                   ? handlePaneClick
+                  : (isSidePanelOpen || (currentLayer === 'memories' && (memorySelection != null || memoryBrushRange != null)))
+                    ? handlePaneClick
                   : undefined
             }
             groupPlacementPanMode={addGroupPlacement.status === 'picking'}
@@ -521,7 +625,8 @@ function Graph() {
         {openPanel === 'addMemory' && (
           <AddMemoryModal
             userId={user.uid}
-            people={memoryPeoplePickerItems}
+            pickableNodes={pickableNodes}
+            onSetCanvasLinkMode={setCanvasLinkMode}
             onClose={closeSidePanel}
             onCreated={() => {
               void (async () => {
@@ -540,6 +645,7 @@ function Graph() {
             initialType={openPanel === 'addPerson' ? 'person' : 'place'}
             position={pendingNodePosition ?? undefined}
             onClose={closeSidePanel}
+            onSetCanvasLinkMode={setCanvasLinkMode}
             onSuccess={() => {
               void handleAddNodeSuccess()
             }}
@@ -551,6 +657,11 @@ function Graph() {
             key={selectedNode.id}
             userId={user.uid}
             nodeId={selectedNode.id}
+            connectedPeople={connectedForSelectedNode?.people}
+            connectedPlaces={connectedForSelectedNode?.places}
+            connectedMemories={connectedForSelectedNode?.memories}
+            onFocusConnectedNode={focusConnectedNode}
+            onFocusConnectedMemory={focusConnectedMemory}
             onSizeChanged={(w, h) => {
               setNodes((nds) =>
                 nds.map((n) =>
@@ -586,6 +697,7 @@ function Graph() {
             userId={user.uid}
             memory={selectedMemory}
             people={memoryPeoplePickerItems}
+            places={memoryPlacesPickerItems}
             onClose={closeSidePanel}
             onSaved={() => {
               void loadGraph({ skipLoading: true })
@@ -615,15 +727,16 @@ function Graph() {
             onSaveEdgeLabel={handleSaveEdgeLabel}
           />
         )}
-      </div>
 
-      {openPanel === 'addConnection' && (
-        <AddConnectionModal
-          pickableNodes={pickableNodes}
-          onClose={closeSidePanel}
-          onQueueConnection={queueConnection}
-        />
-      )}
+        {openPanel === 'addConnection' && (
+          <AddConnectionModal
+            pickableNodes={pickableNodes}
+            onClose={closeSidePanel}
+            onQueueConnection={queueConnection}
+            onSetCanvasLinkMode={setCanvasLinkMode}
+          />
+        )}
+      </div>
 
       {pendingGroupRect && (
         <AddGroupModal

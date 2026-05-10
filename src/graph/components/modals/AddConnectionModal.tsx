@@ -1,11 +1,21 @@
-import { useState } from 'react'
+import { type SubmitEvent, useCallback, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import type { Connection } from '@xyflow/react'
 import type { PickableNode } from '../../model/types'
 import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../model/edgeHandles'
-import { Modal } from '../../../shared/ui/Modal'
+import { SidePanel } from '../../../shared/ui/SidePanel'
+import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
+import { LinkedAvatarRow, type LinkedAvatarItem } from '../../../shared/ui/LinkedAvatarRow'
+import { InlineEditableField } from '../../../shared/ui/InlineEditableField'
+import { usePublishCanvasLinkMode } from '../../../shared/hooks/usePublishCanvasLinkMode'
 import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './AddConnectionModal.module.css'
+
+export type AddConnectionCanvasLinkMode = {
+  eligibleTypes: ReadonlySet<string>
+  selectedIds: ReadonlySet<string>
+  onToggle: (nodeId: string) => void
+} | null
 
 type Props = {
   pickableNodes: PickableNode[]
@@ -15,32 +25,76 @@ type Props = {
     connection: Connection,
     opts?: { label?: string },
   ) => string | null
+  onSetCanvasLinkMode: (mode: AddConnectionCanvasLinkMode) => void
 }
 
-export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }: Props) {
+const ELIGIBLE_TYPES: ReadonlySet<string> = new Set(['person', 'place'])
+
+export function AddConnectionModal({
+  pickableNodes,
+  onClose,
+  onQueueConnection,
+  onSetCanvasLinkMode,
+}: Props) {
   const [sourceId, setSourceId] = useState<string | null>(null)
   const [targetId, setTargetId] = useState<string | null>(null)
   const [sourceSide, setSourceSide] = useState<EdgeSide>('bottom')
   const [targetSide, setTargetSide] = useState<EdgeSide>('top')
+  const [connectionLabel, setConnectionLabel] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [connectionLabel, setConnectionLabel] = useState('')
 
-  const connectableNodes = pickableNodes
+  const selectedIds = useMemo(() => {
+    const out: string[] = []
+    if (sourceId) out.push(sourceId)
+    if (targetId) out.push(targetId)
+    return out
+  }, [sourceId, targetId])
 
-  const handleAdd = async () => {
-    if (!sourceId || !targetId) {
-      return
-    }
+  // Two-stage canvas pick: first click sets source, second sets target;
+  // clicking an end again clears it; clicking a fresh node with both filled
+  // replaces the target.
+  const handleLinkToggle = useCallback(
+    (id: string) => {
+      setError(null)
+      if (id === sourceId) {
+        setSourceId(null)
+        return
+      }
+      if (id === targetId) {
+        setTargetId(null)
+        return
+      }
+      if (sourceId == null) {
+        setSourceId(id)
+        return
+      }
+      setTargetId(id)
+    },
+    [sourceId, targetId],
+  )
 
-    if (sourceId === targetId) {
-      setError('Source and target node cannot be the same');
-      return
-    }
+  usePublishCanvasLinkMode(onSetCanvasLinkMode, ELIGIBLE_TYPES, selectedIds, handleLinkToggle)
 
+  const sourceItem: LinkedAvatarItem | null = useMemo(() => {
+    if (!sourceId) return null
+    const n = pickableNodes.find((p) => p.id === sourceId)
+    return n ? { id: n.id, name: n.name, photoPath: n.photoPath } : null
+  }, [pickableNodes, sourceId])
+  const targetItem: LinkedAvatarItem | null = useMemo(() => {
+    if (!targetId) return null
+    const n = pickableNodes.find((p) => p.id === targetId)
+    return n ? { id: n.id, name: n.name, photoPath: n.photoPath } : null
+  }, [pickableNodes, targetId])
+
+  const canSave =
+    sourceId != null && targetId != null && sourceId !== targetId
+
+  const handleSubmit = async (e: SubmitEvent) => {
+    e.preventDefault()
+    if (!canSave || sourceId == null || targetId == null) return
     setError(null)
     setIsSubmitting(true)
-
     try {
       onQueueConnection(
         {
@@ -59,131 +113,98 @@ export function AddConnectionModal({ pickableNodes, onClose, onQueueConnection }
     }
   }
 
-  const nodeList = (
-    label: string,
-    selectedId: string | null,
-    onSelect: (id: string) => void,
-  ) => (
-    <div className={styles.pickerColumn}>
-      <p className={styles.pickerLabel}>{label}</p>
-      <ul className={styles.pickerList}>
-        {connectableNodes.length === 0 ? (
-          <li className={styles.pickerEmpty}>
-            No people or places to connect yet.
-          </li>
-        ) : (
-          connectableNodes.map((node) => (
-            <li
-              key={node.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelect(node.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onSelect(node.id)
-                }
-              }}
-              className={clsx(styles.pickerItem, selectedId === node.id && styles.pickerItemSelected)}
-            >
-              {node.name}
-              <span className={styles.pickerItemTypeLabel}>
-                {node.type}
-              </span>
-            </li>
-          ))
-        )}
-      </ul>
-    </div>
-  )
-
-  const sidePicker = (
-    label: string,
-    value: EdgeSide,
-    onChange: (side: EdgeSide) => void,
-  ) => (
-    <div className={styles.sidePicker}>
-      <p className={styles.sidePickerLabel}>{label}</p>
-      <div className={styles.sideOptionRow}>
-        {EDGE_SIDES.map((side) => (
-          <button
-            key={side}
-            type="button"
-            onClick={() => onChange(side)}
-            className={clsx(styles.sideOption, value === side && styles.sideOptionSelected)}
-          >
-            {side.charAt(0).toUpperCase() + side.slice(1)}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-
   return (
-    <Modal title="Add Connection" onClose={onClose}>
-      <p className={formStyles.leadText}>
-        Select a source and target node, then which side of each node the link uses (same as dragging between handles on the graph).
-      </p>
+    <SidePanel
+      title="Add a connection"
+      onClose={onClose}
+      accent="connection"
+    >
+      <form onSubmit={handleSubmit} className={clsx('form-stack', styles.editForm)}>
+        <p className={styles.help}>
+          Click two nodes on the canvas to connect them.
+        </p>
 
-      <div className={styles.pickerRow}>
-        {nodeList('From', sourceId, setSourceId)}
+        <section className={styles.endSection}>
+          <p className={styles.sectionLabel}><strong>From</strong></p>
+          {sourceItem ? (
+            <LinkedAvatarRow
+              items={[sourceItem]}
+              mode="remove"
+              onItemClick={() => setSourceId(null)}
+              disabled={isSubmitting}
+            />
+          ) : (
+            <p className={styles.emptyEnd}>Click the first node on the canvas.</p>
+          )}
+        </section>
 
-        <div className={styles.arrowSeparator}>→</div>
+        <section className={styles.endSection}>
+          <p className={styles.sectionLabel}><strong>To</strong></p>
+          {targetItem ? (
+            <LinkedAvatarRow
+              items={[targetItem]}
+              mode="remove"
+              onItemClick={() => setTargetId(null)}
+              disabled={isSubmitting}
+            />
+          ) : (
+            <p className={styles.emptyEnd}>Click the second node on the canvas.</p>
+          )}
+        </section>
 
-        {nodeList('To', targetId, setTargetId)}
-      </div>
+        <section className={styles.sidesSection}>
+          <p className={styles.sectionLabel}><strong>Sides</strong></p>
+          <div className={styles.sidePickerRow}>
+            <span className={styles.sidePickerLabel}>From side</span>
+            <div className={styles.sideOptions}>
+              {EDGE_SIDES.map((side) => (
+                <button
+                  key={`from-${side}`}
+                  type="button"
+                  onClick={() => setSourceSide(side)}
+                  className={clsx(styles.sideOption, sourceSide === side && styles.sideOptionSelected)}
+                >
+                  {side.charAt(0).toUpperCase() + side.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.sidePickerRow}>
+            <span className={styles.sidePickerLabel}>To side</span>
+            <div className={styles.sideOptions}>
+              {EDGE_SIDES.map((side) => (
+                <button
+                  key={`to-${side}`}
+                  type="button"
+                  onClick={() => setTargetSide(side)}
+                  className={clsx(styles.sideOption, targetSide === side && styles.sideOptionSelected)}
+                >
+                  {side.charAt(0).toUpperCase() + side.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      <div className={styles.sidePickerGrid}>
-        {sidePicker('From side (outgoing)', sourceSide, setSourceSide)}
-        {sidePicker('To side (incoming)', targetSide, setTargetSide)}
-      </div>
+        <InlineEditableField
+          label="Label"
+          value={connectionLabel}
+          onChange={setConnectionLabel}
+          placeholder="Click to add a label"
+          disabled={isSubmitting}
+        />
 
-      <div className={styles.labelField}>
-        <label className="field">
-          <span>Label (optional)</span>
-          <input
-            type="text"
-            value={connectionLabel}
-            onChange={(e) => setConnectionLabel(e.target.value)}
-            placeholder="Shown on the connection line"
-          />
-        </label>
-      </div>
+        {error ? (
+          <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
+        ) : null}
 
-      {/* Preview of selected connection */}
-      {(sourceId || targetId) && (
-        <div className={styles.preview}>
-          <span className={styles.previewName}>
-            {sourceId
-              ? (connectableNodes.find((n) => n.id === sourceId)?.name ?? '…')
-              : '—'}
-          </span>
-          <span className={styles.previewArrow}>→</span>
-          <span className={styles.previewName}>
-            {targetId
-              ? (connectableNodes.find((n) => n.id === targetId)?.name ?? '…')
-              : '—'}
-          </span>
-        </div>
-      )}
-
-      {error != null && (
-        <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
-      )}
-
-      <div className={formStyles.actions}>
-        <button type="button" onClick={onClose} className="btn-ghost">
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={!sourceId || !targetId || isSubmitting}
-          className="btn-primary"
-          onClick={handleAdd}
-        >
-          {isSubmitting ? 'Adding…' : 'Add connection'}
-        </button>
-      </div>
-    </Modal>
+        <SaveCornerButton
+          visible={canSave}
+          busy={isSubmitting}
+          label="Add"
+          ariaLabel="Add connection"
+        />
+      </form>
+    </SidePanel>
   )
 }

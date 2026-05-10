@@ -2,7 +2,9 @@ import { type SubmitEvent, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { getDownloadURL, ref } from 'firebase/storage'
 import {
+  MAX_PEOPLE_PER_MEMORY,
   MAX_PHOTOS_PER_MEMORY,
+  MAX_PLACES_PER_MEMORY,
   type MemoryDoc,
   deleteMemory,
   parseOccurredOn,
@@ -18,7 +20,7 @@ import { EditableAvatar } from '../../shared/ui/EditableAvatar'
 import { TrashCornerButton } from '../../shared/ui/TrashCornerButton'
 import { SaveCornerButton } from '../../shared/ui/SaveCornerButton'
 import { PhotoGalleryGrid } from '../../shared/ui/PhotoGalleryGrid'
-import { PeoplePicker, type PeoplePickerItem } from '../../shared/ui/PeoplePicker'
+import { EntityPicker, type EntityPickerItem } from '../../shared/ui/EntityPicker'
 import { getInitialsForAvatar } from '../../shared/util/initials'
 import { usePhotoUrl } from '../../shared/hooks/usePhotoUrl'
 import formStyles from '../../shared/styles/formActions.module.css'
@@ -27,7 +29,8 @@ import styles from './MemoryInfoModal.module.css'
 type Props = {
   userId: string
   memory: MemoryDoc
-  people: PeoplePickerItem[]
+  people: EntityPickerItem[]
+  places: EntityPickerItem[]
   onClose: () => void
   onSaved: () => void
   onDeleted: () => void
@@ -45,6 +48,7 @@ export function MemoryInfoModal({
   userId,
   memory,
   people,
+  places,
   onClose,
   onSaved,
   onDeleted,
@@ -53,6 +57,7 @@ export function MemoryInfoModal({
   const [occurredOn, setOccurredOn] = useState(memory.occurredOn)
   const [description, setDescription] = useState(memory.description)
   const [personNodeIds, setPersonNodeIds] = useState<string[]>(memory.personNodeIds)
+  const [placeNodeIds, setPlaceNodeIds] = useState<string[]>(memory.placeNodeIds)
 
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -68,6 +73,7 @@ export function MemoryInfoModal({
     setOccurredOn(memory.occurredOn)
     setDescription(memory.description)
     setPersonNodeIds(memory.personNodeIds)
+    setPlaceNodeIds(memory.placeNodeIds)
     setError(null)
   }, [
     memory.id,
@@ -75,6 +81,7 @@ export function MemoryInfoModal({
     memory.occurredOn,
     memory.description,
     memory.personNodeIds,
+    memory.placeNodeIds,
   ])
 
   useEffect(() => {
@@ -112,7 +119,10 @@ export function MemoryInfoModal({
     if (occurredOn !== memory.occurredOn) return true
     const a = JSON.stringify([...personNodeIds].sort())
     const b = JSON.stringify([...memory.personNodeIds].sort())
-    return a !== b
+    if (a !== b) return true
+    const c = JSON.stringify([...placeNodeIds].sort())
+    const d = JSON.stringify([...memory.placeNodeIds].sort())
+    return c !== d
   })()
 
   const handleSave = async (e: SubmitEvent) => {
@@ -136,6 +146,9 @@ export function MemoryInfoModal({
     const a = JSON.stringify([...personNodeIds].sort())
     const b = JSON.stringify([...memory.personNodeIds].sort())
     if (a !== b) patch.personNodeIds = personNodeIds
+    const c = JSON.stringify([...placeNodeIds].sort())
+    const d = JSON.stringify([...memory.placeNodeIds].sort())
+    if (c !== d) patch.placeNodeIds = placeNodeIds
 
     if (Object.keys(patch).length === 0) {
       onClose()
@@ -310,14 +323,34 @@ export function MemoryInfoModal({
         <section className={styles.peopleSection}>
           <p className={styles.sectionLabel}>
             <strong>People</strong>
-            <span className={styles.sectionHelp}>people included in this memory</span>
+            <span className={styles.sectionHelp}>
+              {personNodeIds.length} / {MAX_PEOPLE_PER_MEMORY}
+            </span>
           </p>
-          <PeoplePicker
+          <EntityPicker
             items={people}
             selectedIds={personNodeIds}
             onChange={setPersonNodeIds}
-            max={10}
+            max={MAX_PEOPLE_PER_MEMORY}
             disabled={busy}
+            addLabel="Add a person"
+          />
+        </section>
+
+        <section className={styles.peopleSection}>
+          <p className={styles.sectionLabel}>
+            <strong>Places</strong>
+            <span className={styles.sectionHelp}>
+              {placeNodeIds.length} / {MAX_PLACES_PER_MEMORY}
+            </span>
+          </p>
+          <EntityPicker
+            items={places}
+            selectedIds={placeNodeIds}
+            onChange={setPlaceNodeIds}
+            max={MAX_PLACES_PER_MEMORY}
+            disabled={busy}
+            addLabel="Add a place"
           />
         </section>
 

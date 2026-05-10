@@ -14,6 +14,7 @@ type Props = {
   cornerMiddle?: ReactNode
   cornerRight?: ReactNode
   ariaLabel?: string
+  alwaysShowOverlay?: boolean
 }
 
 export function EditableAvatar({
@@ -27,6 +28,7 @@ export function EditableAvatar({
   cornerMiddle,
   cornerRight,
   ariaLabel = 'Change photo',
+  alwaysShowOverlay,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -49,7 +51,10 @@ export function EditableAvatar({
         ) : (
           <span className={styles.fallback}>{fallbackLabel}</span>
         )}
-        <span className={styles.overlay} aria-hidden="true">
+        <span
+          className={clsx(styles.overlay, alwaysShowOverlay && styles.overlayAlways)}
+          aria-hidden="true"
+        >
           {uploading ? (
             <span className={styles.uploadingDot}>…</span>
           ) : (

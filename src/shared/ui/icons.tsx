@@ -88,3 +88,12 @@ export function CheckIcon(props: IconProps) {
   )
 }
 
+export function XIcon(props: IconProps) {
+  return (
+    <svg {...applyDefaults(props)}>
+      <line x1="6" y1="6" x2="18" y2="18" />
+      <line x1="6" y1="18" x2="18" y2="6" />
+    </svg>
+  )
+}
+
