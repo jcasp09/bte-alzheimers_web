@@ -19,10 +19,12 @@ export type SelectedNode = {
 /** An edge selected from the canvas, surfaced in the EdgeInfoModal side panel. */
 export type SelectedEdge = {
   id: string
+  sourceId: string
+  targetId: string
   sourceName: string
   targetName: string
-  sourceHandle?: string
-  targetHandle?: string
+  sourcePhotoPath?: string
+  targetPhotoPath?: string
   label?: string
 }
 

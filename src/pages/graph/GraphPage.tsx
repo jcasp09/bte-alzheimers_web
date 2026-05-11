@@ -356,17 +356,27 @@ function Graph() {
     if (edge.id.startsWith(SYNTH_EDGE_PREFIX))
       return
 
-    const sourceName = nodes.find((n) => n.id === edge.source)?.data?.name as string ?? edge.source
-    const targetName = nodes.find((n) => n.id === edge.target)?.data?.name as string ?? edge.target
+    const sourceNode = nodes.find((n) => n.id === edge.source)
+    const targetNode = nodes.find((n) => n.id === edge.target)
+    const sourceName = (sourceNode?.data?.name as string | undefined) ?? edge.source
+    const targetName = (targetNode?.data?.name as string | undefined) ?? edge.target
+    const sourcePhotoPath = typeof sourceNode?.data?.photoPath === 'string'
+      ? (sourceNode.data.photoPath as string)
+      : undefined
+    const targetPhotoPath = typeof targetNode?.data?.photoPath === 'string'
+      ? (targetNode.data.photoPath as string)
+      : undefined
     const rawLabel = edge.label
     const label = typeof rawLabel === 'string' ? rawLabel : typeof rawLabel === 'number' ? String(rawLabel) : ''
 
     openEdgeInfo({
       id: edge.id,
+      sourceId: edge.source,
+      targetId: edge.target,
       sourceName,
       targetName,
-      sourceHandle: edge.sourceHandle ?? undefined,
-      targetHandle: edge.targetHandle ?? undefined,
+      sourcePhotoPath,
+      targetPhotoPath,
       label,
     })
   }
@@ -714,10 +724,15 @@ function Graph() {
           <EdgeInfoModal
             userId={user.uid}
             edgeId={selectedEdge.id}
+            sourceId={selectedEdge.sourceId}
+            targetId={selectedEdge.targetId}
             sourceName={selectedEdge.sourceName}
             targetName={selectedEdge.targetName}
+            sourcePhotoPath={selectedEdge.sourcePhotoPath}
+            targetPhotoPath={selectedEdge.targetPhotoPath}
             edgeLabel={selectedEdge.label ?? ''}
             onClose={closeSidePanel}
+            onFocusEndpoint={focusConnectedNode}
             onEdgeDeleted={(edgeId) => {
               removePendingEdge(edgeId)
               closeSidePanel()
