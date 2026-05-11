@@ -278,6 +278,9 @@ export function MemoryInfoModal({
             imageUrl={heroPhotoUrl}
             fallbackLabel={getInitialsForAvatar(title || memory.title || 'Memory')}
             onFilePicked={(file) => void handleAvatarPhoto(file)}
+            onRemovePhoto={paths.length > 0 ? () => void handleRemovePhoto(paths[0]) : undefined}
+            removing={removingPath === paths[0]}
+            removeAriaLabel="Remove cover photo"
             uploading={isUploading}
             disabled={busy}
             ariaLabel={paths.length === 0 ? 'Add cover photo' : 'Add new cover photo'}

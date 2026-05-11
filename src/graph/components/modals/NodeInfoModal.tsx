@@ -10,8 +10,8 @@ import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
 import { InlineEditableSubtitle } from '../../../shared/ui/InlineEditableSubtitle'
 import { AvatarCornerButton } from '../../../shared/ui/AvatarCornerButton'
 import { MinusIcon, PlusIcon, EqualsIcon } from '../../../shared/ui/icons'
-import { deleteNodeAndEdges, saveNodeDimensions, upsertNode } from '../../data/nodes'
-import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, isAllowedPhotoType, uploadNodePhoto } from '../../data/photos'
+import { clearNodePhoto, deleteNodeAndEdges, saveNodeDimensions, upsertNode } from '../../data/nodes'
+import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, deleteNodePhotoByPath, isAllowedPhotoType, uploadNodePhoto } from '../../data/photos'
 import { GRAPH_IDS } from '../../model/types'
 import {
   GROUP_DIMENSION_BOUNDS,
@@ -82,6 +82,7 @@ export function NodeInfoModal({
   const [photoPath, setPhotoPath] = useState(nodePhotoPath)
   const [photoUpdatedAt, setPhotoUpdatedAt] = useState<string | undefined>(nodePhotoUpdatedAt)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [pendingPhotoRemoval, setPendingPhotoRemoval] = useState(false)
   const resolvedAvatarUrl = usePhotoUrl(photoPath, photoUpdatedAt)
 
   const stagedPhotoUrl = useMemo(
@@ -122,6 +123,7 @@ export function NodeInfoModal({
   const defaultDims = sizeNodeType ? defaultNodeSize(sizeNodeType) : null
   const sizeIsAtDefault =
     defaultDims !== null && sizeW === defaultDims.width && sizeH === defaultDims.height
+  const supportsPhoto = nodeType === 'person' || nodeType === 'place'
 
   useEffect(() => {
     if (sizeNodeType) {
@@ -144,6 +146,7 @@ export function NodeInfoModal({
       return
     }
     setError(null)
+    setPendingPhotoRemoval(false)
     setPhotoFile(file)
   }
 
@@ -182,55 +185,63 @@ export function NodeInfoModal({
     setIsSaving(true)
 
     try {
+      let nextPhotoPath: string | undefined = photoPath || undefined
+      let nextPhotoUpdatedAt: string | undefined = photoUpdatedAt
+      let storageToCleanup: string | null = null
+
+      if (photoFile) {
+        setIsUploading(true)
+        const uploaded = await uploadNodePhoto(userId, nodeId, photoFile, GRAPH_IDS.context)
+        nextPhotoPath = uploaded.photoPath
+        nextPhotoUpdatedAt = uploaded.photoUpdatedAt
+      } else if (pendingPhotoRemoval && photoPath) {
+        storageToCleanup = photoPath
+        nextPhotoPath = undefined
+        nextPhotoUpdatedAt = undefined
+      }
+
       if (nodeType === 'person') {
-        let nextPhotoPath = photoPath
-        let nextPhotoUpdatedAt: string | undefined
-
-        if (photoFile) {
-          setIsUploading(true)
-          const uploadedPhoto = await uploadNodePhoto(userId, nodeId, photoFile, GRAPH_IDS.context)
-          nextPhotoPath = uploadedPhoto.photoPath
-          nextPhotoUpdatedAt = uploadedPhoto.photoUpdatedAt
-          setPhotoPath(uploadedPhoto.photoPath)
-          setPhotoUpdatedAt(uploadedPhoto.photoUpdatedAt)
-          setPhotoFile(null)
+        if (pendingPhotoRemoval && !photoFile) {
+          await clearNodePhoto(userId, nodeId, GRAPH_IDS.context)
         }
-
         await upsertNode(userId, nodeId, {
           type: 'person',
           name,
           relationship,
           email,
           phone,
-          photoPath: nextPhotoPath || undefined,
-          photoUpdatedAt: nextPhotoUpdatedAt ?? undefined,
+          photoPath: nextPhotoPath,
+          photoUpdatedAt: nextPhotoUpdatedAt,
           width: sizeW,
           height: sizeH,
         }, GRAPH_IDS.context)
       } else {
-        let nextPhotoPath = photoPath
-        let nextPhotoUpdatedAt: string | undefined
-
-        if (photoFile) {
-          setIsUploading(true)
-          const uploadedPhoto = await uploadNodePhoto(userId, nodeId, photoFile, GRAPH_IDS.context)
-          nextPhotoPath = uploadedPhoto.photoPath
-          nextPhotoUpdatedAt = uploadedPhoto.photoUpdatedAt
-          setPhotoPath(uploadedPhoto.photoPath)
-          setPhotoUpdatedAt(uploadedPhoto.photoUpdatedAt)
-          setPhotoFile(null)
+        if (pendingPhotoRemoval && !photoFile) {
+          await clearNodePhoto(userId, nodeId, GRAPH_IDS.context)
         }
-
         await upsertNode(userId, nodeId, {
           type: 'place',
           name,
           address,
-          photoPath: nextPhotoPath || undefined,
-          photoUpdatedAt: nextPhotoUpdatedAt ?? undefined,
+          photoPath: nextPhotoPath,
+          photoUpdatedAt: nextPhotoUpdatedAt,
           width: sizeW,
           height: sizeH,
         }, GRAPH_IDS.context)
       }
+
+      if (storageToCleanup) {
+        try {
+          await deleteNodePhotoByPath(storageToCleanup)
+        } catch (storageErr) {
+          console.warn('Failed to delete node photo from storage', storageErr)
+        }
+      }
+
+      setPhotoPath(nextPhotoPath ?? '')
+      setPhotoUpdatedAt(nextPhotoUpdatedAt)
+      setPhotoFile(null)
+      setPendingPhotoRemoval(false)
 
       onSuccess()
       onClose()
@@ -256,13 +267,25 @@ export function NodeInfoModal({
     }
   }
 
+  const handleRemovePhoto = () => {
+    if (!supportsPhoto) return
+    setError(null)
+    if (photoFile) {
+      setPhotoFile(null)
+      return
+    }
+    if (photoPath) {
+      setPendingPhotoRemoval(true)
+    }
+  }
+
   const busy = isSaving || isDeleting || isUploading
   const canDecrease = sizeNodeType ? canDecreaseNodeSize(sizeNodeType, sizeW, sizeH) : false
   const canIncrease = sizeNodeType ? canIncreaseNodeSize(sizeNodeType, sizeW, sizeH) : false
 
-  const supportsPhoto = nodeType === 'person' || nodeType === 'place'
-  const heroImageUrl =
-    supportsPhoto ? (stagedPhotoUrl ?? resolvedAvatarUrl ?? undefined) : undefined
+  const heroImageUrl = supportsPhoto
+    ? (stagedPhotoUrl ?? (pendingPhotoRemoval ? undefined : (resolvedAvatarUrl ?? undefined)))
+    : undefined
   const fallbackInitials = getInitialsForAvatar(name || nodeName)
 
   const initialGroupW = useMemo(
@@ -281,14 +304,16 @@ export function NodeInfoModal({
         relationship !== nodeRelationship ||
         email !== nodeEmail ||
         phone !== nodePhone ||
-        photoFile != null
+        photoFile != null ||
+        pendingPhotoRemoval
       )
     }
     if (nodeType === 'place') {
       return (
         name !== nodeName ||
         address !== nodeAddress ||
-        photoFile != null
+        photoFile != null ||
+        pendingPhotoRemoval
       )
     }
     if (nodeType === 'group') {
@@ -312,12 +337,17 @@ export function NodeInfoModal({
     })
   }
 
+  const hasRemovablePhoto =
+    supportsPhoto && (photoFile != null || (photoPath !== '' && !pendingPhotoRemoval))
+
   const avatarSlot =
     supportsPhoto ? (
       <EditableAvatar
         imageUrl={heroImageUrl}
         fallbackLabel={fallbackInitials}
         onFilePicked={handleAvatarFilePicked}
+        onRemovePhoto={hasRemovablePhoto ? handleRemovePhoto : undefined}
+        removeAriaLabel={photoFile ? 'Discard new photo' : 'Remove photo'}
         accept={PHOTO_ACCEPT_ATTR}
         uploading={isUploading}
         disabled={busy}
@@ -372,6 +402,50 @@ export function NodeInfoModal({
         : nodeType === 'group'
           ? 'group'
           : 'neutral'
+
+  const connectedSections = (nodeType === 'person' || nodeType === 'place') ? (
+    <>
+      {connectedPeople && connectedPeople.length > 0 ? (
+        <section className={styles.connectedSection}>
+          <p className={styles.connectedLabel}>
+            <strong>Connected people</strong>
+          </p>
+          <LinkedAvatarRow
+            items={connectedPeople}
+            mode="focus"
+            onItemClick={(id) => onFocusConnectedNode?.(id)}
+            disabled={busy}
+          />
+        </section>
+      ) : null}
+      {connectedPlaces && connectedPlaces.length > 0 ? (
+        <section className={styles.connectedSection}>
+          <p className={styles.connectedLabel}>
+            <strong>Connected places</strong>
+          </p>
+          <LinkedAvatarRow
+            items={connectedPlaces}
+            mode="focus"
+            onItemClick={(id) => onFocusConnectedNode?.(id)}
+            disabled={busy}
+          />
+        </section>
+      ) : null}
+      {connectedMemories && connectedMemories.length > 0 ? (
+        <section className={styles.connectedSection}>
+          <p className={styles.connectedLabel}>
+            <strong>Connected memories</strong>
+          </p>
+          <LinkedAvatarRow
+            items={connectedMemories}
+            mode="focus"
+            onItemClick={(id) => onFocusConnectedMemory?.(id)}
+            disabled={busy}
+          />
+        </section>
+      ) : null}
+    </>
+  ) : null
 
   return (
     <SidePanel
@@ -435,6 +509,7 @@ export function NodeInfoModal({
           <p className={styles.helpText}>
             {`Frame size is clamped between ${GROUP_DIMENSION_BOUNDS.min} and ${GROUP_DIMENSION_BOUNDS.max} px on save.`}
           </p>
+          <div className={styles.flexSpacer} />
           <SaveCornerButton visible={hasUnsavedChanges} busy={isSaving} />
         </form>
       )}
@@ -464,12 +539,13 @@ export function NodeInfoModal({
             />
           </div>
 
-          {photoFile ? (
-            <p className={styles.photoHintRow}>
-              New photo selected: {photoFile.name}
-            </p>
+          {connectedSections}
+
+          {error ? (
+            <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
           ) : null}
 
+          <div className={styles.flexSpacer} />
           <SaveCornerButton
             visible={hasUnsavedChanges}
             busy={isSaving || isUploading}
@@ -480,12 +556,13 @@ export function NodeInfoModal({
 
       {nodeType === 'place' && (
         <form onSubmit={handleSave} className={clsx('form-stack', styles.editForm)}>
-          {photoFile ? (
-            <p className={styles.photoHintRow}>
-              New photo selected: {photoFile.name}
-            </p>
+          {connectedSections}
+
+          {error ? (
+            <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
           ) : null}
 
+          <div className={styles.flexSpacer} />
           <SaveCornerButton
             visible={hasUnsavedChanges}
             busy={isSaving || isUploading}
@@ -494,53 +571,9 @@ export function NodeInfoModal({
         </form>
       )}
 
-      {(nodeType === 'person' || nodeType === 'place') && (
-        <>
-          {connectedPeople && connectedPeople.length > 0 ? (
-            <section className={styles.connectedSection}>
-              <p className={styles.connectedLabel}>
-                <strong>Connected people</strong>
-              </p>
-              <LinkedAvatarRow
-                items={connectedPeople}
-                mode="focus"
-                onItemClick={(id) => onFocusConnectedNode?.(id)}
-                disabled={busy}
-              />
-            </section>
-          ) : null}
-          {connectedPlaces && connectedPlaces.length > 0 ? (
-            <section className={styles.connectedSection}>
-              <p className={styles.connectedLabel}>
-                <strong>Connected places</strong>
-              </p>
-              <LinkedAvatarRow
-                items={connectedPlaces}
-                mode="focus"
-                onItemClick={(id) => onFocusConnectedNode?.(id)}
-                disabled={busy}
-              />
-            </section>
-          ) : null}
-          {connectedMemories && connectedMemories.length > 0 ? (
-            <section className={styles.connectedSection}>
-              <p className={styles.connectedLabel}>
-                <strong>Connected memories</strong>
-              </p>
-              <LinkedAvatarRow
-                items={connectedMemories}
-                mode="focus"
-                onItemClick={(id) => onFocusConnectedMemory?.(id)}
-                disabled={busy}
-              />
-            </section>
-          ) : null}
-        </>
-      )}
-
-      {error && (
+      {isGroup && error ? (
         <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
-      )}
+      ) : null}
 
       <TrashCornerButton
         onConfirm={handleDelete}

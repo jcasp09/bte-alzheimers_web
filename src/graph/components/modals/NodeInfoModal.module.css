@@ -10,33 +10,25 @@
 }
 
 .editForm {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
+  min-height: 100%;
 }
 
 .dimensionsGrid {
-  margin-bottom: 0.75rem;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
 }
 
 .helpText {
-  margin: 0 0 0.75rem;
+  margin: 0;
   font-size: 0.78rem;
   color: var(--color-text-muted);
 }
 
 .fieldList {
-  margin-bottom: 0.75rem;
-}
-
-.photoHintRow {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0.25rem 0 0.75rem;
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
+  flex-direction: column;
 }
 
 .connectedSection {
@@ -53,3 +45,7 @@
   font-weight: 600;
 }
 
+.flexSpacer {
+  flex: 1 1 auto;
+  min-height: 0;
+}

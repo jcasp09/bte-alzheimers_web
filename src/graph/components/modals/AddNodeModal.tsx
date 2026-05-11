@@ -192,6 +192,8 @@ export function AddNodePanel({
             imageUrl={heroImageUrl}
             fallbackLabel={fallbackInitials}
             onFilePicked={handleAvatarFile}
+            onRemovePhoto={photoFile ? () => setPhotoFile(null) : undefined}
+            removeAriaLabel="Discard new photo"
             accept={PHOTO_ACCEPT_ATTR}
             uploading={isUploading}
             disabled={busy}

@@ -126,6 +126,18 @@ export async function saveNodeDimensions(
   await setDoc(nodeDocRef(uid, graphId, nodeId), { width, height }, { merge: true })
 }
 
+export async function clearNodePhoto(
+  uid: string,
+  nodeId: string,
+  graphId: GraphId = GRAPH_IDS.context,
+): Promise<void> {
+  await setDoc(
+    nodeDocRef(uid, graphId, nodeId),
+    { photoPath: deleteField(), photoUpdatedAt: deleteField() },
+    { merge: true },
+  )
+}
+
 export async function getNodes(uid: string, graphId: GraphId = GRAPH_IDS.context): Promise<NodeDoc[]> {
   const snapshot = await getDocs(nodesCollection(uid, graphId))
   return snapshot.docs.map((doc) => ({

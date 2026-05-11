@@ -1,15 +1,18 @@
-import { useRef, type ReactNode } from 'react'
+import { useRef, type MouseEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
-import { CameraIcon } from './icons'
+import { CameraIcon, XIcon } from './icons'
 import styles from './EditableAvatar.module.css'
 
 type Props = {
   imageUrl?: string | null
   fallbackLabel: string
   onFilePicked: (file: File) => void
+  onRemovePhoto?: () => void | Promise<void>
+  removeAriaLabel?: string
   accept?: string
   disabled?: boolean
   uploading?: boolean
+  removing?: boolean
   cornerLeft?: ReactNode
   cornerMiddle?: ReactNode
   cornerRight?: ReactNode
@@ -21,9 +24,12 @@ export function EditableAvatar({
   imageUrl,
   fallbackLabel,
   onFilePicked,
+  onRemovePhoto,
+  removeAriaLabel = 'Remove photo',
   accept = 'image/jpeg,image/png',
   disabled,
   uploading,
+  removing,
   cornerLeft,
   cornerMiddle,
   cornerRight,
@@ -36,6 +42,14 @@ export function EditableAvatar({
     if (disabled || uploading) return
     inputRef.current?.click()
   }
+
+  const handleRemoveClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    if (disabled || uploading || removing || !onRemovePhoto) return
+    void onRemovePhoto()
+  }
+
+  const showRemoveBadge = Boolean(onRemovePhoto && imageUrl)
 
   return (
     <div className={styles.wrap}>
@@ -74,6 +88,19 @@ export function EditableAvatar({
           if (f) onFilePicked(f)
         }}
       />
+
+      {showRemoveBadge ? (
+        <button
+          type="button"
+          className={clsx(styles.removeBadge, removing && styles.removeBadgeBusy)}
+          onClick={handleRemoveClick}
+          disabled={disabled || uploading || removing}
+          aria-label={removeAriaLabel}
+          title={removeAriaLabel}
+        >
+          <XIcon size={12} />
+        </button>
+      ) : null}
 
       {cornerLeft ? <span className={clsx(styles.corner, styles.cornerLeft)}>{cornerLeft}</span> : null}
       {cornerMiddle ? <span className={clsx(styles.corner, styles.cornerMiddle)}>{cornerMiddle}</span> : null}
