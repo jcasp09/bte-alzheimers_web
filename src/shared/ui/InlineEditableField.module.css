@@ -103,3 +103,18 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
 }
+
+.input[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.input[aria-invalid="true"]:focus-visible {
+  outline-color: var(--color-error);
+}
+
+.error {
+  grid-column: 1 / -1;
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-error);
+}

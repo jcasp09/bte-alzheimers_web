@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type RefObject, type KeyboardEvent } from 'react'
 import clsx from 'clsx'
 import { PencilIcon } from './icons'
+import type { FieldValidator } from '../validation/fieldValidators'
 import styles from './InlineEditableField.module.css'
 
 type FieldKind = 'text' | 'email' | 'tel' | 'date' | 'textarea'
@@ -13,6 +14,7 @@ type Props = {
   kind?: FieldKind
   disabled?: boolean
   formatDisplay?: (raw: string) => string
+  validator?: FieldValidator
 }
 
 export function InlineEditableField({
@@ -23,10 +25,12 @@ export function InlineEditableField({
   kind = 'text',
   disabled,
   formatDisplay,
+  validator,
 }: Props) {
   const [editing, setEditing] = useState(false)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null)
   const id = useId()
+  const errorId = `${id}-error`
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -54,6 +58,8 @@ export function InlineEditableField({
   }
 
   const displayValue = value ? (formatDisplay ? formatDisplay(value) : value) : ''
+  const errorMessage = validator ? validator.validate(value) : null
+  const showError = errorMessage != null && (editing || value.length > 0)
 
   return (
     <div className={clsx(styles.row, kind === 'textarea' && styles.rowStacked)}>
@@ -71,6 +77,9 @@ export function InlineEditableField({
             onKeyDown={handleKeyDown}
             rows={4}
             disabled={disabled}
+            maxLength={validator?.maxLength}
+            aria-invalid={showError || undefined}
+            aria-describedby={showError ? errorId : undefined}
           />
         ) : (
           <input
@@ -83,6 +92,9 @@ export function InlineEditableField({
             onBlur={commit}
             onKeyDown={handleKeyDown}
             disabled={disabled}
+            maxLength={validator?.maxLength}
+            aria-invalid={showError || undefined}
+            aria-describedby={showError ? errorId : undefined}
           />
         )
       ) : (
@@ -92,6 +104,8 @@ export function InlineEditableField({
           onClick={startEditing}
           disabled={disabled}
           aria-label={`Edit ${label}`}
+          aria-invalid={showError || undefined}
+          aria-describedby={showError ? errorId : undefined}
         >
           <span className={styles.valueText}>
             {displayValue || placeholder}
@@ -99,6 +113,12 @@ export function InlineEditableField({
           <PencilIcon className={styles.pencil} aria-hidden="true" />
         </button>
       )}
+
+      {showError ? (
+        <p id={errorId} className={styles.error} role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   )
 }

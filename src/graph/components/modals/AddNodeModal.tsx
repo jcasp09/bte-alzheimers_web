@@ -15,6 +15,15 @@ import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
 import { LinkedAvatarRow, type LinkedAvatarItem } from '../../../shared/ui/LinkedAvatarRow'
 import { usePublishCanvasLinkMode } from '../../../shared/hooks/usePublishCanvasLinkMode'
 import { getInitialsForAvatar } from '../../../shared/util/initials'
+import {
+  addressValidator,
+  allValid,
+  emailValidator,
+  personNameValidator,
+  phoneValidator,
+  placeNameValidator,
+  relationshipValidator,
+} from '../../../shared/validation/fieldValidators'
 import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './AddNodeModal.module.css'
 
@@ -90,9 +99,25 @@ export function AddNodePanel({
     setPhotoFile(file)
   }
 
+  const nameValidator = nodeType === 'person' ? personNameValidator : placeNameValidator
+  const formValid = nodeType === 'person'
+    ? allValid([
+        [nameValidator, name],
+        [relationshipValidator, relationship],
+        [emailValidator, email],
+        [phoneValidator, phone],
+      ])
+    : allValid([
+        [nameValidator, name],
+        [addressValidator, address],
+      ])
+
   const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!formValid) {
+      setError(nameValidator.validate(name) ?? 'Please fix the highlighted fields.')
+      return
+    }
     setError(null)
     setIsSubmitting(true)
     try {
@@ -156,7 +181,6 @@ export function AddNodePanel({
   const heroImageUrl = stagedPhotoUrl ?? undefined
   const fallbackInitials = getInitialsForAvatar(name) || (nodeType === 'person' ? '?' : '?')
   const namePlaceholder = nodeType === 'person' ? 'Add a person' : 'Add a place'
-  const hasName = name.trim().length > 0
   const busy = isSubmitting || isUploading
 
   return (
@@ -169,6 +193,7 @@ export function AddNodePanel({
           placeholder={namePlaceholder}
           ariaLabel="Edit name"
           disabled={busy}
+          validator={nameValidator}
         />
       }
       subtitle={
@@ -179,6 +204,7 @@ export function AddNodePanel({
             placeholder="add an address"
             ariaLabel="Edit address"
             disabled={busy}
+            validator={addressValidator}
           />
         ) : undefined
       }
@@ -211,6 +237,7 @@ export function AddNodePanel({
               value={relationship}
               onChange={setRelationship}
               disabled={busy}
+              validator={relationshipValidator}
             />
             <InlineEditableField
               label="Email"
@@ -218,6 +245,7 @@ export function AddNodePanel({
               value={email}
               onChange={setEmail}
               disabled={busy}
+              validator={emailValidator}
             />
             <InlineEditableField
               label="Phone"
@@ -225,6 +253,7 @@ export function AddNodePanel({
               value={phone}
               onChange={setPhone}
               disabled={busy}
+              validator={phoneValidator}
             />
           </div>
         )}
@@ -274,7 +303,7 @@ export function AddNodePanel({
         ) : null}
 
         <SaveCornerButton
-          visible={hasName}
+          visible={formValid}
           busy={busy}
           busyLabel={isUploading ? 'Uploading…' : 'Saving…'}
           label="Add"

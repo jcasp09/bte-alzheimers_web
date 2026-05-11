@@ -19,6 +19,13 @@ import { LinkedAvatarRow, type LinkedAvatarItem } from '../../../shared/ui/Linke
 import { PhotoGalleryGrid } from '../../../shared/ui/PhotoGalleryGrid'
 import { usePublishCanvasLinkMode } from '../../../shared/hooks/usePublishCanvasLinkMode'
 import { getInitialsForAvatar } from '../../../shared/util/initials'
+import {
+  allValid,
+  firstError,
+  memoryDateValidator,
+  memoryDescriptionValidator,
+  memoryTitleValidator,
+} from '../../../shared/validation/fieldValidators'
 import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './AddMemoryModal.module.css'
 
@@ -108,8 +115,11 @@ export function AddMemoryModal({
 
   const heroPhotoUrl = stagedPaths.length > 0 ? stagedUrls[stagedPaths[0]] : undefined
   const fallbackInitials = getInitialsForAvatar(title) || '?'
-  const dateValid = parseOccurredOn(occurredOn) != null
-  const hasRequired = title.trim().length > 0 && dateValid
+  const formValid = allValid([
+    [memoryTitleValidator, title],
+    [memoryDateValidator, occurredOn],
+    [memoryDescriptionValidator, description],
+  ])
   const busy = isSubmitting || isUploading
 
   const handleAvatarPhoto = (file: File) => {
@@ -154,15 +164,16 @@ export function AddMemoryModal({
   const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
     setError(null)
+    const validationError = firstError([
+      [memoryTitleValidator, title],
+      [memoryDateValidator, occurredOn],
+      [memoryDescriptionValidator, description],
+    ])
+    if (validationError != null) {
+      setError(validationError)
+      return
+    }
     const trimmedTitle = title.trim()
-    if (!trimmedTitle) {
-      setError('Memory name is required.')
-      return
-    }
-    if (!parseOccurredOn(occurredOn)) {
-      setError('Choose a valid date.')
-      return
-    }
 
     setIsSubmitting(true)
     try {
@@ -204,6 +215,7 @@ export function AddMemoryModal({
           placeholder="Add a memory"
           ariaLabel="Edit memory name"
           disabled={busy}
+          validator={memoryTitleValidator}
         />
       }
       subtitle={
@@ -215,6 +227,7 @@ export function AddMemoryModal({
           inputType="date"
           formatDisplay={formatHumanDate}
           disabled={busy}
+          validator={memoryDateValidator}
         />
       }
       onClose={onClose}
@@ -244,6 +257,7 @@ export function AddMemoryModal({
             onChange={setDescription}
             placeholder="Click to add a note about this memory"
             disabled={busy}
+            validator={memoryDescriptionValidator}
           />
         </section>
 
@@ -320,7 +334,7 @@ export function AddMemoryModal({
         ) : null}
 
         <SaveCornerButton
-          visible={hasRequired}
+          visible={formValid}
           busy={busy}
           busyLabel={isUploading ? 'Uploading…' : 'Saving…'}
           label="Add"

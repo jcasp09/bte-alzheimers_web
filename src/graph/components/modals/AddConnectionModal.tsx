@@ -8,6 +8,7 @@ import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
 import { LinkedAvatarRow, type LinkedAvatarItem } from '../../../shared/ui/LinkedAvatarRow'
 import { InlineEditableField } from '../../../shared/ui/InlineEditableField'
 import { usePublishCanvasLinkMode } from '../../../shared/hooks/usePublishCanvasLinkMode'
+import { edgeLabelValidator, isValid } from '../../../shared/validation/fieldValidators'
 import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './AddConnectionModal.module.css'
 
@@ -86,7 +87,10 @@ export function AddConnectionModal({
   }, [pickableNodes, targetId])
 
   const canSave =
-    sourceId != null && targetId != null && sourceId !== targetId
+    sourceId != null &&
+    targetId != null &&
+    sourceId !== targetId &&
+    isValid(edgeLabelValidator, connectionLabel)
 
   const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
@@ -156,6 +160,7 @@ export function AddConnectionModal({
           onChange={setConnectionLabel}
           placeholder="Click to add a label"
           disabled={isSubmitting}
+          validator={edgeLabelValidator}
         />
 
         {error ? (

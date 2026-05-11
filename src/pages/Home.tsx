@@ -5,6 +5,11 @@ import { doc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase/firestore'
 import { useAuth } from '../auth/AuthContext'
 import { signInWithEmailPassword, signOutUser, signUpWithEmailPassword } from '../firebase/auth'
+import {
+  authEmailValidator,
+  firstError,
+  passwordValidator,
+} from '../shared/validation/fieldValidators'
 import styles from './Home.module.css'
 
 type AuthMode = 'signin' | 'signup'
@@ -18,9 +23,25 @@ function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const emailError = authEmailValidator.validate(email)
+  const passwordError = authMode === 'signup' ? passwordValidator.validate(password) : null
+  const showEmailError = emailError != null && email.length > 0
+  const showPasswordError = passwordError != null && password.length > 0
+  const canSubmit = email.length > 0 && password.length > 0
+    && emailError == null && passwordError == null
+
   const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
+    const validationError = firstError(
+      authMode === 'signup'
+        ? [[authEmailValidator, email], [passwordValidator, password]]
+        : [[authEmailValidator, email]],
+    )
+    if (validationError != null) {
+      setError(validationError)
+      return
+    }
     setIsSubmitting(true)
 
     try {
@@ -136,7 +157,13 @@ function Home() {
                     autoComplete="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
+                    maxLength={authEmailValidator.maxLength}
+                    aria-invalid={showEmailError || undefined}
+                    aria-describedby={showEmailError ? 'home-email-error' : undefined}
                   />
+                  {showEmailError && (
+                    <p id="home-email-error" className="text-error" role="alert">{emailError}</p>
+                  )}
                 </label>
 
                 <label className="field">
@@ -148,6 +175,9 @@ function Home() {
                       autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
+                      maxLength={passwordValidator.maxLength}
+                      aria-invalid={showPasswordError || undefined}
+                      aria-describedby={showPasswordError ? 'home-password-error' : undefined}
                     />
                     <button
                       type="button"
@@ -158,9 +188,16 @@ function Home() {
                       {showPassword ? 'Hide' : 'Show'}
                     </button>
                   </div>
+                  {showPasswordError && (
+                    <p id="home-password-error" className="text-error" role="alert">{passwordError}</p>
+                  )}
                 </label>
                 {error != null && <p className="text-error">{error}</p>}
-                <button type="submit" disabled={isSubmitting} className={clsx('btn-primary', styles.submitButton)}>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !canSubmit}
+                  className={clsx('btn-primary', styles.submitButton)}
+                >
                   {isSubmitting ? 'Please wait…' : authMode === 'signin' ? 'Log in' : 'Create account'}
                 </button>
               </form>

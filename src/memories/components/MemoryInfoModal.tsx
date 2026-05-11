@@ -23,6 +23,13 @@ import { PhotoGalleryGrid } from '../../shared/ui/PhotoGalleryGrid'
 import { EntityPicker, type EntityPickerItem } from '../../shared/ui/EntityPicker'
 import { getInitialsForAvatar } from '../../shared/util/initials'
 import { usePhotoUrl } from '../../shared/hooks/usePhotoUrl'
+import {
+  allValid,
+  firstError,
+  memoryDateValidator,
+  memoryDescriptionValidator,
+  memoryTitleValidator,
+} from '../../shared/validation/fieldValidators'
 import formStyles from '../../shared/styles/formActions.module.css'
 import styles from './MemoryInfoModal.module.css'
 
@@ -113,6 +120,12 @@ export function MemoryInfoModal({
 
   const busy = isSaving || isDeleting || isUploading
 
+  const formValid = allValid([
+    [memoryTitleValidator, title],
+    [memoryDateValidator, occurredOn],
+    [memoryDescriptionValidator, description],
+  ])
+
   const hasUnsavedChanges = (() => {
     if (title !== memory.title) return true
     if (description !== memory.description) return true
@@ -129,15 +142,16 @@ export function MemoryInfoModal({
     e.preventDefault()
     setError(null)
 
+    const validationError = firstError([
+      [memoryTitleValidator, title],
+      [memoryDateValidator, occurredOn],
+      [memoryDescriptionValidator, description],
+    ])
+    if (validationError != null) {
+      setError(validationError)
+      return
+    }
     const trimmedTitle = title.trim()
-    if (!trimmedTitle) {
-      setError('Memory name is required.')
-      return
-    }
-    if (!parseOccurredOn(occurredOn)) {
-      setError('Use a valid calendar date (YYYY-MM-DD).')
-      return
-    }
 
     const patch: Parameters<typeof updateMemory>[2] = {}
     if (trimmedTitle !== memory.title) patch.title = trimmedTitle
@@ -255,6 +269,7 @@ export function MemoryInfoModal({
           placeholder="Untitled memory"
           ariaLabel="Edit memory name"
           disabled={busy}
+          validator={memoryTitleValidator}
         />
       }
       subtitle={
@@ -266,6 +281,7 @@ export function MemoryInfoModal({
           inputType="date"
           formatDisplay={formatHumanDate}
           disabled={busy}
+          validator={memoryDateValidator}
         />
       }
       onClose={onClose}
@@ -297,6 +313,7 @@ export function MemoryInfoModal({
             onChange={setDescription}
             placeholder="Click to add a note about this memory"
             disabled={busy}
+            validator={memoryDescriptionValidator}
           />
         </section>
 
@@ -361,7 +378,7 @@ export function MemoryInfoModal({
           <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
         ) : null}
 
-        <SaveCornerButton visible={hasUnsavedChanges} busy={isSaving} />
+        <SaveCornerButton visible={hasUnsavedChanges && formValid} busy={isSaving} />
       </form>
 
       <TrashCornerButton

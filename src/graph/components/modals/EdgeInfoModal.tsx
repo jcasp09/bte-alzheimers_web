@@ -8,6 +8,7 @@ import { InlineEditableTitle } from '../../../shared/ui/InlineEditableTitle'
 import { LinkedAvatarRow, type LinkedAvatarItem } from '../../../shared/ui/LinkedAvatarRow'
 import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
 import { TrashCornerButton } from '../../../shared/ui/TrashCornerButton'
+import { edgeLabelValidator, isValid } from '../../../shared/validation/fieldValidators'
 import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './EdgeInfoModal.module.css'
 
@@ -75,6 +76,11 @@ export function EdgeInfoModal({
 
   const handleSaveLabel = async (e: SubmitEvent) => {
     e.preventDefault()
+    const labelError = edgeLabelValidator.validate(label)
+    if (labelError != null) {
+      setError(labelError)
+      return
+    }
     setError(null)
     setIsSavingLabel(true)
     try {
@@ -109,6 +115,7 @@ export function EdgeInfoModal({
 
   const busy = isDeleting || isSavingLabel
   const hasUnsavedChanges = label.trim() !== edgeLabel.trim()
+  const labelValid = isValid(edgeLabelValidator, label)
   const isPending = isLocalPendingEdgeId(edgeId)
 
   const sourceItem: LinkedAvatarItem = useMemo(
@@ -135,6 +142,7 @@ export function EdgeInfoModal({
           placeholder="Untitled connection"
           ariaLabel="Edit connection label"
           disabled={busy}
+          validator={edgeLabelValidator}
         />
       }
       onClose={onClose}
@@ -182,7 +190,7 @@ export function EdgeInfoModal({
         ) : null}
 
         <SaveCornerButton
-          visible={hasUnsavedChanges}
+          visible={hasUnsavedChanges && labelValid}
           busy={isSavingLabel}
           ariaLabel="Save label"
         />

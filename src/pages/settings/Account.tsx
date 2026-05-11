@@ -11,6 +11,13 @@ import { storage } from '../../firebase/storage'
 import PageHeader from '../../shared/ui/PageHeader'
 import Banner from '../../shared/ui/Banner'
 import ConfirmDialog from '../../shared/ui/ConfirmDialog'
+import {
+  MIN_BIRTHDAY_ISO,
+  PROFILE_NAME_MAX,
+  birthdayValidator,
+  profileNameValidator,
+  todayISODate,
+} from '../../shared/validation/fieldValidators'
 import styles from './Account.module.css'
 
 type ProfileForm = {
@@ -26,49 +33,19 @@ const EMPTY_ERRORS: FieldErrors = {}
 
 const SUCCESS_BANNER_MS = 5000
 
-const MAX_NAME_LENGTH = 50
-/** Letters from any alphabet plus spaces, hyphens, apostrophes, and periods. */
-const NAME_PATTERN = /^[\p{L}\s\-'.]+$/u
-const MIN_BIRTHDAY = '1900-01-01'
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024
 const ACCEPTED_PHOTO_TYPES: readonly string[] = ['image/png', 'image/jpeg']
-
-/** Today's date in YYYY-MM-DD using local time, suitable for <input type="date" max=...>. */
-function todayISODate(): string {
-  const d = new Date()
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
 
 function validateProfileForm(form: ProfileForm): FieldErrors {
   const errors: FieldErrors = {}
 
   for (const field of ['firstName', 'lastName'] as const) {
-    const value = form[field].trim()
-    if (value.length === 0)
-      continue
-
-    if (value.length > MAX_NAME_LENGTH) {
-      errors[field] = `Must be ${MAX_NAME_LENGTH} characters or fewer.`
-    } else if (!NAME_PATTERN.test(value)) {
-      errors[field] = 'Use letters, spaces, hyphens, or apostrophes only.'
-    }
+    const msg = profileNameValidator.validate(form[field])
+    if (msg != null) errors[field] = msg
   }
 
-  const bday = form.birthday.trim()
-  if (bday.length > 0) {
-    // <input type="date"> normalizes to 'YYYY-MM-DD' or empty.
-    const parsed = new Date(`${bday}T00:00:00`)
-    if (Number.isNaN(parsed.getTime())) {
-      errors.birthday = 'Please enter a valid date.'
-    } else if (bday > todayISODate()) {
-      errors.birthday = 'Birthday cannot be in the future.'
-    } else if (bday < MIN_BIRTHDAY) {
-      errors.birthday = 'Please enter a date on or after 1900.'
-    }
-  }
+  const birthdayError = birthdayValidator.validate(form.birthday)
+  if (birthdayError != null) errors.birthday = birthdayError
 
   return errors
 }
@@ -407,7 +384,7 @@ function Account() {
             <input
               type="text"
               autoComplete="given-name"
-              maxLength={MAX_NAME_LENGTH}
+              maxLength={PROFILE_NAME_MAX}
               value={form.firstName}
               onChange={handleFieldChange('firstName')}
               disabled={isLoading || isSaving}
@@ -423,7 +400,7 @@ function Account() {
             <input
               type="text"
               autoComplete="family-name"
-              maxLength={MAX_NAME_LENGTH}
+              maxLength={PROFILE_NAME_MAX}
               value={form.lastName}
               onChange={handleFieldChange('lastName')}
               disabled={isLoading || isSaving}
@@ -441,7 +418,7 @@ function Account() {
           <input
             type="date"
             autoComplete="bday"
-            min={MIN_BIRTHDAY}
+            min={MIN_BIRTHDAY_ISO}
             max={today}
             value={form.birthday}
             onChange={handleFieldChange('birthday')}

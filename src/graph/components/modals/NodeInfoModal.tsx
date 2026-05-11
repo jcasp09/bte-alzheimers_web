@@ -23,6 +23,16 @@ import {
   safeNodeDimensions,
   stepNodeDimensions,
 } from '../../model/dimensions'
+import {
+  addressValidator,
+  allValid,
+  emailValidator,
+  groupNameValidator,
+  personNameValidator,
+  phoneValidator,
+  placeNameValidator,
+  relationshipValidator,
+} from '../../../shared/validation/fieldValidators'
 import formStyles from '../../../shared/styles/formActions.module.css'
 import styles from './NodeInfoModal.module.css'
 import { getInitialsForAvatar } from '../../../shared/util/initials'
@@ -119,6 +129,36 @@ export function NodeInfoModal({
 
   const canEdit = nodeType === 'person' || nodeType === 'place'
   const isGroup = nodeType === 'group'
+
+  const nameValidator =
+    nodeType === 'person'
+      ? personNameValidator
+      : nodeType === 'place'
+        ? placeNameValidator
+        : nodeType === 'group'
+          ? groupNameValidator
+          : null
+
+  const formValid = (() => {
+    if (nodeType === 'person') {
+      return allValid([
+        [personNameValidator, name],
+        [relationshipValidator, relationship],
+        [emailValidator, email],
+        [phoneValidator, phone],
+      ])
+    }
+    if (nodeType === 'place') {
+      return allValid([
+        [placeNameValidator, name],
+        [addressValidator, address],
+      ])
+    }
+    if (nodeType === 'group') {
+      return allValid([[groupNameValidator, name]])
+    }
+    return true
+  })()
   const sizeNodeType = nodeType === 'person' || nodeType === 'place' ? nodeType : null
   const defaultDims = sizeNodeType ? defaultNodeSize(sizeNodeType) : null
   const sizeIsAtDefault =
@@ -153,6 +193,10 @@ export function NodeInfoModal({
   const handleSaveGroup = async (e: SubmitEvent) => {
     e.preventDefault()
     if (!isGroup) return
+    if (!formValid) {
+      setError(groupNameValidator.validate(name) ?? 'Please fix the highlighted fields.')
+      return
+    }
 
     setError(null)
     setIsSaving(true)
@@ -180,6 +224,11 @@ export function NodeInfoModal({
   const handleSave = async (e: SubmitEvent) => {
     e.preventDefault()
     if (!canEdit) return
+    if (!formValid) {
+      const primary = nameValidator?.validate(name) ?? null
+      setError(primary ?? 'Please fix the highlighted fields and try again.')
+      return
+    }
 
     setError(null)
     setIsSaving(true)
@@ -457,6 +506,7 @@ export function NodeInfoModal({
           placeholder={isGroup ? 'Untitled group' : 'Untitled'}
           ariaLabel="Edit name"
           disabled={busy}
+          validator={nameValidator ?? undefined}
         />
       }
       subtitle={
@@ -467,6 +517,7 @@ export function NodeInfoModal({
             placeholder="Add an address"
             ariaLabel="Edit address"
             disabled={busy}
+            validator={addressValidator}
           />
         ) : undefined
       }
@@ -510,7 +561,7 @@ export function NodeInfoModal({
             {`Frame size is clamped between ${GROUP_DIMENSION_BOUNDS.min} and ${GROUP_DIMENSION_BOUNDS.max} px on save.`}
           </p>
           <div className={styles.flexSpacer} />
-          <SaveCornerButton visible={hasUnsavedChanges} busy={isSaving} />
+          <SaveCornerButton visible={hasUnsavedChanges && formValid} busy={isSaving} />
         </form>
       )}
 
@@ -522,6 +573,7 @@ export function NodeInfoModal({
               value={relationship}
               onChange={setRelationship}
               disabled={busy}
+              validator={relationshipValidator}
             />
             <InlineEditableField
               label="Email"
@@ -529,6 +581,7 @@ export function NodeInfoModal({
               value={email}
               onChange={setEmail}
               disabled={busy}
+              validator={emailValidator}
             />
             <InlineEditableField
               label="Phone"
@@ -536,6 +589,7 @@ export function NodeInfoModal({
               value={phone}
               onChange={setPhone}
               disabled={busy}
+              validator={phoneValidator}
             />
           </div>
 
@@ -547,7 +601,7 @@ export function NodeInfoModal({
 
           <div className={styles.flexSpacer} />
           <SaveCornerButton
-            visible={hasUnsavedChanges}
+            visible={hasUnsavedChanges && formValid}
             busy={isSaving || isUploading}
             busyLabel={isUploading ? 'Uploading…' : 'Saving…'}
           />
@@ -564,7 +618,7 @@ export function NodeInfoModal({
 
           <div className={styles.flexSpacer} />
           <SaveCornerButton
-            visible={hasUnsavedChanges}
+            visible={hasUnsavedChanges && formValid}
             busy={isSaving || isUploading}
             busyLabel={isUploading ? 'Uploading…' : 'Saving…'}
           />

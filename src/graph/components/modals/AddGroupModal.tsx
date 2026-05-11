@@ -1,8 +1,9 @@
-import { type SubmitEvent, useState } from 'react'
+import { type SubmitEvent, useId, useState } from 'react'
 import clsx from 'clsx'
 import { createNode } from '../../data/nodes'
 import { GRAPH_IDS } from '../../model/types'
 import { Modal } from '../../../shared/ui/Modal'
+import { groupNameValidator, isValid } from '../../../shared/validation/fieldValidators'
 import formStyles from '../../../shared/styles/formActions.module.css'
 
 type DraftRect = { x: number; y: number; width: number; height: number }
@@ -18,12 +19,17 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const errorId = useId()
+
+  const fieldError = groupNameValidator.validate(name)
+  const showFieldError = fieldError != null && name.length > 0
+  const canSubmit = isValid(groupNameValidator, name)
 
   const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) {
-      setError('Enter a group name')
+    const nameError = groupNameValidator.validate(name)
+    if (nameError != null) {
+      setError(nameError)
       return
     }
     setError(null)
@@ -33,7 +39,7 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
         userId,
         {
           type: 'group',
-          name: trimmed,
+          name: name.trim(),
           position: { x: draftRect.x, y: draftRect.y },
           width: draftRect.width,
           height: draftRect.height,
@@ -65,7 +71,13 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Family"
             autoFocus
+            maxLength={groupNameValidator.maxLength}
+            aria-invalid={showFieldError || undefined}
+            aria-describedby={showFieldError ? errorId : undefined}
           />
+          {showFieldError ? (
+            <p id={errorId} className="text-error" role="alert">{fieldError}</p>
+          ) : null}
         </label>
         {error ? (
           <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
@@ -74,7 +86,7 @@ export function AddGroupModal({ userId, draftRect, onClose, onSuccess }: Props) 
           <button type="button" onClick={onClose} className="btn-ghost">
             Cancel
           </button>
-          <button type="submit" disabled={isSubmitting} className="btn-primary">
+          <button type="submit" disabled={isSubmitting || !canSubmit} className="btn-primary">
             {isSubmitting ? 'Creating…' : 'Create group'}
           </button>
         </div>
