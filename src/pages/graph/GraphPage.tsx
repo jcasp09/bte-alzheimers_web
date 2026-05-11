@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
@@ -48,6 +48,7 @@ import { useGraphSidePanel } from './hooks/useGraphSidePanel'
 import { LayerSwitcher } from './components/LayerSwitcher'
 import { GroupPlacementHint } from './components/GroupPlacementHint'
 import { SyncErrorBanner } from './components/SyncErrorBanner'
+import { ErrorToast } from '../../shared/ui/ErrorToast'
 import { MinimapToggle } from './components/MinimapToggle'
 import { GraphFilterBar } from './components/GraphFilterBar'
 import { GraphSearch } from './components/GraphSearch'
@@ -68,6 +69,7 @@ function Graph() {
   const [memorySelection, setMemorySelection] = useState<MemorySelection | null>(null)
   const [memoryBrushRange, setMemoryBrushRange] = useState<MemoryBrushRange | null>(null)
   const [syncEdgeError, setSyncEdgeError] = useState<string | null>(null)
+  const [duplicateConnection, setDuplicateConnection] = useState<{ text: string; nonce: number } | null>(null)
   const [canvasLinkMode, setCanvasLinkMode] = useState<{
     eligibleTypes: ReadonlySet<string>
     selectedIds: ReadonlySet<string>
@@ -173,6 +175,35 @@ function Graph() {
     flushPendingEdges,
     removePendingEdge,
   } = useDeferredEdgePersistence(user?.uid, GRAPH_IDS.context, setEdges, setSyncEdgeError)
+
+  const tryQueueConnection = useCallback(
+    (connection: Connection, opts?: { label?: string }) => {
+      const source = connection.source
+      const target = connection.target
+      if (!source || !target || source === target)
+        return null
+
+      const dup = edges.some(
+        (e) =>
+          (e.source === source && e.target === target) ||
+          (e.source === target && e.target === source),
+      )
+      if (dup) {
+        const nameOf = (id: string): string => {
+          const found = nodes.find((n) => n.id === id)
+          const raw = found?.data?.name
+          return typeof raw === 'string' ? raw.trim() : ''
+        }
+        const sName = nameOf(source)
+        const tName = nameOf(target)
+        const label = sName && tName ? `${sName} and ${tName}` : 'These nodes'
+        setDuplicateConnection({ text: `${label} are already connected.`, nonce: Date.now() })
+        return null
+      }
+      return queueConnection(connection, opts)
+    },
+    [edges, nodes, queueConnection],
+  )
 
   const linkModeForDisplay = useMemo(
     () =>
@@ -411,7 +442,7 @@ function Graph() {
 
   const handleConnectPersist = (connection: Connection) => {
     if (!user?.uid) return
-    queueConnection(connection)
+    tryQueueConnection(connection)
   }
 
   // If user is not logged in, send to login page
@@ -583,6 +614,13 @@ function Graph() {
 
         <SyncErrorBanner message={syncEdgeError} onDismiss={() => setSyncEdgeError(null)} />
 
+        <ErrorToast
+          message={duplicateConnection?.text ?? null}
+          nonce={duplicateConnection?.nonce ?? 0}
+          onDismiss={() => setDuplicateConnection(null)}
+          className={styles.toastBelowLayerSwitcher}
+        />
+
         <GraphFilterBar
           expanded={filterExpanded}
           setExpanded={setFilterExpanded}
@@ -745,7 +783,7 @@ function Graph() {
           <AddConnectionModal
             pickableNodes={pickableNodes}
             onClose={closeSidePanel}
-            onQueueConnection={queueConnection}
+            onQueueConnection={tryQueueConnection}
             onSetCanvasLinkMode={setCanvasLinkMode}
           />
         )}

@@ -160,6 +160,10 @@
   margin: 0.4rem 0.35rem;
 }
 
+.toastBelowLayerSwitcher {
+  top: 4.5rem;
+}
+
 .bannerFloat {
   position: absolute;
   top: 1rem;
