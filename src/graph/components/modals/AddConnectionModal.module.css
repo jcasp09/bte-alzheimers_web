@@ -1,9 +1,10 @@
 .editForm {
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
+  gap: 0.55rem;
 }
 
 .help {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.1rem;
   font-size: 0.82rem;
   color: var(--color-text-muted);
   font-style: italic;
@@ -21,6 +22,25 @@
 
 .endSection {
   margin-bottom: 0.5rem;
+}
+
+.endsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.endsRow .endSection {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.editForm > div:last-child {
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0;
 }
 
 .emptyEnd {

@@ -126,34 +126,6 @@ export function AddConnectionModal({
           Click two nodes on the canvas to connect them.
         </p>
 
-        <section className={styles.endSection}>
-          <p className={styles.sectionLabel}><strong>From</strong></p>
-          {sourceItem ? (
-            <LinkedAvatarRow
-              items={[sourceItem]}
-              mode="remove"
-              onItemClick={() => setSourceId(null)}
-              disabled={isSubmitting}
-            />
-          ) : (
-            <p className={styles.emptyEnd}>Click the first node on the canvas.</p>
-          )}
-        </section>
-
-        <section className={styles.endSection}>
-          <p className={styles.sectionLabel}><strong>To</strong></p>
-          {targetItem ? (
-            <LinkedAvatarRow
-              items={[targetItem]}
-              mode="remove"
-              onItemClick={() => setTargetId(null)}
-              disabled={isSubmitting}
-            />
-          ) : (
-            <p className={styles.emptyEnd}>Click the second node on the canvas.</p>
-          )}
-        </section>
-
         <InlineEditableField
           label="Label"
           value={connectionLabel}
@@ -162,6 +134,36 @@ export function AddConnectionModal({
           disabled={isSubmitting}
           validator={edgeLabelValidator}
         />
+
+        <div className={styles.endsRow}>
+          <section className={styles.endSection}>
+            <p className={styles.sectionLabel}><strong>From</strong></p>
+            {sourceItem ? (
+              <LinkedAvatarRow
+                items={[sourceItem]}
+                mode="remove"
+                onItemClick={() => setSourceId(null)}
+                disabled={isSubmitting}
+              />
+            ) : (
+              <p className={styles.emptyEnd}>Click the first node on the canvas.</p>
+            )}
+          </section>
+
+          <section className={styles.endSection}>
+            <p className={styles.sectionLabel}><strong>To</strong></p>
+            {targetItem ? (
+              <LinkedAvatarRow
+                items={[targetItem]}
+                mode="remove"
+                onItemClick={() => setTargetId(null)}
+                disabled={isSubmitting}
+              />
+            ) : (
+              <p className={styles.emptyEnd}>Click the second node on the canvas.</p>
+            )}
+          </section>
+        </div>
 
         {error ? (
           <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
