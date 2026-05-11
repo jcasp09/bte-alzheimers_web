@@ -1,7 +1,7 @@
 import type { Edge, Node } from '@xyflow/react'
 import type { MemoryDoc } from '../data/memories'
 import { parseOccurredOn } from '../data/memories'
-import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../graph/model/edgeHandles'
+import { CENTER_SOURCE_HANDLE_ID, CENTER_TARGET_HANDLE_ID } from '../../graph/components/NodeEdgeHandles'
 import { MEMORY_NODE_DEFAULT_SIZE } from '../../graph/nodes/MemoryNode'
 
 /** Opacity applied to context nodes that are not connected to any memory. */
@@ -123,8 +123,8 @@ export function buildMemoryLayerNodes(
 export function buildMemoryLayerEdges(memories: MemoryDoc[]): Edge[] {
   const edges: Edge[] = []
   const baseProps = {
-    sourceHandle: DEFAULT_SOURCE_HANDLE,
-    targetHandle: DEFAULT_TARGET_HANDLE,
+    sourceHandle: CENTER_SOURCE_HANDLE_ID,
+    targetHandle: CENTER_TARGET_HANDLE_ID,
     selectable: false,
     focusable: false,
     deletable: false,

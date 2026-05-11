@@ -9,16 +9,6 @@
   font-weight: 600;
 }
 
-.meta {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  margin-bottom: 1rem;
-}
-
-.meta span {
-  color: var(--color-text);
-}
-
 .pendingWarning {
   font-size: 0.78rem;
   color: var(--color-warning);

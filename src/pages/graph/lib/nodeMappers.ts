@@ -1,7 +1,7 @@
 import type { Edge, Node } from '@xyflow/react'
 import { GRAPH_TRANSLATE_EXTENT, type Layer, type XY } from '../../../graph/model/flowConstants'
 import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../../../graph/model/dimensions'
-import { edgeDocToReactFlowEdge } from '../../../graph/model/edgeHandles'
+import { CENTER_SOURCE_HANDLE_ID, CENTER_TARGET_HANDLE_ID } from '../../../graph/components/NodeEdgeHandles'
 import type { EdgeDoc, NodeDoc, NodeType } from '../../../graph/model/types'
 
 /** Context graph displays only relationship-layer node types. */
@@ -95,6 +95,23 @@ export function firestoreNodesToReactFlow(nodes: NodeDoc[]): Node[] {
   return sortContextGraphDocs(nodes)
     .map(docToReactFlowNode)
     .filter((n): n is Node => n != null)
+}
+
+/** Convert a persisted EdgeDoc into a React Flow Edge. */
+function edgeDocToReactFlowEdge(doc: EdgeDoc): Edge {
+  const text =
+    typeof doc.label === 'string' && doc.label.trim().length > 0 ? doc.label.trim() : undefined
+  return {
+    id: doc.id,
+    source: doc.sourceNodeId,
+    target: doc.targetNodeId,
+    // Straight line between the two node centers; the opaque node backgrounds
+    // mask the portion that passes underneath.
+    type: 'straight',
+    sourceHandle: CENTER_SOURCE_HANDLE_ID,
+    targetHandle: CENTER_TARGET_HANDLE_ID,
+    ...(text ? { label: text } : {}),
+  }
 }
 
 export function firestoreEdgesToReactFlow(edges: EdgeDoc[]): Edge[] {

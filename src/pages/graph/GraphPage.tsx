@@ -716,8 +716,6 @@ function Graph() {
             edgeId={selectedEdge.id}
             sourceName={selectedEdge.sourceName}
             targetName={selectedEdge.targetName}
-            sourceHandle={selectedEdge.sourceHandle}
-            targetHandle={selectedEdge.targetHandle}
             edgeLabel={selectedEdge.label ?? ''}
             onClose={closeSidePanel}
             onEdgeDeleted={(edgeId) => {

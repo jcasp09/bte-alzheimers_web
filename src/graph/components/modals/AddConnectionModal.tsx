@@ -2,7 +2,7 @@ import { type SubmitEvent, useCallback, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import type { Connection } from '@xyflow/react'
 import type { PickableNode } from '../../model/types'
-import { EDGE_SIDES, sourceHandleForSide, targetHandleForSide, type EdgeSide } from '../../model/edgeHandles'
+import { CENTER_SOURCE_HANDLE_ID, CENTER_TARGET_HANDLE_ID } from '../NodeEdgeHandles'
 import { SidePanel } from '../../../shared/ui/SidePanel'
 import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
 import { LinkedAvatarRow, type LinkedAvatarItem } from '../../../shared/ui/LinkedAvatarRow'
@@ -38,8 +38,6 @@ export function AddConnectionModal({
 }: Props) {
   const [sourceId, setSourceId] = useState<string | null>(null)
   const [targetId, setTargetId] = useState<string | null>(null)
-  const [sourceSide, setSourceSide] = useState<EdgeSide>('bottom')
-  const [targetSide, setTargetSide] = useState<EdgeSide>('top')
   const [connectionLabel, setConnectionLabel] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -100,8 +98,8 @@ export function AddConnectionModal({
         {
           source: sourceId,
           target: targetId,
-          sourceHandle: sourceHandleForSide(sourceSide),
-          targetHandle: targetHandleForSide(targetSide),
+          sourceHandle: CENTER_SOURCE_HANDLE_ID,
+          targetHandle: CENTER_TARGET_HANDLE_ID,
         },
         { label: connectionLabel.trim() || undefined },
       )
@@ -150,40 +148,6 @@ export function AddConnectionModal({
           ) : (
             <p className={styles.emptyEnd}>Click the second node on the canvas.</p>
           )}
-        </section>
-
-        <section className={styles.sidesSection}>
-          <p className={styles.sectionLabel}><strong>Sides</strong></p>
-          <div className={styles.sidePickerRow}>
-            <span className={styles.sidePickerLabel}>From side</span>
-            <div className={styles.sideOptions}>
-              {EDGE_SIDES.map((side) => (
-                <button
-                  key={`from-${side}`}
-                  type="button"
-                  onClick={() => setSourceSide(side)}
-                  className={clsx(styles.sideOption, sourceSide === side && styles.sideOptionSelected)}
-                >
-                  {side.charAt(0).toUpperCase() + side.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className={styles.sidePickerRow}>
-            <span className={styles.sidePickerLabel}>To side</span>
-            <div className={styles.sideOptions}>
-              {EDGE_SIDES.map((side) => (
-                <button
-                  key={`to-${side}`}
-                  type="button"
-                  onClick={() => setTargetSide(side)}
-                  className={clsx(styles.sideOption, targetSide === side && styles.sideOptionSelected)}
-                >
-                  {side.charAt(0).toUpperCase() + side.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
         </section>
 
         <InlineEditableField

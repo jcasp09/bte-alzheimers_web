@@ -5,7 +5,7 @@ import { createNode, upsertNode } from '../../data/nodes'
 import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, isAllowedPhotoType, uploadNodePhoto } from '../../data/photos'
 import { GRAPH_IDS } from '../../model/types'
 import type { NodeType } from '../../model/types'
-import { DEFAULT_SOURCE_HANDLE, DEFAULT_TARGET_HANDLE } from '../../model/edgeHandles'
+import { CENTER_SOURCE_HANDLE_ID, CENTER_TARGET_HANDLE_ID } from '../NodeEdgeHandles'
 import { SidePanel } from '../../../shared/ui/SidePanel'
 import { InlineEditableTitle } from '../../../shared/ui/InlineEditableTitle'
 import { InlineEditableSubtitle } from '../../../shared/ui/InlineEditableSubtitle'
@@ -127,8 +127,8 @@ export function AddNodePanel({
 
       for (const linkId of linkedIds) {
         await createEdge(userId, newNodeId, linkId, GRAPH_IDS.context, {
-          sourceHandle: DEFAULT_SOURCE_HANDLE,
-          targetHandle: DEFAULT_TARGET_HANDLE,
+          sourceHandle: CENTER_SOURCE_HANDLE_ID,
+          targetHandle: CENTER_TARGET_HANDLE_ID,
         })
       }
 

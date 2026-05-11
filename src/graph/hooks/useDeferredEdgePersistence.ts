@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import type { Connection, Edge } from '@xyflow/react'
 import { createEdge } from '../data/edges'
+import { CENTER_SOURCE_HANDLE_ID, CENTER_TARGET_HANDLE_ID } from '../components/NodeEdgeHandles'
 import type { GraphId } from '../model/types'
 
 export type PendingEdgeRow = {
@@ -91,8 +92,8 @@ export function useDeferredEdgePersistence(
       if (!source || !target || source === target)
         return null
 
-      const sourceHandle = connection.sourceHandle ?? undefined
-      const targetHandle = connection.targetHandle ?? undefined
+      const sourceHandle = connection.sourceHandle ?? CENTER_SOURCE_HANDLE_ID
+      const targetHandle = connection.targetHandle ?? CENTER_TARGET_HANDLE_ID
       const label = normalizeLabel(opts?.label)
       const localId = `local-${crypto.randomUUID()}`
 
@@ -104,7 +105,7 @@ export function useDeferredEdgePersistence(
           target,
           sourceHandle,
           targetHandle,
-          type: 'default',
+          type: 'straight',
           ...(label ? { label } : {}),
         },
       ])

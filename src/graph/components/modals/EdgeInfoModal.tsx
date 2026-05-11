@@ -2,7 +2,6 @@ import { type SubmitEvent, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { deleteEdge } from '../../data/edges'
 import { GRAPH_IDS } from '../../model/types'
-import { edgeHandleLabel } from '../../model/edgeHandles'
 import { isLocalPendingEdgeId } from '../../hooks/useDeferredEdgePersistence'
 import { SidePanel } from '../../../shared/ui/SidePanel'
 import formStyles from '../../../shared/styles/formActions.module.css'
@@ -13,8 +12,6 @@ type Props = {
   edgeId: string
   sourceName: string
   targetName: string
-  sourceHandle?: string
-  targetHandle?: string
   edgeLabel?: string
   onClose: () => void
   /** Called after the edge is removed from the graph (local queue or Firestore). */
@@ -28,8 +25,6 @@ export function EdgeInfoModal({
   edgeId,
   sourceName,
   targetName,
-  sourceHandle,
-  targetHandle,
   edgeLabel = '',
   onClose,
   onEdgeDeleted,
@@ -88,14 +83,6 @@ export function EdgeInfoModal({
         {' → '}
         <strong>{targetName}</strong>
       </p>
-      {(sourceHandle || targetHandle) ? (
-        <p className={styles.meta}>
-          Sides:{' '}
-          <span>{edgeHandleLabel(sourceHandle)}</span>
-          {' → '}
-          <span>{edgeHandleLabel(targetHandle)}</span>
-        </p>
-      ) : null}
 
       {isLocalPendingEdgeId(edgeId) ? (
         <p className={styles.pendingWarning}>
