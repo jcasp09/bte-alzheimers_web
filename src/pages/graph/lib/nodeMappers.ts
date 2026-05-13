@@ -40,6 +40,13 @@ export function sortContextGraphDocs(docs: NodeDoc[]): NodeDoc[] {
   return [...roots, ...children]
 }
 
+/** Coerce a possibly-malformed stored position into a finite-number pair. */
+function safePosition(p: { x?: number; y?: number } | undefined): { x: number; y: number } {
+  const x = typeof p?.x === 'number' && Number.isFinite(p.x) ? p.x : 0
+  const y = typeof p?.y === 'number' && Number.isFinite(p.y) ? p.y : 0
+  return { x, y }
+}
+
 /** Convert a Firestore node doc into a React Flow Node, or null if its type is
  *  not part of the context (relationships) graph. */
 export function docToReactFlowNode(doc: NodeDoc): Node | null {
@@ -58,7 +65,7 @@ export function docToReactFlowNode(doc: NodeDoc): Node | null {
       id: doc.id,
       type: 'group',
       parentId: doc.parentId,
-      position: doc.position ?? { x: 0, y: 0 },
+      position: safePosition(doc.position),
       width: w,
       height: h,
       zIndex: -1,
@@ -87,7 +94,7 @@ export function docToReactFlowNode(doc: NodeDoc): Node | null {
       width: typeof doc.width === 'number' && Number.isFinite(doc.width) ? doc.width : undefined,
       height: typeof doc.height === 'number' && Number.isFinite(doc.height) ? doc.height : undefined,
     },
-    position: doc.position ?? { x: 0, y: 0 },
+    position: safePosition(doc.position),
   }
 }
 

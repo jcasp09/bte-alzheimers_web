@@ -153,7 +153,8 @@ export type NodeLayoutRow = {
   parentId?: string | null
 }
 
-/** Bulk position writer used after drag-end. Skips IDs that no longer exist. */
+/** Bulk position writer used after drag-end.
+ * Skips IDs that no longer exist or whose positions are non-finite. */
 export async function saveNodePositions(
   uid: string,
   nodes: NodeLayoutRow[],
@@ -162,7 +163,11 @@ export async function saveNodePositions(
   if (nodes.length === 0) return
   const snapshot = await getDocs(nodesCollection(uid, graphId))
   const existingIds = new Set(snapshot.docs.map((d) => d.id))
-  const toSave = nodes.filter((n) => existingIds.has(n.id))
+  const toSave = nodes.filter((n) => {
+    if (!existingIds.has(n.id)) return false
+    const { x, y } = n.position
+    return typeof x === 'number' && Number.isFinite(x) && typeof y === 'number' && Number.isFinite(y)
+  })
   if (toSave.length === 0) return
 
   const batch = writeBatch(db)
