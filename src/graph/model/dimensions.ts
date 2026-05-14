@@ -2,6 +2,7 @@
 export const PERSON_NODE_DEFAULT_SIZE = { width: 220, height: 100 } as const
 export const PLACE_NODE_DEFAULT_SIZE = { width: 120, height: 100 } as const
 export const GROUP_NODE_DEFAULT_SIZE = { width: 400, height: 300 } as const
+export const SELF_NODE_DEFAULT_SIZE = { width: 264, height: 120 } as const
 
 const GROUP_MAX_DIMENSION = 2000
 

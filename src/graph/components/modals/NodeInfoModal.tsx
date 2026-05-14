@@ -1,4 +1,4 @@
-import { type SubmitEvent, useEffect, useMemo, useState } from 'react'
+import { type SubmitEvent, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { SidePanel } from '../../../shared/ui/SidePanel'
 import { InlineEditableField } from '../../../shared/ui/InlineEditableField'
@@ -10,9 +10,11 @@ import { SaveCornerButton } from '../../../shared/ui/SaveCornerButton'
 import { InlineEditableSubtitle } from '../../../shared/ui/InlineEditableSubtitle'
 import { AvatarCornerButton } from '../../../shared/ui/AvatarCornerButton'
 import { MinusIcon, PlusIcon, EqualsIcon } from '../../../shared/ui/icons'
-import { clearNodePhoto, deleteNodeAndEdges, saveNodeDimensions, upsertNode } from '../../data/nodes'
+import { clearNodePhoto, clearNodeRingTier, deleteNodeAndEdges, saveNodeDimensions, upsertNode } from '../../data/nodes'
 import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, deleteNodePhotoByPath, isAllowedPhotoType, uploadNodePhoto } from '../../data/photos'
 import { GRAPH_IDS } from '../../model/types'
+import { inferRingFromRelationship, type RingTier } from '../../model/rings'
+import { RingPicker } from '../RingPicker'
 import {
   GROUP_DIMENSION_BOUNDS,
   GROUP_NODE_DEFAULT_SIZE,
@@ -51,6 +53,8 @@ type Props = {
   nodePhotoUpdatedAt?: string
   nodeWidth?: number
   nodeHeight?: number
+  nodeRingTier?: RingTier | null
+  inferredRingTier?: RingTier | null
   onClose: () => void
   onSuccess: () => void
   /** Called immediately after a size step so the canvas can reflect the change. */
@@ -75,6 +79,8 @@ export function NodeInfoModal({
   nodePhotoUpdatedAt,
   nodeWidth,
   nodeHeight,
+  nodeRingTier,
+  inferredRingTier,
   onClose,
   onSuccess,
   onSizeChanged,
@@ -89,6 +95,15 @@ export function NodeInfoModal({
   const [email, setEmail] = useState(nodeEmail)
   const [phone, setPhone] = useState(nodePhone)
   const [address, setAddress] = useState(nodeAddress)
+  const [ringTier, setRingTier] = useState<RingTier | null>(nodeRingTier ?? null)
+  const initialPredictedRing = useRef<RingTier | null>(inferredRingTier ?? null)
+  const livePredictedRing = useMemo<RingTier | null>(() => {
+    if (nodeType !== 'person') return inferredRingTier ?? null
+    const fromKeyword = inferRingFromRelationship(relationship)
+    return fromKeyword ?? inferredRingTier ?? null
+  }, [nodeType, relationship, inferredRingTier])
+  const showRingAutoIndicator =
+    ringTier == null && livePredictedRing !== initialPredictedRing.current
   const [photoPath, setPhotoPath] = useState(nodePhotoPath)
   const [photoUpdatedAt, setPhotoUpdatedAt] = useState<string | undefined>(nodePhotoUpdatedAt)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
@@ -249,9 +264,16 @@ export function NodeInfoModal({
         nextPhotoUpdatedAt = undefined
       }
 
+      const persistedRingTier: RingTier | undefined =
+        ringTier != null && ringTier !== livePredictedRing ? ringTier : undefined
+      const revertingToAuto = persistedRingTier == null && initialRingTier != null
+
       if (nodeType === 'person') {
         if (pendingPhotoRemoval && !photoFile) {
           await clearNodePhoto(userId, nodeId, GRAPH_IDS.context)
+        }
+        if (revertingToAuto) {
+          await clearNodeRingTier(userId, nodeId, GRAPH_IDS.context)
         }
         await upsertNode(userId, nodeId, {
           type: 'person',
@@ -263,10 +285,14 @@ export function NodeInfoModal({
           photoUpdatedAt: nextPhotoUpdatedAt,
           width: sizeW,
           height: sizeH,
+          ringTier: persistedRingTier,
         }, GRAPH_IDS.context)
       } else {
         if (pendingPhotoRemoval && !photoFile) {
           await clearNodePhoto(userId, nodeId, GRAPH_IDS.context)
+        }
+        if (revertingToAuto) {
+          await clearNodeRingTier(userId, nodeId, GRAPH_IDS.context)
         }
         await upsertNode(userId, nodeId, {
           type: 'place',
@@ -276,6 +302,7 @@ export function NodeInfoModal({
           photoUpdatedAt: nextPhotoUpdatedAt,
           width: sizeW,
           height: sizeH,
+          ringTier: persistedRingTier,
         }, GRAPH_IDS.context)
       }
 
@@ -346,6 +373,7 @@ export function NodeInfoModal({
     [nodeHeight],
   )
 
+  const initialRingTier: RingTier | null = nodeRingTier ?? null
   const hasUnsavedChanges = (() => {
     if (nodeType === 'person') {
       return (
@@ -353,6 +381,7 @@ export function NodeInfoModal({
         relationship !== nodeRelationship ||
         email !== nodeEmail ||
         phone !== nodePhone ||
+        ringTier !== initialRingTier ||
         photoFile != null ||
         pendingPhotoRemoval
       )
@@ -361,6 +390,7 @@ export function NodeInfoModal({
       return (
         name !== nodeName ||
         address !== nodeAddress ||
+        ringTier !== initialRingTier ||
         photoFile != null ||
         pendingPhotoRemoval
       )
@@ -592,6 +622,15 @@ export function NodeInfoModal({
               validator={phoneValidator}
             />
           </div>
+
+          <RingPicker
+            value={ringTier}
+            predicted={livePredictedRing}
+            onChange={setRingTier}
+            showAutoIndicator={showRingAutoIndicator}
+            disabled={busy}
+            scope="people"
+          />
 
           {connectedSections}
 

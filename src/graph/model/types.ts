@@ -4,7 +4,10 @@ export type GraphId = 'context' | 'tasks'
 
 export const GRAPH_IDS = { context: 'context', tasks: 'tasks' } as const
 
-export type NodeType = 'person' | 'place' | 'task' | 'group'
+export type NodeType = 'person' | 'place' | 'task' | 'group' | 'self'
+
+export const SELF_NODE_ID = '__self'
+
 export type PickableNode = {
   id: string
   type: NodeType
@@ -34,6 +37,7 @@ export type NodeDoc = {
   calendarEventId?: string
   priority?: number
   location?: string
+  ringTier?: number
 }
 
 /** Firestore document shape for an edge. */

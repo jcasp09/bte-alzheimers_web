@@ -12,7 +12,7 @@ import {
 import { db } from '../../firebase/firestore'
 import { removeMemoryReferencesToDeletedNode } from '../../memories/data/memories'
 import { GROUP_NODE_DEFAULT_SIZE } from '../model/dimensions'
-import { GRAPH_IDS, type GraphId, type NodeDoc, type NodeType } from '../model/types'
+import { GRAPH_IDS, SELF_NODE_ID, type GraphId, type NodeDoc, type NodeType } from '../model/types'
 import {
   edgeDocRef,
   edgesCollection,
@@ -35,6 +35,7 @@ export type CreatePersonNodeData = {
   width?: number
   height?: number
   position?: { x: number; y: number }
+  ringTier?: number
 }
 
 export type CreatePlaceNodeData = {
@@ -46,6 +47,7 @@ export type CreatePlaceNodeData = {
   width?: number
   height?: number
   position?: { x: number; y: number }
+  ringTier?: number
 }
 
 export type CreateTaskNodeData = {
@@ -138,6 +140,18 @@ export async function clearNodePhoto(
   )
 }
 
+export async function clearNodeRingTier(
+  uid: string,
+  nodeId: string,
+  graphId: GraphId = GRAPH_IDS.context,
+): Promise<void> {
+  await setDoc(
+    nodeDocRef(uid, graphId, nodeId),
+    { ringTier: deleteField() },
+    { merge: true },
+  )
+}
+
 export async function getNodes(uid: string, graphId: GraphId = GRAPH_IDS.context): Promise<NodeDoc[]> {
   const snapshot = await getDocs(nodesCollection(uid, graphId))
   return snapshot.docs.map((doc) => ({
@@ -165,6 +179,7 @@ export async function saveNodePositions(
   const existingIds = new Set(snapshot.docs.map((d) => d.id))
   const toSave = nodes.filter((n) => {
     if (!existingIds.has(n.id)) return false
+    if (n.id === SELF_NODE_ID) return false
     const { x, y } = n.position
     return typeof x === 'number' && Number.isFinite(x) && typeof y === 'number' && Number.isFinite(y)
   })
@@ -191,6 +206,7 @@ export async function deleteNodeAndEdges(
   nodeId: string,
   graphId: GraphId = GRAPH_IDS.context,
 ): Promise<void> {
+  if (nodeId === SELF_NODE_ID) return
   const nodeRef = nodeDocRef(uid, graphId, nodeId)
   const nodeSnap = await getDoc(nodeRef)
   const nodeData = (nodeSnap.exists() ? nodeSnap.data() : null) as {

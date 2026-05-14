@@ -14,6 +14,7 @@ export type SelectedNode = {
   photoUpdatedAt?: string
   width?: number
   height?: number
+  ringTier?: number | null
 }
 
 /** An edge selected from the canvas, surfaced in the EdgeInfoModal side panel. */
@@ -38,9 +39,10 @@ type SidePanelState =
   | { kind: 'nodeInfo'; node: SelectedNode }
   | { kind: 'edgeInfo'; edge: SelectedEdge }
   | { kind: 'memoryInfo'; memoryId: string }
+  | { kind: 'selfInfo' }
 
 /** Owns the canvas side-panel slot and enforces mutual exclusion across
- *  the five things that can occupy it. */
+ *  the panels that can occupy it. */
 export function useGraphSidePanel() {
   const [state, setState] = useState<SidePanelState>({ kind: 'none' })
 
@@ -50,10 +52,12 @@ export function useGraphSidePanel() {
     selectedEdge: state.kind === 'edgeInfo' ? state.edge : null,
     memoryInfoId: state.kind === 'memoryInfo' ? state.memoryId : null,
     pendingNodePosition: state.kind === 'add' ? state.position : null,
+    isSelfInfoOpen: state.kind === 'selfInfo',
     isSidePanelOpen:
       state.kind === 'nodeInfo' ||
       state.kind === 'edgeInfo' ||
       state.kind === 'memoryInfo' ||
+      state.kind === 'selfInfo' ||
       state.kind === 'add',
 
     close: () => setState({ kind: 'none' }),
@@ -62,6 +66,7 @@ export function useGraphSidePanel() {
     openNodeInfo: (node: SelectedNode) => setState({ kind: 'nodeInfo', node }),
     openEdgeInfo: (edge: SelectedEdge) => setState({ kind: 'edgeInfo', edge }),
     openMemoryInfo: (memoryId: string) => setState({ kind: 'memoryInfo', memoryId }),
+    openSelfInfo: () => setState({ kind: 'selfInfo' }),
     /** Click-to-toggle for dock buttons: clicking the same panel twice closes it. */
     togglePanel: (panel: AddPanelKind) =>
       setState((prev) =>

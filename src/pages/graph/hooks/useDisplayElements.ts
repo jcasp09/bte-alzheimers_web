@@ -2,6 +2,15 @@ import { useMemo } from 'react'
 import type { Edge, Node } from '@xyflow/react'
 import type { Layer } from '../../../graph/model/flowConstants'
 import type { MemoryDoc } from '../../../memories/data/memories'
+import { buildRingAssignments, type RingTier } from '../../../graph/model/rings'
+import {
+  buildAnchorNodes,
+  buildRingGuideNodes,
+  computeAnchorHalfExtent,
+  computeCanvasExtent,
+  computePanExtent,
+  computeRingLayout,
+} from '../../../graph/model/ringLayout'
 import {
   buildContextToMemoriesMap,
   buildMemoryLayerEdges,
@@ -11,14 +20,14 @@ import {
   type MemoryBrushRange,
   type MemorySelection,
 } from '../../../memories/model/memoryLayer'
-import { ANCHOR_NODES, type VisibleTypes } from '../lib/nodeMappers'
 
 type Inputs = {
   nodes: Node[]
   edges: Edge[]
   memories: MemoryDoc[]
   currentLayer: Layer
-  visibleTypes: VisibleTypes
+  visibleRings: ReadonlySet<RingTier>
+  showAllEdges: boolean
   memorySelection: MemorySelection | null
   memoryBrushRange: MemoryBrushRange | null
   relationshipSelectedNodeId: string | null
@@ -35,11 +44,36 @@ const LINK_RING_COLOR = '#2bb673'
 export function useDisplayElements(input: Inputs) {
   const {
     nodes, edges, memories,
-    currentLayer, visibleTypes,
+    currentLayer, visibleRings, showAllEdges,
     memorySelection, memoryBrushRange,
     relationshipSelectedNodeId,
     canvasLinkMode,
   } = input
+
+  const ringAssignments = useMemo(
+    () => buildRingAssignments(nodes, edges),
+    [nodes, edges],
+  )
+
+  const { positions: ringPositions, radii: ringRadii } = useMemo(
+    () => computeRingLayout(nodes, edges),
+    [nodes, edges],
+  )
+
+  const anchorNodes = useMemo(
+    () => buildAnchorNodes(computeAnchorHalfExtent(ringRadii)),
+    [ringRadii],
+  )
+
+  const canvasExtent = useMemo(
+    () => computeCanvasExtent(ringRadii),
+    [ringRadii],
+  )
+
+  const panExtent = useMemo(
+    () => computePanExtent(ringRadii),
+    [ringRadii],
+  )
 
   // Apply the timeline brush, if any.
   const visibleMemories = useMemo(
@@ -97,22 +131,30 @@ export function useDisplayElements(input: Inputs) {
             return { ...n, style: { ...baseStyle, opacity: 1 } }
           })
         : memoryNodes
-      return [...ANCHOR_NODES, ...styled]
+      return [...anchorNodes, ...styled]
     }
     const filtered = nodes.map((n) => {
       const t = n.type
-      const allowed = (t === 'person' && visibleTypes.person)
-        || (t === 'place' && visibleTypes.place)
-        || (t === 'group' && visibleTypes.group)
-      if (!allowed) return { ...n, hidden: true }
+      if (t !== 'self' && t !== 'group') {
+        const tier = ringAssignments.get(n.id)
+        if (tier != null && !visibleRings.has(tier)) {
+          return { ...n, hidden: true }
+        }
+      }
+
+      const ringPos = ringPositions.get(n.id)
+      const ringed = ringPos != null
       const baseStyle = n.style ?? {}
+      const baseNode = ringed
+        ? { ...n, position: ringPos, draggable: false }
+        : n
 
       if (canvasLinkMode) {
         const isLinked = canvasLinkMode.selectedIds.has(n.id)
         const isEligible = typeof n.type === 'string' && canvasLinkMode.eligibleTypes.has(n.type)
         if (isLinked) {
           return {
-            ...n,
+            ...baseNode,
             style: {
               ...baseStyle,
               opacity: 1,
@@ -123,7 +165,7 @@ export function useDisplayElements(input: Inputs) {
         }
         if (isEligible) {
           return {
-            ...n,
+            ...baseNode,
             style: {
               ...baseStyle,
               opacity: 1,
@@ -133,15 +175,15 @@ export function useDisplayElements(input: Inputs) {
             },
           }
         }
-        return { ...n, style: { ...baseStyle, opacity: DIM_OPACITY } }
+        return { ...baseNode, style: { ...baseStyle, opacity: DIM_OPACITY } }
       }
 
-      if (!relationshipConnectedIds) return n
+      if (!relationshipConnectedIds) return baseNode
       const isSelected = n.id === relationshipSelectedNodeId
       const inScope = relationshipConnectedIds.has(n.id)
       if (isSelected) {
         return {
-          ...n,
+          ...baseNode,
           style: {
             ...baseStyle,
             opacity: 1,
@@ -151,12 +193,14 @@ export function useDisplayElements(input: Inputs) {
         }
       }
       if (inScope) {
-        return { ...n, style: { ...baseStyle, opacity: 1 } }
+        return { ...baseNode, style: { ...baseStyle, opacity: 1 } }
       }
-      return { ...n, style: { ...baseStyle, opacity: DIM_OPACITY } }
+      return { ...baseNode, style: { ...baseStyle, opacity: DIM_OPACITY } }
     })
-    return [...ANCHOR_NODES, ...filtered]
-  }, [nodes, visibleMemories, visibleTypes, currentLayer, memoryConnectedIds, memorySelection, relationshipConnectedIds, relationshipSelectedNodeId, canvasLinkMode])
+
+    const guides = buildRingGuideNodes(visibleRings, ringRadii)
+    return [...anchorNodes, ...guides, ...filtered]
+  }, [nodes, visibleMemories, visibleRings, ringAssignments, ringPositions, ringRadii, anchorNodes, currentLayer, memoryConnectedIds, memorySelection, relationshipConnectedIds, relationshipSelectedNodeId, canvasLinkMode])
 
   const displayEdges = useMemo(() => {
     if (currentLayer === 'memories') {
@@ -177,19 +221,35 @@ export function useDisplayElements(input: Inputs) {
     }
     const visible = new Set(displayNodes.filter((n) => !n.hidden).map((n) => n.id))
     return edges.map((e) => {
-      const hidden = !(visible.has(e.source) && visible.has(e.target))
-      if (hidden) return { ...e, hidden: true }
+      if (!(visible.has(e.source) && visible.has(e.target))) {
+        return { ...e, hidden: true }
+      }
+
       if (canvasLinkMode) {
         return { ...e, style: { ...(e.style ?? {}), opacity: DIM_OPACITY } }
       }
-      if (!relationshipSelectedNodeId) return e
-      const touches = e.source === relationshipSelectedNodeId || e.target === relationshipSelectedNodeId
-      return {
-        ...e,
-        style: { ...(e.style ?? {}), opacity: touches ? 1 : DIM_OPACITY },
+
+      const touchesSelection =
+        relationshipSelectedNodeId != null &&
+        (e.source === relationshipSelectedNodeId || e.target === relationshipSelectedNodeId)
+
+      if (touchesSelection) {
+        return { ...e, style: { ...(e.style ?? {}), opacity: 1 } }
       }
+      if (showAllEdges) {
+        return {
+          ...e,
+          style: {
+            ...(e.style ?? {}),
+            opacity: 0.6,
+            strokeDasharray: '5 4',
+            strokeWidth: 1.5,
+          },
+        }
+      }
+      return { ...e, hidden: true }
     })
-  }, [edges, displayNodes, visibleMemories, currentLayer, memorySelection, relationshipSelectedNodeId, canvasLinkMode])
+  }, [edges, displayNodes, visibleMemories, currentLayer, memorySelection, relationshipSelectedNodeId, canvasLinkMode, showAllEdges])
 
   return {
     visibleMemories,
@@ -197,5 +257,7 @@ export function useDisplayElements(input: Inputs) {
     memoryConnectedIds,
     displayNodes,
     displayEdges,
+    canvasExtent,
+    panExtent,
   }
 }

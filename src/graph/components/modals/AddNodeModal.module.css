@@ -1,5 +1,5 @@
 .editForm {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .fieldList {
@@ -43,3 +43,24 @@
   color: var(--color-text-muted);
 }
 
+/* Network section: groups the canvas-link instruction + connected people +
+   connected places so they read as one block rather than three loose
+   paragraphs hanging off the Ring picker above. */
+.networkSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.networkHeading {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

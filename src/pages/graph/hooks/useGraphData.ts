@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Edge, Node, Viewport } from '@xyflow/react'
 import { getEdges } from '../../../graph/data/edges'
 import { getNodes } from '../../../graph/data/nodes'
+import { ensureSelfNode } from '../../../graph/data/selfNode'
 import { getGraphViewport } from '../../../graph/data/viewport'
-import { GRAPH_IDS } from '../../../graph/model/types'
+import { GRAPH_IDS, SELF_NODE_ID } from '../../../graph/model/types'
 import { getMemories, type MemoryDoc } from '../../../memories/data/memories'
 import {
   firestoreEdgesToReactFlow,
@@ -37,7 +38,15 @@ export function useGraphData(uid: string | undefined) {
         getGraphViewport(uid, GRAPH_IDS.context),
         getMemories(uid),
       ])
-      setNodes(firestoreNodesToReactFlow(nodesData))
+
+      let mergedNodes = nodesData
+      const hasSelf = nodesData.some((n) => n.id === SELF_NODE_ID || n.type === 'self')
+      if (!hasSelf) {
+        const selfDoc = await ensureSelfNode(uid, GRAPH_IDS.context)
+        mergedNodes = [selfDoc, ...nodesData]
+      }
+
+      setNodes(firestoreNodesToReactFlow(mergedNodes))
       setEdges(firestoreEdgesToReactFlow(edgesData))
       setMemories(memoriesData)
       setInitialViewport(viewport ?? undefined)

@@ -1,16 +1,11 @@
 import type { Edge, Node } from '@xyflow/react'
-import { GRAPH_TRANSLATE_EXTENT, type Layer, type XY } from '../../../graph/model/flowConstants'
+import { type Layer, type XY } from '../../../graph/model/flowConstants'
 import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../../../graph/model/dimensions'
 import { CENTER_SOURCE_HANDLE_ID, CENTER_TARGET_HANDLE_ID } from '../../../graph/components/NodeEdgeHandles'
 import type { EdgeDoc, NodeDoc, NodeType } from '../../../graph/model/types'
 
 /** Context graph displays only relationship-layer node types. */
-export const CONTEXT_GRAPH_NODE_TYPES = new Set<NodeType>(['person', 'place', 'group'])
-
-/** Filter map for which relationship-layer node types are visible. */
-export type VisibleTypes = { person: boolean; place: boolean; group: boolean }
-
-export const DEFAULT_VISIBLE_TYPES: VisibleTypes = { person: true, place: true, group: true }
+export const CONTEXT_GRAPH_NODE_TYPES = new Set<NodeType>(['person', 'place', 'group', 'self'])
 
 /** Build a normalized rect from two corner points, clamped to the group draw bounds. */
 export function rectFromCorners(p1: XY, p2: XY): { x: number; y: number; width: number; height: number } {
@@ -52,6 +47,19 @@ function safePosition(p: { x?: number; y?: number } | undefined): { x: number; y
 export function docToReactFlowNode(doc: NodeDoc): Node | null {
   if (!CONTEXT_GRAPH_NODE_TYPES.has(doc.type)) return null
 
+  if (doc.type === 'self') {
+    return {
+      id: doc.id,
+      type: 'self',
+      position: { x: 0, y: 0 },
+      draggable: false,
+      deletable: false,
+      connectable: true,
+      selectable: true,
+      data: {},
+    }
+  }
+
   if (doc.type === 'group') {
     const w =
       typeof doc.width === 'number' && Number.isFinite(doc.width)
@@ -91,6 +99,7 @@ export function docToReactFlowNode(doc: NodeDoc): Node | null {
       calendarEventId: doc.calendarEventId,
       priority: doc.priority,
       location: doc.location,
+      ringTier: typeof doc.ringTier === 'number' && Number.isFinite(doc.ringTier) ? doc.ringTier : undefined,
       width: typeof doc.width === 'number' && Number.isFinite(doc.width) ? doc.width : undefined,
       height: typeof doc.height === 'number' && Number.isFinite(doc.height) ? doc.height : undefined,
     },
@@ -125,27 +134,6 @@ export function firestoreEdgesToReactFlow(edges: EdgeDoc[]): Edge[] {
   return edges.map(edgeDocToReactFlowEdge)
 }
 
-/** Four corner nodes that anchor the minimap to the full pannable extent. */
-export const ANCHOR_NODES: Node[] = (() => {
-  const [[minX, minY], [maxX, maxY]] = GRAPH_TRANSLATE_EXTENT
-  const baseProps = {
-    type: 'anchor',
-    width: 1,
-    height: 1,
-    data: {},
-    draggable: false,
-    selectable: false,
-    connectable: false,
-    deletable: false,
-    focusable: false,
-  } as const
-  return [
-    { id: '__anchor_tl', position: { x: minX, y: minY }, ...baseProps },
-    { id: '__anchor_tr', position: { x: maxX, y: minY }, ...baseProps },
-    { id: '__anchor_bl', position: { x: minX, y: maxY }, ...baseProps },
-    { id: '__anchor_br', position: { x: maxX, y: maxY }, ...baseProps },
-  ]
-})()
 
 /** Lower number = higher priority in the search dropdown. */
 export function typePriority(type: string, layer: Layer): number {

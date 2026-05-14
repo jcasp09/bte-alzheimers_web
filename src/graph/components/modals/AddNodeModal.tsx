@@ -5,6 +5,13 @@ import { createNode, upsertNode } from '../../data/nodes'
 import { PHOTO_ACCEPT_ATTR, PHOTO_TYPE_LABEL, isAllowedPhotoType, uploadNodePhoto } from '../../data/photos'
 import { GRAPH_IDS } from '../../model/types'
 import type { NodeType } from '../../model/types'
+import {
+  inferRingFromRelationship,
+  OUTERMOST_PEOPLE_RING,
+  OUTERMOST_PLACE_RING,
+  type RingTier,
+} from '../../model/rings'
+import { RingPicker } from '../RingPicker'
 import { CENTER_SOURCE_HANDLE_ID, CENTER_TARGET_HANDLE_ID } from '../NodeEdgeHandles'
 import { SidePanel } from '../../../shared/ui/SidePanel'
 import { InlineEditableTitle } from '../../../shared/ui/InlineEditableTitle'
@@ -50,7 +57,7 @@ type Props = {
   onSetCanvasLinkMode: (mode: AddPanelCanvasLinkMode) => void
 }
 
-const ELIGIBLE_TYPES: ReadonlySet<string> = new Set(['person', 'place'])
+const ELIGIBLE_TYPES: ReadonlySet<string> = new Set(['person', 'place', 'self'])
 
 export function AddNodePanel({
   userId,
@@ -72,6 +79,20 @@ export function AddNodePanel({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [ringTier, setRingTier] = useState<RingTier | null>(null)
+  const [ringTouched, setRingTouched] = useState(false)
+
+  const inferredRingTier = useMemo<RingTier | null>(() => {
+    if (nodeType === 'place') return OUTERMOST_PLACE_RING
+    if (nodeType !== 'person') return null
+    return inferRingFromRelationship(relationship) ?? OUTERMOST_PEOPLE_RING
+  }, [nodeType, relationship])
+
+  useEffect(() => {
+    if (!ringTouched) {
+      setRingTier(inferredRingTier)
+    }
+  }, [inferredRingTier, ringTouched])
 
   const stagedPhotoUrl = useMemo(
     () => (photoFile ? URL.createObjectURL(photoFile) : null),
@@ -121,9 +142,13 @@ export function AddNodePanel({
     setError(null)
     setIsSubmitting(true)
     try {
+      const persistedRingTier = ringTouched && ringTier != null && ringTier !== inferredRingTier
+        ? ringTier
+        : undefined
+
       const data = nodeType === 'person'
-        ? { type: 'person' as const, name, relationship, email, phone, position }
-        : { type: 'place' as const, name, address, position }
+        ? { type: 'person' as const, name, relationship, email, phone, position, ringTier: persistedRingTier }
+        : { type: 'place' as const, name, address, position, ringTier: persistedRingTier }
       const newNodeId = await createNode(userId, data)
 
       if (photoFile) {
@@ -138,6 +163,7 @@ export function AddNodePanel({
             phone,
             photoPath: photo.photoPath,
             photoUpdatedAt: photo.photoUpdatedAt,
+            ringTier: persistedRingTier,
           }, GRAPH_IDS.context)
         } else {
           await upsertNode(userId, newNodeId, {
@@ -146,6 +172,7 @@ export function AddNodePanel({
             address,
             photoPath: photo.photoPath,
             photoUpdatedAt: photo.photoUpdatedAt,
+            ringTier: persistedRingTier,
           }, GRAPH_IDS.context)
         }
       }
@@ -258,44 +285,61 @@ export function AddNodePanel({
           </div>
         )}
 
-        <p className={styles.connectionsHelp}>
-          Click nodes on the canvas to link.
-        </p>
+        {nodeType === 'person' && (
+          <RingPicker
+            value={ringTier}
+            predicted={inferredRingTier}
+            onChange={(next) => {
+              setRingTouched(true)
+              setRingTier(next)
+            }}
+            showAutoIndicator={!ringTouched}
+            disabled={busy}
+            scope="people"
+          />
+        )}
 
-        <section className={styles.linksSection}>
-          <p className={styles.sectionLabel}>
-            <strong>Connected people</strong>
+        <section className={styles.networkSection} aria-label="Network">
+          <p className={styles.networkHeading}>Network</p>
+          <p className={styles.connectionsHelp}>
+            Click nodes on the canvas to link.
           </p>
-          {linkedPeople.length > 0 ? (
-            <LinkedAvatarRow
-              items={linkedPeople}
-              mode="remove"
-              onItemClick={(id) =>
-                setLinkedIds((prev) => prev.filter((x) => x !== id))
-              }
-              disabled={busy}
-            />
-          ) : (
-            <p className={styles.linksEmpty}>None linked yet.</p>
-          )}
-        </section>
 
-        <section className={styles.linksSection}>
-          <p className={styles.sectionLabel}>
-            <strong>Connected places</strong>
-          </p>
-          {linkedPlaces.length > 0 ? (
-            <LinkedAvatarRow
-              items={linkedPlaces}
-              mode="remove"
-              onItemClick={(id) =>
-                setLinkedIds((prev) => prev.filter((x) => x !== id))
-              }
-              disabled={busy}
-            />
-          ) : (
-            <p className={styles.linksEmpty}>None linked yet.</p>
-          )}
+          <div className={styles.linksSection}>
+            <p className={styles.sectionLabel}>
+              <strong>Connected people</strong>
+            </p>
+            {linkedPeople.length > 0 ? (
+              <LinkedAvatarRow
+                items={linkedPeople}
+                mode="remove"
+                onItemClick={(id) =>
+                  setLinkedIds((prev) => prev.filter((x) => x !== id))
+                }
+                disabled={busy}
+              />
+            ) : (
+              <p className={styles.linksEmpty}>None linked yet.</p>
+            )}
+          </div>
+
+          <div className={styles.linksSection}>
+            <p className={styles.sectionLabel}>
+              <strong>Connected places</strong>
+            </p>
+            {linkedPlaces.length > 0 ? (
+              <LinkedAvatarRow
+                items={linkedPlaces}
+                mode="remove"
+                onItemClick={(id) =>
+                  setLinkedIds((prev) => prev.filter((x) => x !== id))
+                }
+                disabled={busy}
+              />
+            ) : (
+              <p className={styles.linksEmpty}>None linked yet.</p>
+            )}
+          </div>
         </section>
 
         {error ? (
@@ -304,7 +348,7 @@ export function AddNodePanel({
 
         <SaveCornerButton
           visible={formValid}
-          busy={busy}
+          busy={isSubmitting || isUploading}
           busyLabel={isUploading ? 'Uploading…' : 'Saving…'}
           label="Add"
           ariaLabel={`Add ${nodeType}`}

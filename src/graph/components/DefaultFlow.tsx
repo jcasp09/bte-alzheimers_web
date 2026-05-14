@@ -4,11 +4,14 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useMemo,
   useRef,
+  useState,
   type DragEvent as ReactDragEvent,
   type MouseEvent,
   type RefObject,
 } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Background,
   BackgroundVariant,
@@ -38,7 +41,6 @@ import { useThemeColor } from '../../shared/hooks/useThemeColor'
 
 import {
   DOCK_NODE_DND_TYPE,
-  GRAPH_TRANSLATE_EXTENT,
   type DefaultFlowHandle,
   type XY,
 } from '../model/flowConstants'
@@ -64,6 +66,9 @@ type DefaultFlowProps = {
   onConnectPersist?: (connection: Connection) => void
   onDropAtFlowPosition?: (kind: string, point: XY) => void
   showMiniMap?: boolean
+  minimapPortalTarget?: HTMLElement | null
+  canvasExtent?: [[number, number], [number, number]]
+  panExtent?: [[number, number], [number, number]]
 }
 
 function PaneFlowClickBridge({
@@ -106,6 +111,9 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
   onConnectPersist,
   onDropAtFlowPosition,
   showMiniMap = true,
+  minimapPortalTarget,
+  canvasExtent,
+  panExtent,
 }: DefaultFlowProps, ref) {
   const { screenToFlowPosition } = useReactFlow()
   const [internalNodes, , onInternalNodesChange] = useNodesState(initialNodes)
@@ -135,7 +143,7 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
   const fallbackColor = useThemeColor('--color-text-muted')
 
   const miniMapNodeColor = useCallback((node: Node) => {
-    if (node.type === 'anchor') return 'transparent'
+    if (node.type === 'anchor' || node.type === 'ringGuide') return 'transparent'
     if (node.type === 'person') return personColor
     if (node.type === 'place') return placeColor
     if (node.type === 'group') return groupColor
@@ -145,6 +153,20 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
 
   const flowWidth = useStore((s) => s.width)
   const flowHeight = useStore((s) => s.height)
+
+  // Cap minZoom so a fully-zoomed-out view fits the canvas extent with a little slack
+  const dynamicMinZoom = useMemo(() => {
+    const floor = 0.1
+    if (!canvasExtent) return floor
+    const [[minX, minY], [maxX, maxY]] = canvasExtent
+    const extentW = maxX - minX
+    const extentH = maxY - minY
+    if (flowWidth <= 0 || flowHeight <= 0) return floor
+    if (extentW <= 0 || extentH <= 0) return floor
+    // 1.08 → ~4% slack on each side beyond the rings at the most-zoomed-out position
+    const fitZoom = Math.min(flowWidth / extentW, flowHeight / extentH) / 1.08
+    return Math.max(floor, Math.min(fitZoom, 1))
+  }, [canvasExtent, flowWidth, flowHeight])
 
   const onMinimapClick = useCallback(
     (_event: unknown, point: { x: number; y: number }) => {
@@ -163,7 +185,25 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
     [reactFlowApi, flowWidth, flowHeight],
   )
 
-  const minimapStyle = { width: 180, height: 180 }
+  const [portalHostSize, setPortalHostSize] = useState<{ width: number; height: number } | null>(null)
+  useEffect(() => {
+    if (!minimapPortalTarget) return
+    const measure = () => {
+      const rect = minimapPortalTarget.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        setPortalHostSize({ width: rect.width, height: rect.height })
+      }
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(minimapPortalTarget)
+    return () => observer.disconnect()
+  }, [minimapPortalTarget])
+
+  const minimapStyle = minimapPortalTarget
+    ? { width: portalHostSize?.width ?? 180, height: portalHostSize?.height ?? 180 }
+    : { width: 180, height: 180 }
 
   const controlledNodes = onNodesChangeFromParent != null
   const controlledEdges = onEdgesChangeFromParent != null
@@ -237,17 +277,20 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
       onDragOver={onDropAtFlowPosition ? handleDragOver : undefined}
       onDrop={onDropAtFlowPosition ? handleDrop : undefined}
       panOnDrag={groupPlacementPanMode ? [1, 2] : true}
-      translateExtent={GRAPH_TRANSLATE_EXTENT}
-      nodeExtent={GRAPH_TRANSLATE_EXTENT}
+      translateExtent={panExtent ?? canvasExtent}
+      nodeExtent={canvasExtent}
       nodeTypes={nodeTypes}
       onNodeClick={onNodeClick}
       onEdgeClick={onEdgeClick}
       defaultViewport={defaultViewport}
+      minZoom={dynamicMinZoom}
+      maxZoom={2.5}
       proOptions={{ hideAttribution: true }}
       onMoveEnd={(_, viewport) => {
         viewportRef.current = viewport
       }}
       fitView={defaultViewport == null}
+      fitViewOptions={{ padding: 0.1, minZoom: dynamicMinZoom, maxZoom: 1 }}
     >
       {onPaneFlowClick ? (
         <PaneFlowClickBridge invokerRef={paneClickInvokerRef} onPaneFlowClick={onPaneFlowClick} />
@@ -259,16 +302,31 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
         variant={BackgroundVariant.Cross}
       />
       {showMiniMap ? (
-        <MiniMap
-          position="bottom-left"
-          pannable
-          zoomable
-          onClick={onMinimapClick}
-          nodeColor={miniMapNodeColor}
-          nodeStrokeColor={miniMapNodeColor}
-          nodeStrokeWidth={2}
-          style={minimapStyle}
-        />
+        minimapPortalTarget ? (
+          createPortal(
+            <MiniMap
+              pannable
+              zoomable
+              onClick={onMinimapClick}
+              nodeColor={miniMapNodeColor}
+              nodeStrokeColor={miniMapNodeColor}
+              nodeStrokeWidth={2}
+              style={minimapStyle}
+            />,
+            minimapPortalTarget,
+          )
+        ) : (
+          <MiniMap
+            position="bottom-left"
+            pannable
+            zoomable
+            onClick={onMinimapClick}
+            nodeColor={miniMapNodeColor}
+            nodeStrokeColor={miniMapNodeColor}
+            nodeStrokeWidth={2}
+            style={minimapStyle}
+          />
+        )
       ) : null}
     </ReactFlow>
   )

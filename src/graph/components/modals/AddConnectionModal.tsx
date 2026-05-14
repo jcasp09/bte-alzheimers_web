@@ -29,7 +29,7 @@ type Props = {
   onSetCanvasLinkMode: (mode: AddConnectionCanvasLinkMode) => void
 }
 
-const ELIGIBLE_TYPES: ReadonlySet<string> = new Set(['person', 'place'])
+const ELIGIBLE_TYPES: ReadonlySet<string> = new Set(['person', 'place', 'self'])
 
 export function AddConnectionModal({
   pickableNodes,

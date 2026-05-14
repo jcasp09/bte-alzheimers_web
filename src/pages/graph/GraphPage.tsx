@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
@@ -18,6 +18,7 @@ import { saveGraphViewport } from '../../graph/data/viewport'
 import { GRAPH_IDS } from '../../graph/model/types'
 import type { PickableNode } from '../../graph/model/types'
 import { GROUP_NODE_DEFAULT_SIZE } from '../../graph/model/dimensions'
+import { coerceRingTier, defaultVisibleRings, inferRingTier, type RingTier } from '../../graph/model/rings'
 import { applyReparentOnDragStop } from '../../graph/model/reparent'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../../graph/hooks/useDeferredEdgePersistence'
 import {
@@ -34,11 +35,8 @@ import { AddGroupModal } from '../../graph/components/modals/AddGroupModal.tsx'
 import { AddMemoryModal } from '../../graph/components/modals/AddMemoryModal.tsx'
 import { NodeInfoModal } from '../../graph/components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../../graph/components/modals/EdgeInfoModal.tsx'
+import { SelfNodeInfoModal } from '../../graph/components/modals/SelfNodeInfoModal.tsx'
 import { MemoryInfoModal } from '../../memories/components/MemoryInfoModal.tsx'
-import {
-  DEFAULT_VISIBLE_TYPES,
-  type VisibleTypes,
-} from './lib/nodeMappers'
 import { useGraphData } from './hooks/useGraphData'
 import { useLayerState } from './hooks/useLayerState'
 import { useGroupPlacement } from './hooks/useGroupPlacement'
@@ -49,13 +47,13 @@ import { LayerSwitcher } from './components/LayerSwitcher'
 import { GroupPlacementHint } from './components/GroupPlacementHint'
 import { SyncErrorBanner } from './components/SyncErrorBanner'
 import { ErrorToast } from '../../shared/ui/ErrorToast'
-import { MinimapToggle } from './components/MinimapToggle'
-import { GraphFilterBar } from './components/GraphFilterBar'
 import { GraphSearch } from './components/GraphSearch'
 import { GraphDock } from './components/GraphDock'
+import { GraphLeftSidebar } from './components/GraphLeftSidebar'
+import { readSidebarCollapsedPref } from './components/graphLeftSidebarPrefs'
 
 function Graph() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const {
     nodes, setNodes,
     edges, setEdges,
@@ -90,18 +88,26 @@ function Graph() {
     memoryInfoId,
     pendingNodePosition,
     isSidePanelOpen,
+    isSelfInfoOpen,
     close: closeSidePanel,
     openAddPanel,
     openNodeInfo,
     openEdgeInfo,
     openMemoryInfo,
+    openSelfInfo,
     togglePanel,
   } = useGraphSidePanel()
   const flowRef = useRef<DefaultFlowHandle>(null)
   const { currentLayer, setCurrentLayer } = useLayerState()
-  const [visibleTypes, setVisibleTypes] = useState<VisibleTypes>(DEFAULT_VISIBLE_TYPES)
-  const [filterExpanded, setFilterExpanded] = useState(false)
-  const [minimapExpanded, setMinimapExpanded] = useState(false)
+  const [visibleRings, setVisibleRings] = useState<Set<RingTier>>(() => defaultVisibleRings())
+  const [showAllEdges, setShowAllEdges] = useState(false)
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState<boolean>(() =>
+    readSidebarCollapsedPref(),
+  )
+  const [minimapHost, setMinimapHost] = useState<HTMLDivElement | null>(null)
+  const minimapHostRef = useCallback((node: HTMLDivElement | null) => {
+    setMinimapHost(node)
+  }, [])
   const {
     searchQuery,
     setSearchQuery,
@@ -217,9 +223,12 @@ function Graph() {
     contextToMemories,
     displayNodes,
     displayEdges,
+    canvasExtent,
+    panExtent,
   } = useDisplayElements({
     nodes, edges, memories,
-    currentLayer, visibleTypes,
+    currentLayer, visibleRings,
+    showAllEdges,
     memorySelection, memoryBrushRange,
     relationshipSelectedNodeId: currentLayer === 'memories' ? null : (selectedNode?.id ?? null),
     canvasLinkMode: linkModeForDisplay,
@@ -254,6 +263,16 @@ function Graph() {
   const pickableNodes = useMemo<PickableNode[]>(() => {
     const out: PickableNode[] = []
     for (const n of nodes) {
+      if (n.type === 'self') {
+        const firstName = profile?.firstName?.trim() ?? ''
+        const lastName = profile?.lastName?.trim() ?? ''
+        const fullName = [firstName, lastName].filter((s) => s.length > 0).join(' ')
+        const name = fullName || user?.displayName || 'You'
+        const photoPath = profile?.photoURL ?? undefined
+        out.push({ id: n.id, type: 'self', name, photoPath })
+        continue
+      }
+
       if (n.type !== 'person' && n.type !== 'place')
         continue
 
@@ -265,7 +284,27 @@ function Graph() {
       out.push({ id: n.id, type: n.type, name, photoPath })
     }
     return out
-  }, [nodes])
+  }, [nodes, profile, user])
+
+  const selectedNodeRingTier = useMemo<RingTier | null>(() => {
+    if (!selectedNode) return null
+    return coerceRingTier(selectedNode.ringTier ?? null)
+  }, [selectedNode])
+
+  const selectedNodeInferredRingTier = useMemo<RingTier | null>(() => {
+    if (!selectedNode) return null
+    const n = nodes.find((x) => x.id === selectedNode.id)
+    if (!n) return null
+    return inferRingTier(
+      {
+        id: n.id,
+        type: typeof n.type === 'string' ? n.type : '',
+        relationship: typeof n.data?.relationship === 'string' ? n.data.relationship : null,
+        ringTier: null,
+      },
+      edges,
+    )
+  }, [selectedNode, nodes, edges])
 
   const connectedForSelectedNode = useMemo(() => {
     if (!selectedNode) return null
@@ -339,6 +378,11 @@ function Graph() {
       return
     }
 
+    if (node.type === 'self') {
+      openSelfInfo()
+      return
+    }
+
     if (currentLayer === 'memories') {
       if (node.type === 'memory') {
         setMemorySelection({ kind: 'memory', id: node.id })
@@ -361,6 +405,7 @@ function Graph() {
     const address = typeof node.data.address === 'string' ? node.data.address : ''
     const photoPath = typeof node.data.photoPath === 'string' ? node.data.photoPath : ''
     const photoUpdatedAt = typeof node.data.photoUpdatedAt === 'string' ? node.data.photoUpdatedAt : undefined
+    const ringTier = typeof node.data.ringTier === 'number' && Number.isFinite(node.data.ringTier) ? node.data.ringTier : null
     const w = node.type === 'group' ? node.width : node.data.width
     const h = node.type === 'group' ? node.height : node.data.height
 
@@ -374,6 +419,7 @@ function Graph() {
       address,
       photoPath,
       photoUpdatedAt,
+      ringTier,
       width: typeof w === 'number' && Number.isFinite(w) ? w : undefined,
       height: typeof h === 'number' && Number.isFinite(h) ? h : undefined,
     })
@@ -501,6 +547,7 @@ function Graph() {
     const address = typeof data.address === 'string' ? data.address : ''
     const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
     const photoUpdatedAt = typeof data.photoUpdatedAt === 'string' ? data.photoUpdatedAt : undefined
+    const ringTier = typeof data.ringTier === 'number' && Number.isFinite(data.ringTier) ? data.ringTier : null
     const w = n.type === 'group' ? n.width : data.width
     const h = n.type === 'group' ? n.height : data.height
     openNodeInfo({
@@ -513,6 +560,7 @@ function Graph() {
       address,
       photoPath,
       photoUpdatedAt,
+      ringTier,
       width: typeof w === 'number' && Number.isFinite(w) ? w : undefined,
       height: typeof h === 'number' && Number.isFinite(h) ? h : undefined,
     })
@@ -533,7 +581,10 @@ function Graph() {
     <section className={styles.fullBleedRoot} aria-label={sectionLabel}>
       <h1 className="sr-only">{sectionLabel}</h1>
 
-      <div className={clsx(styles.canvasContainer, isSidePanelOpen && styles.canvasContainerPanelOpen, currentLayer === 'memories' && styles.canvasContainerLayerMemories)}>
+      <div
+        className={clsx(styles.canvasContainer, isSidePanelOpen && styles.canvasContainerPanelOpen, currentLayer === 'memories' && styles.canvasContainerLayerMemories)}
+        style={{'--left-rail-width': leftSidebarCollapsed ? '72px' : '276px'} as CSSProperties}
+      >
         <div className={styles.flowFill}>
           <DefaultFlow
             ref={flowRef}
@@ -558,7 +609,10 @@ function Graph() {
             onEdgeClick={handleEdgeClick}
             onConnectPersist={handleConnectPersist}
             onDropAtFlowPosition={handleDropAtFlowPosition}
-            showMiniMap={minimapExpanded}
+            showMiniMap={!leftSidebarCollapsed && minimapHost != null}
+            minimapPortalTarget={minimapHost}
+            canvasExtent={canvasExtent}
+            panExtent={panExtent}
             onSavePositions={(updatedNodes) => {
               void saveNodePositions(
                 user.uid,
@@ -621,12 +675,14 @@ function Graph() {
           className={styles.toastBelowLayerSwitcher}
         />
 
-        <GraphFilterBar
-          expanded={filterExpanded}
-          setExpanded={setFilterExpanded}
-          currentLayer={currentLayer}
-          visibleTypes={visibleTypes}
-          setVisibleTypes={setVisibleTypes}
+        <GraphLeftSidebar
+          collapsed={leftSidebarCollapsed}
+          setCollapsed={setLeftSidebarCollapsed}
+          visibleRings={visibleRings}
+          setVisibleRings={setVisibleRings}
+          showAllEdges={showAllEdges}
+          setShowAllEdges={setShowAllEdges}
+          minimapHostRef={minimapHostRef}
         />
 
         <GraphSearch
@@ -651,8 +707,6 @@ function Graph() {
             window.setTimeout(() => flowRef.current?.focusNode(r.id), 0)
           }}
         />
-
-        <MinimapToggle expanded={minimapExpanded} setExpanded={setMinimapExpanded} />
 
         <GraphDock
           openPanel={openPanel}
@@ -729,6 +783,8 @@ function Graph() {
             nodePhotoUpdatedAt={selectedNode.photoUpdatedAt}
             nodeWidth={selectedNode.width}
             nodeHeight={selectedNode.height}
+            nodeRingTier={selectedNodeRingTier}
+            inferredRingTier={selectedNodeInferredRingTier}
             onClose={closeSidePanel}
             onSuccess={() => {
               void (async () => {
@@ -756,6 +812,10 @@ function Graph() {
               void loadGraph({ skipLoading: true })
             }}
           />
+        )}
+
+        {isSelfInfoOpen && (
+          <SelfNodeInfoModal onClose={closeSidePanel} />
         )}
 
         {selectedEdge && (
