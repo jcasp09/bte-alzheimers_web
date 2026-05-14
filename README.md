@@ -9,8 +9,7 @@ Memory Jog is a web application that turns the people, places, tasks, and memori
 3. How to Run It
 4. Configuration
 5. Project Structure
-6. Data Model
-7. Tech Stack
+6. Tech Stack
 
 ## 1. Overview
 
@@ -30,17 +29,19 @@ The main canvas is an interactive graph powered by React Flow. A central "Self" 
 - **Community**: neighbors, coworkers, doctors, caregivers, and other people in your life.
 - **Places**: meaningful places such as home, workplaces, and regular destinations.
 
-Ring placement is automatic when you set a relationship. For example, typing "daughter" places the node in Favorites, while "doctor" places it in Community. Any node can also be moved to a different ring manually. Each node carries a photo, name, and the metadata that makes sense for its type: people show relationship, email, and phone; places show address; tasks show start time, end time, location, and priority.
+Ring placement is automatic when you set a relationship. For example, typing "daughter" places the node in Favorites, while "doctor" places it in Community. Any node can also be moved to a different ring manually. Each node carries a photo, name, and the metadata that makes sense for its type: people show relationship, email, and phone; places show address.
 
-The canvas itself supports panning, zooming, drag-and-drop placement from a dock of node types, gentle motion (which can be turned off), and a search bar that jumps to any node by name. A side panel handles adding nodes, viewing details, editing connections, and removing items.
+The canvas itself supports panning, zooming, drag-and-drop placement from a dock of node types, gentle motion (which can be turned off), and a search bar that jumps to any node by name. A side panel handles adding nodes, viewing details, editing connections, and removing items. A left sidebar provides ring visibility filters, edge controls, and a minimap.
 
-### Memory Layer
+### Memory Bubbles
 
-Memories are a distinct kind of node that captures a moment in time. Each memory can include one or more photos, descriptive text, an "occurred on" date, and links to the people and places involved. A dedicated timeline lets you browse memories by date or drag out a range to focus on a specific period. When the memory layer is active, unrelated context nodes fade so the connections to the moment stand out.
+Memories are captured as bubbles that anchor a moment in time. Each one can include one or more photos, a title and description, an "occurred on" date, and links to the people and places involved. From the graph, you can flip on the **Memory Lens** to overlay memory bubbles on top of the relationship graph and brush across a timeline to focus on a specific period. While the lens is active, context nodes that are not connected to a visible memory fade back so the moment stands out.
+
+The home dashboard also surfaces a "Latest memory" card and a running count of memories, so picking up where you left off is easy.
 
 ### Tasks and Calendar
 
-The Tasks page lists upcoming items pulled from the graph in chronological order, with friendly labels like "Today" and "Tomorrow." Tasks can be created manually as nodes or imported by connecting Google Calendar from the Integrations settings page. Imported events become task nodes that can link to relevant people and places, and items that have already passed are cleared automatically.
+Tasks live inside the graph experience. The graph's left sidebar shows your upcoming items in chronological order, with friendly labels like "Today" and "Tomorrow," small avatars of the people and places each task is linked to, and a quick add button. Tasks can be created manually or imported by connecting Google Calendar from the Integrations settings page. Imported events become task entries that can link to relevant people and places, and items that have already passed are cleaned up automatically.
 
 ### Customizable Appearance
 
@@ -85,9 +86,9 @@ The `src/` folder is organized by feature rather than by file type:
 - `auth/` holds the authentication context and provider that expose the current user and profile to the rest of the app.
 - `firebase/` initializes the Firebase app and exports the SDK clients for Auth, Firestore, and Storage.
 - `calendar/` wraps the Google Calendar OAuth flow and event sync.
-- `graph/` contains the visual graph: node components, edge handles, Firestore adapters, the ring model, and the modal dialogs for adding and editing nodes, connections, and memories.
-- `memories/` contains memory storage, the memory-layer model, the timeline component, and the memory detail modal.
-- `pages/` contains the routed pages: `Home`, `Tasks`, the `graph/` page with its sidebar and search, and the `settings/` section.
+- `graph/` contains the visual graph: node components (including the memory bubble), edge handles, Firestore adapters for nodes, edges, and tasks, the ring model, and the modal dialogs for adding and editing nodes, connections, tasks, and memories.
+- `memories/` contains memory storage, the memory-lens model, the timeline component, and the memory detail modal.
+- `pages/` contains the routed pages: the marketing-and-dashboard `Home` page, the `graph/` page with its sidebar, dock, search, and task list, and the `settings/` section.
 - `settings/` stores the theme and motion preference modules.
 - `shared/` contains the reusable UI primitives, hooks, validation helpers, and design tokens used across the app.
 
@@ -105,7 +106,7 @@ The `src/` folder is organized by feature rather than by file type:
 **Backend (Firebase)**
 
 - Authentication (Email/Password)
-- Cloud Firestore for user data, nodes, edges, and memories
+- Cloud Firestore for user data, nodes, edges, tasks, and memories
 - Cloud Storage for images
 - Analytics
 
