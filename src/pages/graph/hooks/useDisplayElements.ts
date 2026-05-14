@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { Edge, Node } from '@xyflow/react'
 import type { Layer } from '../../../graph/model/flowConstants'
 import type { MemoryDoc } from '../../../memories/data/memories'
+import type { UpcomingTask } from '../../../graph/data/tasks'
 import { buildRingAssignments, type RingTier } from '../../../graph/model/rings'
 import {
   buildAnchorNodes,
@@ -28,6 +29,7 @@ type Inputs = {
   nodes: Node[]
   edges: Edge[]
   memories: MemoryDoc[]
+  tasks: UpcomingTask[]
   currentLayer: Layer
   visibleRings: ReadonlySet<RingTier>
   showAllEdges: boolean
@@ -42,6 +44,8 @@ type Inputs = {
   } | null
 }
 
+const UPCOMING_BADGE_WINDOW_HOURS = 24
+
 const DIM_OPACITY = 0.35
 const LINK_RING_COLOR = '#2bb673'
 const MEMORY_RING_COLOR = 'var(--color-node-memory-border)'
@@ -49,7 +53,7 @@ const MEMORY_RING_COLOR = 'var(--color-node-memory-border)'
 /** Derive all the memos React Flow needs from canonical state. */
 export function useDisplayElements(input: Inputs) {
   const {
-    nodes, edges, memories,
+    nodes, edges, memories, tasks,
     currentLayer, visibleRings, showAllEdges,
     memoryLensOn, memoryLensRange,
     memorySelection, memoryBrushRange,
@@ -108,6 +112,18 @@ export function useDisplayElements(input: Inputs) {
     return counts
   }, [memories])
 
+  const imminentTaskNodeIds = useMemo<Set<string>>(() => {
+    const out = new Set<string>()
+    // eslint-disable-next-line react-hooks/purity -- per-render snapshot is fine; tasks deps refresh on reload
+    const cutoffMs = Date.now() + UPCOMING_BADGE_WINDOW_HOURS * 60 * 60 * 1000
+    for (const task of tasks) {
+      if (task.startAtMs > cutoffMs) break
+      if (!Array.isArray(task.linkedNodeIds)) continue
+      for (const id of task.linkedNodeIds) out.add(id)
+    }
+    return out
+  }, [tasks])
+
   // Connected node ids for the relationship-layer selection (selected + neighbours via edges).
   const relationshipConnectedIds = useMemo<Set<string> | null>(() => {
     if (!relationshipSelectedNodeId) return null
@@ -122,7 +138,6 @@ export function useDisplayElements(input: Inputs) {
   const displayNodes = useMemo(() => {
     if (currentLayer === 'memories') {
       const memoryNodes = buildMemoryLayerNodes(visibleMemories, nodes)
-      // When a selection is active, dim everything not in scope and ring the selected node
       const styled = memoryConnectedIds
         ? memoryNodes.map((n) => {
             if (n.type === 'anchor') return n
@@ -143,7 +158,6 @@ export function useDisplayElements(input: Inputs) {
                 },
               }
             }
-            // Connected (in-scope) but not the selection itself
             return { ...n, style: { ...baseStyle, opacity: 1 } }
           })
         : memoryNodes
@@ -162,9 +176,13 @@ export function useDisplayElements(input: Inputs) {
       const ringed = ringPos != null
       const baseStyle = n.style ?? {}
       const memoryCount = memoryCountByNode.get(n.id) ?? 0
-      const dataWithMemoryCount = memoryCount > 0
-        ? { ...(n.data ?? {}), memoryCount }
-        : (n.data ?? {})
+      const hasUpcomingTask = imminentTaskNodeIds.has(n.id)
+      let dataWithMemoryCount: Record<string, unknown> = { ...(n.data ?? {}) }
+      if (memoryCount > 0) dataWithMemoryCount.memoryCount = memoryCount
+      if (hasUpcomingTask) dataWithMemoryCount.hasUpcomingTask = true
+      if (memoryCount === 0 && !hasUpcomingTask) {
+        dataWithMemoryCount = (n.data ?? {}) as Record<string, unknown>
+      }
       const baseNode = ringed
         ? { ...n, position: ringPos, draggable: false, data: dataWithMemoryCount }
         : { ...n, data: dataWithMemoryCount }
@@ -276,7 +294,7 @@ export function useDisplayElements(input: Inputs) {
     }
 
     return [...anchorNodes, ...guides, ...filtered, ...bubbles]
-  }, [nodes, memories, visibleMemories, visibleRings, ringAssignments, ringPositions, ringRadii, anchorNodes, memoryCountByNode, memoryLensOn, memoryLensRange, currentLayer, memoryConnectedIds, memorySelection, relationshipConnectedIds, relationshipSelectedNodeId, canvasLinkMode])
+  }, [nodes, memories, visibleMemories, visibleRings, ringAssignments, ringPositions, ringRadii, anchorNodes, memoryCountByNode, imminentTaskNodeIds, memoryLensOn, memoryLensRange, currentLayer, memoryConnectedIds, memorySelection, relationshipConnectedIds, relationshipSelectedNodeId, canvasLinkMode])
 
   const displayEdges = useMemo(() => {
     if (currentLayer === 'memories') {

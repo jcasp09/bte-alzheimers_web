@@ -182,6 +182,32 @@ export const memoryTitleValidator: FieldValidator = freeText({
   required: true,
 })
 
+export const TASK_TITLE_MAX = 120
+export const TASK_LOCATION_MAX = 200
+
+export const taskTitleValidator: FieldValidator = freeText({
+  label: 'Task name',
+  maxLength: TASK_TITLE_MAX,
+  required: true,
+})
+
+export const taskLocationValidator: FieldValidator = freeText({
+  label: 'Location',
+  maxLength: TASK_LOCATION_MAX,
+  required: false,
+})
+
+export const taskDateTimeValidator: FieldValidator = {
+  required: true,
+  validate: (raw) => {
+    const value = raw.trim()
+    if (value.length === 0) return 'Pick a date and time.'
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) return 'Use a valid date and time.'
+    return null
+  },
+}
+
 export const memoryDescriptionValidator: FieldValidator = freeText({
   label: 'Description',
   maxLength: MEMORY_DESCRIPTION_MAX,

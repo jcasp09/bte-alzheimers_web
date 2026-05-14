@@ -1,7 +1,16 @@
-import { useEffect, useRef, type Ref } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import clsx from 'clsx'
 import { RINGS, type RingTier } from '../../../graph/model/rings'
-import { writeSidebarCollapsedPref } from './graphLeftSidebarPrefs'
+import type { UpcomingTask } from '../../../graph/data/tasks'
+import type { PickableNode } from '../../../graph/model/types'
+import { usePhotoUrl } from '../../../shared/hooks/usePhotoUrl'
+import { getInitialsForAvatar } from '../../../shared/util/initials'
+import {
+  readSectionOpenPref,
+  type SidebarSectionId,
+  writeSectionOpenPref,
+  writeSidebarCollapsedPref,
+} from './graphLeftSidebarPrefs'
 import styles from './GraphLeftSidebar.module.css'
 
 type Props = {
@@ -14,6 +23,155 @@ type Props = {
   memoryLensOn: boolean
   setMemoryLensOn: (next: boolean) => void
   minimapHostRef: Ref<HTMLDivElement>
+  tasks: UpcomingTask[]
+  pickableNodes: PickableNode[]
+  onAddTask: () => void
+  onTaskClick: (taskId: string) => void
+}
+
+const MAX_LINKED_AVATAR_PREVIEW = 4
+
+function formatTaskTime(value?: string): string {
+  if (typeof value !== 'string' || value.length === 0) return 'Time not set'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Time not set'
+
+  const now = new Date()
+  const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
+  const isToday = date.toDateString() === now.toDateString()
+  if (isToday) return `Today · ${time}`
+
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
+  if (date.toDateString() === tomorrow.toDateString()) return `Tomorrow · ${time}`
+
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function getTaskTitle(task: UpcomingTask): string {
+  if (typeof task.title === 'string' && task.title.trim().length > 0) return task.title
+  if (typeof task.name === 'string' && task.name.trim().length > 0) return task.name
+  return 'Untitled task'
+}
+
+function LinkedAvatar({ name, photoPath }: { name: string; photoPath?: string }) {
+  const url = usePhotoUrl(photoPath)
+  const initials = getInitialsForAvatar(name) || '?'
+  return (
+    <span className={styles.taskLinkedAvatar} title={name}>
+      {url ? (
+        <img src={url} alt="" className={styles.taskLinkedAvatarImage} />
+      ) : (
+        initials
+      )}
+    </span>
+  )
+}
+
+type TaskRowProps = {
+  task: UpcomingTask
+  pickableById: Map<string, PickableNode>
+  onClick: () => void
+}
+
+function TaskRow({ task, pickableById, onClick }: TaskRowProps) {
+  const title = getTaskTitle(task)
+  const timeLabel = formatTaskTime(task.startAt)
+  const location = typeof task.location === 'string' ? task.location.trim() : ''
+  const linkedAll = useMemo(() => {
+    const ids = Array.isArray(task.linkedNodeIds) ? task.linkedNodeIds : []
+    return ids
+      .map((id) => pickableById.get(id))
+      .filter((n): n is PickableNode => n != null)
+  }, [task.linkedNodeIds, pickableById])
+  const linkedPreview = linkedAll.slice(0, MAX_LINKED_AVATAR_PREVIEW)
+  const overflow = linkedAll.length - linkedPreview.length
+
+  return (
+    <button
+      type="button"
+      className={styles.taskRow}
+      onClick={onClick}
+      aria-label={`Open task: ${title}`}
+    >
+      <span className={styles.taskRowHead}>
+        <span className={styles.taskTitle}>{title}</span>
+        <span className={styles.taskTime}>{timeLabel}</span>
+      </span>
+      {location ? <span className={styles.taskLocation}>{location}</span> : null}
+      {linkedAll.length > 0 ? (
+        <span className={styles.taskLinkedStrip} aria-hidden="true">
+          {linkedPreview.map((n) => (
+            <LinkedAvatar key={n.id} name={n.name} photoPath={n.photoPath} />
+          ))}
+          {overflow > 0 ? (
+            <span className={styles.taskLinkedOverflow}>+{overflow}</span>
+          ) : null}
+        </span>
+      ) : null}
+    </button>
+  )
+}
+
+type CollapsibleSectionProps = {
+  id: SidebarSectionId
+  label: string
+  badge?: ReactNode
+  headerActions?: ReactNode
+  ariaLabel?: string
+  children: ReactNode
+}
+
+function CollapsibleSection({
+  id,
+  label,
+  badge,
+  headerActions,
+  ariaLabel,
+  children,
+}: CollapsibleSectionProps) {
+  const [open, setOpen] = useState<boolean>(() => readSectionOpenPref(id))
+  const lastWrittenRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (lastWrittenRef.current === open) return
+    lastWrittenRef.current = open
+    writeSectionOpenPref(id, open)
+  }, [id, open])
+
+  const bodyId = `sidebar-section-body-${id}`
+  return (
+    <section className={styles.section} aria-label={ariaLabel ?? label}>
+      <h3 className={styles.sectionHeading}>
+        <button
+          type="button"
+          className={styles.sectionHeaderButton}
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span className={clsx(styles.sectionHeaderChevron, open && styles.sectionHeaderChevronOpen)} aria-hidden="true">
+            <ChevronTinyIcon />
+          </span>
+          <span>{label}</span>
+          {badge}
+        </button>
+        {headerActions ? (
+          <span className={styles.sectionHeaderActions}>{headerActions}</span>
+        ) : null}
+      </h3>
+      {open ? (
+        <div id={bodyId} className={styles.sectionContent}>
+          {children}
+        </div>
+      ) : null}
+    </section>
+  )
 }
 
 export function GraphLeftSidebar({
@@ -26,14 +184,23 @@ export function GraphLeftSidebar({
   memoryLensOn,
   setMemoryLensOn,
   minimapHostRef,
+  tasks,
+  pickableNodes,
+  onAddTask,
+  onTaskClick,
 }: Props) {
-  // Mirror collapsed state to localStorage so it survives reloads.
   const lastWrittenRef = useRef<boolean | null>(null)
   useEffect(() => {
     if (lastWrittenRef.current === collapsed) return
     lastWrittenRef.current = collapsed
     writeSidebarCollapsedPref(collapsed)
   }, [collapsed])
+
+  const pickableById = useMemo<Map<string, PickableNode>>(() => {
+    const m = new Map<string, PickableNode>()
+    for (const n of pickableNodes) m.set(n.id, n)
+    return m
+  }, [pickableNodes])
 
   const hasRingsOff = RINGS.some((r) => !visibleRings.has(r.tier))
   const toggleRing = (tier: RingTier) =>
@@ -63,7 +230,17 @@ export function GraphLeftSidebar({
               type="button"
               className={styles.collapsedItem}
               onClick={() => setCollapsed(false)}
-              aria-label={hasRingsOff ? 'Rings (some hidden) — expand to adjust' : 'Rings — expand to adjust'}
+              aria-label={tasks.length > 0 ? `Tasks (${tasks.length} upcoming) - expand to view` : 'Tasks - expand to view'}
+              title="Tasks"
+            >
+              <TasksIcon />
+              {tasks.length > 0 ? <span className={styles.collapsedItemBadge} aria-hidden="true" /> : null}
+            </button>
+            <button
+              type="button"
+              className={styles.collapsedItem}
+              onClick={() => setCollapsed(false)}
+              aria-label={hasRingsOff ? 'Rings (some hidden) - expand to adjust' : 'Rings - expand to adjust'}
               title="Rings"
             >
               <RingsIcon />
@@ -73,19 +250,10 @@ export function GraphLeftSidebar({
               type="button"
               className={styles.collapsedItem}
               onClick={() => setCollapsed(false)}
-              aria-label="Minimap — expand to view"
+              aria-label="Minimap - expand to view"
               title="Minimap"
             >
               <MinimapIcon />
-            </button>
-            <button
-              type="button"
-              className={styles.collapsedItem}
-              onClick={() => setCollapsed(false)}
-              aria-label="Tasks — expand to view"
-              title="Tasks"
-            >
-              <TasksIcon />
             </button>
           </div>
         </div>
@@ -110,10 +278,40 @@ export function GraphLeftSidebar({
         </header>
 
         <div className={styles.body}>
-          <section className={styles.section} aria-label="Rings">
-            <h3 className={styles.sectionHeading}>
-              <span>Rings</span>
-            </h3>
+          <CollapsibleSection
+            id="tasks"
+            label="Tasks"
+            headerActions={
+              <button
+                type="button"
+                className={styles.sectionHeaderAction}
+                onClick={onAddTask}
+                aria-label="Add a task"
+                title="Add a task"
+              >
+                <PlusTinyIcon />
+              </button>
+            }
+          >
+            {tasks.length === 0 ? (
+              <p className={styles.tasksEmpty}>
+                Nothing upcoming. Tap + to add one.
+              </p>
+            ) : (
+              <div className={styles.tasksList}>
+                {tasks.map((t) => (
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    pickableById={pickableById}
+                    onClick={() => onTaskClick(t.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </CollapsibleSection>
+
+          <CollapsibleSection id="rings" label="Rings">
             <ul className={styles.filterList}>
               {RINGS.map((ring) => {
                 const on = visibleRings.has(ring.tier)
@@ -134,12 +332,9 @@ export function GraphLeftSidebar({
                 )
               })}
             </ul>
-          </section>
+          </CollapsibleSection>
 
-          <section className={styles.section} aria-label="Connections">
-            <h3 className={styles.sectionHeading}>
-              <span>Connections</span>
-            </h3>
+          <CollapsibleSection id="connections" label="Connections">
             <button
               type="button"
               className={clsx(styles.filterRow, !showAllEdges && styles.filterRowOff)}
@@ -151,12 +346,9 @@ export function GraphLeftSidebar({
               <span className={styles.filterLabel}>Show all</span>
               <span className={styles.filterStatus}>{showAllEdges ? 'On' : 'Off'}</span>
             </button>
-          </section>
+          </CollapsibleSection>
 
-          <section className={styles.section} aria-label="Memories">
-            <h3 className={styles.sectionHeading}>
-              <span>Memories</span>
-            </h3>
+          <CollapsibleSection id="memories" label="Memories">
             <button
               type="button"
               className={clsx(styles.filterRow, styles.memoryRow, !memoryLensOn && styles.filterRowOff)}
@@ -168,23 +360,11 @@ export function GraphLeftSidebar({
               <span className={styles.filterLabel}>Memory lens</span>
               <span className={styles.filterStatus}>{memoryLensOn ? 'On' : 'Off'}</span>
             </button>
-          </section>
+          </CollapsibleSection>
 
-          <section className={styles.section} aria-label="Minimap">
-            <h3 className={styles.sectionHeading}>
-              <span>Minimap</span>
-            </h3>
+          <CollapsibleSection id="minimap" label="Minimap">
             <div ref={minimapHostRef} className={styles.minimapHost} aria-hidden="true" />
-          </section>
-
-          <section className={styles.section} aria-label="Tasks">
-            <h3 className={styles.sectionHeading}>
-              <span>Tasks</span>
-            </h3>
-            <p className={styles.tasksPlaceholder}>
-              Your tasks will appear here once calendar integration ships.
-            </p>
-          </section>
+          </CollapsibleSection>
         </div>
       </div>
     </aside>
@@ -203,6 +383,23 @@ function ChevronRightIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <polyline points="5 3 10 7 5 11" />
+    </svg>
+  )
+}
+
+function ChevronTinyIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 2 7 5 3 8" />
+    </svg>
+  )
+}
+
+function PlusTinyIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+      <line x1="6" y1="2.5" x2="6" y2="9.5" />
+      <line x1="2.5" y1="6" x2="9.5" y2="6" />
     </svg>
   )
 }

@@ -36,6 +36,30 @@ import styles from './NodeInfoModal.module.css'
 import { getInitialsForAvatar } from '../../../shared/util/initials'
 import { usePhotoUrl } from '../../../shared/hooks/usePhotoUrl'
 
+export type UpcomingTaskSummary = {
+  id: string
+  title: string
+  startAt?: string
+}
+
+function formatTaskTimeShort(value?: string): string {
+  if (typeof value !== 'string' || value.length === 0) return 'Time not set'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Time not set'
+  const now = new Date()
+  const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  if (date.toDateString() === now.toDateString()) return `Today · ${time}`
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
+  if (date.toDateString() === tomorrow.toDateString()) return `Tomorrow · ${time}`
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 type Props = {
   userId: string
   nodeId: string
@@ -53,13 +77,14 @@ type Props = {
   inferredRingTier?: RingTier | null
   onClose: () => void
   onSuccess: () => void
-  /** Called immediately after a size step so the canvas can reflect the change. */
   onSizeChanged?: (width: number, height: number) => void
   connectedPeople?: LinkedAvatarItem[]
   connectedPlaces?: LinkedAvatarItem[]
   connectedMemories?: LinkedAvatarItem[]
+  upcomingTasks?: UpcomingTaskSummary[]
   onFocusConnectedNode?: (nodeId: string) => void
   onFocusConnectedMemory?: (memoryId: string) => void
+  onFocusTask?: (taskId: string) => void
 }
 
 export function NodeInfoModal({
@@ -83,8 +108,10 @@ export function NodeInfoModal({
   connectedPeople,
   connectedPlaces,
   connectedMemories,
+  upcomingTasks,
   onFocusConnectedNode,
   onFocusConnectedMemory,
+  onFocusTask,
 }: Props) {
   const [name, setName] = useState(nodeName)
   const [relationship, setRelationship] = useState(nodeRelationship)
@@ -180,6 +207,8 @@ export function NodeInfoModal({
     setPendingPhotoRemoval(false)
     setPhotoFile(file)
   }
+
+  const initialRingTier: RingTier | null = nodeRingTier ?? null
 
   const handleSave = async (e: SubmitEvent) => {
     e.preventDefault()
@@ -309,7 +338,6 @@ export function NodeInfoModal({
     : undefined
   const fallbackInitials = getInitialsForAvatar(name || nodeName)
 
-  const initialRingTier: RingTier | null = nodeRingTier ?? null
   const hasUnsavedChanges = (() => {
     if (nodeType === 'person') {
       return (
@@ -411,6 +439,32 @@ export function NodeInfoModal({
 
   const connectedSections = (nodeType === 'person' || nodeType === 'place') ? (
     <>
+      {upcomingTasks && upcomingTasks.length > 0 ? (
+        <section className={styles.connectedSection}>
+          <p className={styles.connectedLabel}>
+            <strong>Upcoming</strong>
+          </p>
+          <div className={styles.upcomingList}>
+            {upcomingTasks.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={styles.upcomingRow}
+                onClick={() => onFocusTask?.(t.id)}
+                disabled={busy}
+                aria-label={`Open task: ${t.title || 'Untitled task'}`}
+              >
+                <span className={styles.upcomingTitle}>
+                  {t.title || 'Untitled task'}
+                </span>
+                <span className={styles.upcomingTime}>
+                  {formatTaskTimeShort(t.startAt)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {connectedPeople && connectedPeople.length > 0 ? (
         <section className={styles.connectedSection}>
           <p className={styles.connectedLabel}>

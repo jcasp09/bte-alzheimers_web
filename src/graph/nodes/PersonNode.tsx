@@ -21,6 +21,7 @@ export function PersonNode({ data }: NodeProps) {
   const memoryCount = typeof data.memoryCount === 'number' && Number.isFinite(data.memoryCount)
     ? data.memoryCount
     : 0
+  const hasUpcomingTask = data.hasUpcomingTask === true
   const selectionRing = (data as { selectionRing?: { color: string; width: number } }).selectionRing
 
   const { width: w, height: h } = safeNodeDimensions('person', data.width, data.height)
@@ -181,6 +182,36 @@ export function PersonNode({ data }: NodeProps) {
           title={`${memoryCount} ${memoryCount === 1 ? 'memory' : 'memories'}`}
         >
           {memoryCount}
+        </div>
+      ) : null}
+
+      {hasUpcomingTask ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: -8,
+            left: -8,
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            background: 'var(--color-accent)',
+            color: 'var(--color-text-inverse)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid var(--color-surface-raised)',
+            boxShadow: '0 2px 4px rgba(var(--color-shadow-rgb), 0.18)',
+            pointerEvents: 'none',
+            zIndex: 2,
+            boxSizing: 'border-box',
+          }}
+          aria-label="Upcoming task linked"
+          title="Upcoming task"
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="6" cy="6" r="4.5" />
+            <polyline points="6 3.5 6 6 7.5 7.5" />
+          </svg>
         </div>
       ) : null}
 

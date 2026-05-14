@@ -8,7 +8,7 @@ import styles from '../Graph.module.css'
 type DockKind = 'person' | 'place' | 'memory'
 
 type Props = {
-  openPanel: 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory' | null
+  openPanel: 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory' | 'addTask' | null
   togglePerson: () => void
   togglePlace: () => void
   toggleConnection: () => void

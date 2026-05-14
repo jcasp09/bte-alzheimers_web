@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase/firestore'
 import { removeMemoryReferencesToDeletedNode } from '../../memories/data/memories'
+import { removeNodeIdFromAllTaskLinks } from './tasks'
 import { GRAPH_IDS, SELF_NODE_ID, type GraphId, type NodeDoc } from '../model/types'
 import {
   edgeDocRef,
@@ -58,6 +59,7 @@ export type CreateTaskNodeData = {
   calendarEventId: string
   priority: number
   location?: string
+  linkedNodeIds?: string[]
 }
 
 export type CreateNodeData =
@@ -214,6 +216,11 @@ export async function deleteNodeAndEdges(
 
   if (graphId === 'context') {
     await removeMemoryReferencesToDeletedNode(uid, nodeId)
+    try {
+      await removeNodeIdFromAllTaskLinks(uid, nodeId)
+    } catch (error) {
+      console.warn('Failed to remove deleted node id from task links', error)
+    }
   }
 }
 

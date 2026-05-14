@@ -4,7 +4,7 @@ import { PencilIcon } from './icons'
 import type { FieldValidator } from '../validation/fieldValidators'
 import styles from './InlineEditableField.module.css'
 
-type FieldKind = 'text' | 'email' | 'tel' | 'date' | 'textarea'
+type FieldKind = 'text' | 'email' | 'tel' | 'date' | 'datetime-local' | 'textarea'
 
 type Props = {
   label: string

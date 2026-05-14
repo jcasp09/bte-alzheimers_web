@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Edge, Node, Viewport } from '@xyflow/react'
 import { getEdges } from '../../../graph/data/edges'
-import { getNodes } from '../../../graph/data/nodes'
+import { getNodes, removePassedTaskNodes } from '../../../graph/data/nodes'
 import { ensureSelfNode } from '../../../graph/data/selfNode'
 import { getGraphViewport } from '../../../graph/data/viewport'
+import { getUpcomingTasks, type UpcomingTask } from '../../../graph/data/tasks'
 import { GRAPH_IDS, SELF_NODE_ID } from '../../../graph/model/types'
 import { getMemories, type MemoryDoc } from '../../../memories/data/memories'
 import {
@@ -11,18 +12,30 @@ import {
   firestoreNodesToReactFlow,
 } from '../lib/nodeMappers'
 
-/** Loads context-graph nodes/edges/viewport plus memories for the active user.
- *  Owns the canonical state for these collections; consumers read and mutate
- *  them through the returned setters and the imperative reload helper. */
+/** Loads context-graph nodes/edges/viewport plus memories and upcoming tasks
+ *  for the active user. Owns the canonical state for these collections;
+ *  consumers read and mutate them through the returned setters and the
+ *  imperative reload helpers. */
 export function useGraphData(uid: string | undefined) {
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [memories, setMemories] = useState<MemoryDoc[]>([])
+  const [tasks, setTasks] = useState<UpcomingTask[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [initialViewport, setInitialViewport] = useState<Viewport | undefined>(undefined)
   const flowKeyRef = useRef(0)
   const [flowKey, setFlowKey] = useState(0)
+
+  const reloadTasks = useCallback(async () => {
+    if (!uid) return
+    try {
+      const upcoming = await getUpcomingTasks(uid)
+      setTasks(upcoming)
+    } catch (err) {
+      console.warn('Failed to refresh upcoming tasks', err)
+    }
+  }, [uid])
 
   /** Fetch everything in parallel and force-remount the flow so React Flow
    *  picks up the new initial viewport. Pass skipLoading when refreshing
@@ -32,11 +45,18 @@ export function useGraphData(uid: string | undefined) {
     if (!opts?.skipLoading) setLoading(true)
     setError(null)
     try {
-      const [nodesData, edgesData, viewport, memoriesData] = await Promise.all([
+      try {
+        await removePassedTaskNodes(uid)
+      } catch (sweepErr) {
+        console.warn('Failed to remove passed task nodes', sweepErr)
+      }
+
+      const [nodesData, edgesData, viewport, memoriesData, tasksData] = await Promise.all([
         getNodes(uid, GRAPH_IDS.context),
         getEdges(uid, GRAPH_IDS.context),
         getGraphViewport(uid, GRAPH_IDS.context),
         getMemories(uid),
+        getUpcomingTasks(uid),
       ])
 
       let mergedNodes = nodesData
@@ -49,6 +69,7 @@ export function useGraphData(uid: string | undefined) {
       setNodes(firestoreNodesToReactFlow(mergedNodes))
       setEdges(firestoreEdgesToReactFlow(edgesData))
       setMemories(memoriesData)
+      setTasks(tasksData)
       setInitialViewport(viewport ?? undefined)
       flowKeyRef.current += 1
       setFlowKey(flowKeyRef.current)
@@ -59,14 +80,13 @@ export function useGraphData(uid: string | undefined) {
     }
   }, [uid])
 
-  // Initial load + reload when the active user changes. Logged-out state clears
-  // the in-memory collections so a stale graph never leaks across users.
   useEffect(() => {
     if (!uid) {
       setLoading(false)
       setNodes([])
       setEdges([])
       setMemories([])
+      setTasks([])
       return
     }
     void loadGraph()
@@ -76,10 +96,12 @@ export function useGraphData(uid: string | undefined) {
     nodes, setNodes,
     edges, setEdges,
     memories, setMemories,
+    tasks, setTasks,
     initialViewport,
     flowKey,
     loading,
     error,
     loadGraph,
+    reloadTasks,
   }
 }

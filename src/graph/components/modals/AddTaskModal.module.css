@@ -1,0 +1,74 @@
+.editForm {
+  margin-bottom: 0;
+}
+
+.fieldList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.sectionLabel {
+  margin: 0 0 0.4rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.sectionLabel strong {
+  font-weight: 600;
+}
+
+.linksSection {
+  margin-top: 0.25rem;
+}
+
+.linksEmpty {
+  margin: 0;
+  padding: 0.25rem 0.1rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.connectionsHelp {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.networkSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+}
+
+.networkHeading {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.heroIconWrap {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.heroIconWrap svg {
+  width: 60%;
+  height: 60%;
+}

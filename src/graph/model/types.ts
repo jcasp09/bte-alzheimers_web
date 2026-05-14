@@ -35,6 +35,7 @@ export type NodeDoc = {
   calendarEventId?: string
   priority?: number
   location?: string
+  linkedNodeIds?: string[]
   ringTier?: number
 }
 

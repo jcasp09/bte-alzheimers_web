@@ -5,7 +5,6 @@ import Header from './app/Header'
 import Home from './pages/Home'
 import Graph from './pages/graph/GraphPage'
 import Account from './pages/settings/Account'
-import Tasks from './pages/Tasks'
 import Settings from './pages/settings/Settings'
 import Appearance from './pages/settings/Appearance'
 import Accessibility from './pages/settings/Accessibility'
@@ -27,7 +26,6 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/graph" element={<Graph />} />
-              <Route path="/tasks" element={<Tasks />} />
               <Route path="/settings" element={<Settings />}>
                 <Route index element={<Navigate to="account" replace />} />
                 <Route path="account" element={<Account />} />

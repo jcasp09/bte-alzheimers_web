@@ -31,7 +31,9 @@ import timelineStyles from '../../memories/components/MemoryTimeline.module.css'
 import { AddNodePanel } from '../../graph/components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../../graph/components/modals/AddConnectionModal.tsx'
 import { AddMemoryModal } from '../../graph/components/modals/AddMemoryModal.tsx'
-import { NodeInfoModal } from '../../graph/components/modals/NodeInfoModal.tsx'
+import { AddTaskPanel } from '../../graph/components/modals/AddTaskModal.tsx'
+import { NodeInfoModal, type UpcomingTaskSummary } from '../../graph/components/modals/NodeInfoModal.tsx'
+import { TaskInfoPanel } from '../../graph/components/modals/TaskInfoModal.tsx'
 import { EdgeInfoModal } from '../../graph/components/modals/EdgeInfoModal.tsx'
 import { SelfNodeInfoModal } from '../../graph/components/modals/SelfNodeInfoModal.tsx'
 import { MemoryInfoModal } from '../../memories/components/MemoryInfoModal.tsx'
@@ -52,11 +54,13 @@ function Graph() {
     nodes, setNodes,
     edges, setEdges,
     memories,
+    tasks,
     initialViewport,
     flowKey,
     loading,
     error,
     loadGraph,
+    reloadTasks,
   } = useGraphData(user?.uid)
   const [memorySelection, setMemorySelection] = useState<MemorySelection | null>(null)
   const [memoryBrushRange, setMemoryBrushRange] = useState<MemoryBrushRange | null>(null)
@@ -72,6 +76,7 @@ function Graph() {
     selectedNode,
     selectedEdge,
     memoryInfoId,
+    taskInfoId,
     pendingNodePosition,
     isSidePanelOpen,
     isSelfInfoOpen,
@@ -80,6 +85,7 @@ function Graph() {
     openNodeInfo,
     openEdgeInfo,
     openMemoryInfo,
+    openTaskInfo,
     openSelfInfo,
     togglePanel,
   } = useGraphSidePanel()
@@ -105,7 +111,6 @@ function Graph() {
     searchResults,
   } = useNodeSearch(nodes, memories, currentLayer)
 
-  // Drop changes that target IDs the parent doesn't own.
   const onEdgesChange: OnEdgesChange = (changes) => {
     setEdges((eds) => {
       const known = new Set(eds.map((e) => e.id))
@@ -138,7 +143,6 @@ function Graph() {
     )
   }
 
-  /** Pane-click handler: close any open side panel and clear memory-layer selection/brush. */
   const handlePaneClick = () => {
     if (canvasLinkMode) return
     if (currentLayer === 'memories') {
@@ -201,7 +205,7 @@ function Graph() {
     canvasExtent,
     panExtent,
   } = useDisplayElements({
-    nodes, edges, memories,
+    nodes, edges, memories, tasks,
     currentLayer, visibleRings,
     showAllEdges,
     memoryLensOn, memoryLensRange,
@@ -235,7 +239,6 @@ function Graph() {
     return out
   }, [nodes])
 
-  // Derive the pickable nodes from the graph state
   const pickableNodes = useMemo<PickableNode[]>(() => {
     const out: PickableNode[] = []
     for (const n of nodes) {
@@ -312,6 +315,26 @@ function Graph() {
     return { people, places, memories: linkedMemories }
   }, [selectedNode, edges, nodes, memories])
 
+  const upcomingTasksForSelectedNode = useMemo<UpcomingTaskSummary[]>(() => {
+    if (!selectedNode) return []
+    const id = selectedNode.id
+    return tasks
+      .filter((t) => Array.isArray(t.linkedNodeIds) && t.linkedNodeIds.includes(id))
+      .slice(0, 3)
+      .map((t) => ({
+        id: t.id,
+        title: (typeof t.title === 'string' && t.title.trim().length > 0)
+          ? t.title
+          : (t.name ?? 'Untitled task'),
+        startAt: t.startAt,
+      }))
+  }, [selectedNode, tasks])
+
+  const selectedTask = useMemo(
+    () => (taskInfoId ? tasks.find((t) => t.id === taskInfoId) ?? null : null),
+    [taskInfoId, tasks],
+  )
+
   const handleDropAtFlowPosition = (kind: string, point: XY) => {
     if (kind === 'person' || kind === 'place') {
       openAddPanel(kind === 'person' ? 'addPerson' : 'addPlace', point)
@@ -319,7 +342,6 @@ function Graph() {
     }
 
     if (kind === 'memory') {
-      // Memories don't have stored positions
       openAddPanel('addMemory')
     }
   }
@@ -355,7 +377,6 @@ function Graph() {
       }
       if (node.type === 'person' || node.type === 'place') {
         setMemorySelection({ kind: 'context', id: node.id })
-        // fall through to open the existing NodeInfoModal below
       } else {
         return
       }
@@ -389,7 +410,6 @@ function Graph() {
   }
 
   const handleEdgeClick = (_: MouseEvent, edge: Edge) => {
-    // Memory-layer synth edges aren't backed by Firestore
     if (edge.id.startsWith(SYNTH_EDGE_PREFIX))
       return
 
@@ -432,7 +452,7 @@ function Graph() {
         eds.map((e) => {
           if (e.id !== edgeId)
             return e
-          
+
           const next: Edge = { ...e }
           const t = label.trim()
 
@@ -451,7 +471,6 @@ function Graph() {
     tryQueueConnection(connection)
   }
 
-  // If user is not logged in, send to login page
   if (!user) {
     return (
       <section className={styles.statusFrame}>
@@ -462,17 +481,15 @@ function Graph() {
     )
   }
 
-  // Loading state
   if (loading) {
     return (
       <section className={styles.statusFrame}>
         <h1>Graph</h1>
-        <p>Loading your relationship graph…</p>
+        <p>Loading your relationship graph...</p>
       </section>
     )
   }
 
-  // Error state
   if (error) {
     return (
       <section className={styles.statusFrame}>
@@ -533,7 +550,6 @@ function Graph() {
     window.setTimeout(() => flowRef.current?.focusNode(memoryId), 0)
   }
 
-  // Render the graph
   return (
     <section className={styles.fullBleedRoot} aria-label={sectionLabel}>
       <h1 className="sr-only">{sectionLabel}</h1>
@@ -641,6 +657,10 @@ function Graph() {
           memoryLensOn={memoryLensOn}
           setMemoryLensOn={setMemoryLensOn}
           minimapHostRef={minimapHostRef}
+          tasks={tasks}
+          pickableNodes={pickableNodes}
+          onAddTask={() => openAddPanel('addTask')}
+          onTaskClick={(taskId) => openTaskInfo(taskId)}
         />
 
         <GraphSearch
@@ -714,8 +734,10 @@ function Graph() {
             connectedPeople={connectedForSelectedNode?.people}
             connectedPlaces={connectedForSelectedNode?.places}
             connectedMemories={connectedForSelectedNode?.memories}
+            upcomingTasks={upcomingTasksForSelectedNode}
             onFocusConnectedNode={focusConnectedNode}
             onFocusConnectedMemory={focusConnectedMemory}
+            onFocusTask={(taskId) => openTaskInfo(taskId)}
             onSizeChanged={(w, h) => {
               setNodes((nds) =>
                 nds.map((n) =>
@@ -797,6 +819,35 @@ function Graph() {
             onClose={closeSidePanel}
             onQueueConnection={tryQueueConnection}
             onSetCanvasLinkMode={setCanvasLinkMode}
+          />
+        )}
+
+        {openPanel === 'addTask' && (
+          <AddTaskPanel
+            userId={user.uid}
+            pickableNodes={pickableNodes}
+            onClose={closeSidePanel}
+            onSetCanvasLinkMode={setCanvasLinkMode}
+            onSuccess={() => {
+              void reloadTasks()
+            }}
+          />
+        )}
+
+        {selectedTask && (
+          <TaskInfoPanel
+            key={selectedTask.id}
+            userId={user.uid}
+            task={selectedTask}
+            pickableNodes={pickableNodes}
+            onClose={closeSidePanel}
+            onSetCanvasLinkMode={setCanvasLinkMode}
+            onSaved={() => {
+              void reloadTasks()
+            }}
+            onDeleted={() => {
+              void reloadTasks()
+            }}
           />
         )}
       </div>

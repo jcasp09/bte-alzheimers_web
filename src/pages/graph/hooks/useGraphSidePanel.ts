@@ -30,7 +30,7 @@ export type SelectedEdge = {
 }
 
 /** Which Add* panel is open in the side slot. */
-export type AddPanelKind = 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory'
+export type AddPanelKind = 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory' | 'addTask'
 
 /** Single discriminated state for the side-panel slot. */
 type SidePanelState =
@@ -39,6 +39,7 @@ type SidePanelState =
   | { kind: 'nodeInfo'; node: SelectedNode }
   | { kind: 'edgeInfo'; edge: SelectedEdge }
   | { kind: 'memoryInfo'; memoryId: string }
+  | { kind: 'taskInfo'; taskId: string }
   | { kind: 'selfInfo' }
 
 /** Owns the canvas side-panel slot and enforces mutual exclusion across
@@ -51,21 +52,23 @@ export function useGraphSidePanel() {
     selectedNode: state.kind === 'nodeInfo' ? state.node : null,
     selectedEdge: state.kind === 'edgeInfo' ? state.edge : null,
     memoryInfoId: state.kind === 'memoryInfo' ? state.memoryId : null,
+    taskInfoId: state.kind === 'taskInfo' ? state.taskId : null,
     pendingNodePosition: state.kind === 'add' ? state.position : null,
     isSelfInfoOpen: state.kind === 'selfInfo',
     isSidePanelOpen:
       state.kind === 'nodeInfo' ||
       state.kind === 'edgeInfo' ||
       state.kind === 'memoryInfo' ||
+      state.kind === 'taskInfo' ||
       state.kind === 'selfInfo' ||
       state.kind === 'add',
-
     close: () => setState({ kind: 'none' }),
     openAddPanel: (panel: AddPanelKind, position: XY | null = null) =>
       setState({ kind: 'add', panel, position }),
     openNodeInfo: (node: SelectedNode) => setState({ kind: 'nodeInfo', node }),
     openEdgeInfo: (edge: SelectedEdge) => setState({ kind: 'edgeInfo', edge }),
     openMemoryInfo: (memoryId: string) => setState({ kind: 'memoryInfo', memoryId }),
+    openTaskInfo: (taskId: string) => setState({ kind: 'taskInfo', taskId }),
     openSelfInfo: () => setState({ kind: 'selfInfo' }),
     /** Click-to-toggle for dock buttons: clicking the same panel twice closes it. */
     togglePanel: (panel: AddPanelKind) =>
