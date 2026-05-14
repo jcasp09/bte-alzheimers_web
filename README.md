@@ -1,169 +1,115 @@
 # Memory Jog
 
-Preview: `npm run dev`
+Memory Jog is a web application that turns the people, places, tasks, and memories most important to you into a calm, visual map. It is designed to support cognitive wellbeing across a wide spectrum, from people who want a friendlier way to keep track of their lives to those living with dementia or Alzheimer's. Caregivers and family members can also help set up and maintain the graph on someone else's behalf.
+
+## Contents
 
 1. Overview
-2. Core Functionality
-3. Advanced Features
-4. Tech Stack
-5. Data Model
+2. Features
+3. How to Run It
+4. Configuration
+5. Project Structure
+6. Data Model
+7. Tech Stack
 
----
+## 1. Overview
 
-### 1. Overview
+The core idea is simple. Rather than asking the user to manage long lists, calendars, and contacts spread across different apps, Memory Jog draws a single relationship graph centered on the person using it. Family, friends, doctors, neighbors, meaningful places, and upcoming tasks all become nodes that connect back to a central "Self" node. The result is a familiar, at-a-glance picture of one's life that is easier to read than text-heavy interfaces.
 
-#### Motivation/Vision
+The interface is built for clarity first. Visuals are large, contrast is high, motion can be reduced, and themes are adjustable. The same graph that helps someone with mild memory issues stay oriented can be used by a fully cognitively intact user who simply enjoys the layout.
 
-This application provides preventative and early-stage cognitive support through visual, relational graphs. It can help you maintain routines, and stay on track through calendar integration, as well as preserve identity, and strengthen mental associations between the people, places, and activities most important to you
+## 2. Features
 
-#### Demographic
+### Relationship Graph
 
-Our app's aim is to adapt to cognitive progression instead of being limited to a single clinical use case. Through customizable UI, both cognitively intact individuals and those looking for preventative-support can find use.
+The main canvas is an interactive graph powered by React Flow. A central "Self" node represents the user, surrounded by concentric rings:
 
----
+- **Favorites**: spouse, parents, children, siblings, and anyone else you choose to keep nearest.
+- **Family**: extended family, including grandparents, aunts, uncles, cousins, and in-laws.
+- **Friends**: personal friends.
+- **Community**: neighbors, coworkers, doctors, caregivers, and other people in your life.
+- **Places**: meaningful places such as home, workplaces, and regular destinations.
 
-### 2. Core Functionality:
+Ring placement is automatic when you set a relationship. For example, typing "daughter" places the node in Favorites, while "doctor" places it in Community. Any node can also be moved to a different ring manually. Each node carries a photo, name, and the metadata that makes sense for its type: people show relationship, email, and phone; places show address; tasks show start time, end time, location, and priority.
 
-Visual Relationship Graphs lie at the heart of this application. They let you represent meaningful entities and their relationships to each other.
+The canvas itself supports panning, zooming, drag-and-drop placement from a dock of node types, gentle motion (which can be turned off), and a search bar that jumps to any node by name. A side panel handles adding nodes, viewing details, editing connections, and removing items.
 
-### 1. Node Types:
+### Memory Layer
 
-- People (family, doctors, caregivers)
-- Places (home, work, doctor’s office)
-- Tasks / Events (Calendar integration)
-- Memories (Journal-entries)
+Memories are a distinct kind of node that captures a moment in time. Each memory can include one or more photos, descriptive text, an "occurred on" date, and links to the people and places involved. A dedicated timeline lets you browse memories by date or drag out a range to focus on a specific period. When the memory layer is active, unrelated context nodes fade so the connections to the moment stand out.
 
-### 2. Edge Types: (TBD)
+### Tasks and Calendar
 
-### 3. UI
+The Tasks page lists upcoming items pulled from the graph in chronological order, with friendly labels like "Today" and "Tomorrow." Tasks can be created manually as nodes or imported by connecting Google Calendar from the Integrations settings page. Imported events become task nodes that can link to relevant people and places, and items that have already passed are cleared automatically.
 
-Each graph is **highly customizable**:
+### Customizable Appearance
 
-- Node size and visibility control
-- Adjustable number of displayed nodes
-- Zoomable and pannable layout
-- Ability to:
-  - Add nodes
-  - Add relationships
-  - Upload images per node
-  - Link nodes together
-- Gentle 2D physics (nodes slowly float for an inviting feel)
-- Dynamic node scaling based on importance / urgency
-- Accessibility features:
+Three themes ship with the app: **Soft** (sage greens, the default), **Warm** (parchment and brown for a softer, paper-like feel), and **Dark** (low-light navy with warm gold accents). Theme choice is saved to the user's profile and follows them across devices.
 
----
+### Accessibility
 
-### 3. Advanced Feature Concepts
+Motion can be set to follow the system's reduced-motion preference or always reduced, which is helpful for users sensitive to animation. The graph supports keyboard navigation, ARIA roles, generous tap targets, and plain-language validation messages. Design tokens are centralized so future accessibility adjustments, including font sizing, can be tuned in one place.
 
-#### A. Task / Calendar Integration (Time-Oriented Cognitive Support)
+### Account Management
 
-- Integrates external calendar APIs
-- Automatically creates task/event nodes
-- Tasks dynamically link to:
-  - Person nodes
-  - Place nodes
-  - Medication nodes
+Each user has a profile that includes name, birthday, and an optional photo. Settings are split into Account, Appearance, Accessibility, and Integrations for easy navigation.
 
-Example:
-A doctor’s appointment → creates a task node → links to:
+### Per-User Cloud Sync
 
-- Doctor (person)
-- Doctor’s office (place)
+Everything lives in the user's own Firestore document. Photos are stored in Firebase Storage and referenced by URL, which keeps Firestore reads lightweight.
 
-Graph-driven scheduling visualization:
+## 3. How to Run It
 
-- Node size ∝ time until event
-- Display limits:
-  - Maximum upcoming tasks
-  - Maximum linked context nodes
-- Tunable complexity for different cognitive needs
+The web app is a Vite project. You will need Node.js 20 or later and npm installed.
 
-This targets common decline areas:
+**First time setup:**
 
-- Time orientation
-- Task recall
-- Planning
-- Sequencing
+1. From the `bte-alzheimers_web` directory, install dependencies: `npm install`
+2. Copy `configs/.env.example` to `configs/.env` and fill in your Firebase project credentials and Google Calendar OAuth client ID. Details are in the Configuration section below.
+3. Run the server via `npm run dev`, and view at http://localhost:5173.
 
-#### B. Memory / Moment Nodes (Past-Oriented Cognitive Support)
+## 4. Configuration
 
-Memory nodes act as visual snapshots of the past, serving as:
+All environment variables live in `configs/.env`. The `configs/.env.example` file is checked in as a template; the real `.env` is ignored by git. You will need:
 
-- Emotional anchors
-- Identity reinforcers
-- Relationship reminders
+- A Firebase project with Authentication (Email/Password), Cloud Firestore, and Cloud Storage enabled. Paste the Web SDK config values into the seven `VITE_FIREBASE_*` variables.
+- A Google Cloud OAuth 2.0 Web client with the Calendar read-only scope. Paste the client ID into `VITE_GOOGLE_CALENDAR_CLIENT_ID`.
 
-Each memory node contains:
+Firestore and Storage security rules are kept in `configs/firestore.rules` and `configs/storage.rules`, wired up through `firebase.json`. Deploy them with the Firebase CLI when you are ready to push changes.
 
-- One or more images
-- Description text
-- Links to any relevant people, places, or tasks
+## 5. Project Structure
 
-Two design options:
+The `src/` folder is organized by feature rather than by file type:
 
-1. Separate Visual Journal View
-2. Unified Graph Node Type
-   These nodes connect past, present, and future, reinforcing continuity of identity.
+- `app/` contains the top-level header and application shell.
+- `auth/` holds the authentication context and provider that expose the current user and profile to the rest of the app.
+- `firebase/` initializes the Firebase app and exports the SDK clients for Auth, Firestore, and Storage.
+- `calendar/` wraps the Google Calendar OAuth flow and event sync.
+- `graph/` contains the visual graph: node components, edge handles, Firestore adapters, the ring model, and the modal dialogs for adding and editing nodes, connections, and memories.
+- `memories/` contains memory storage, the memory-layer model, the timeline component, and the memory detail modal.
+- `pages/` contains the routed pages: `Home`, `Tasks`, the `graph/` page with its sidebar and search, and the `settings/` section.
+- `settings/` stores the theme and motion preference modules.
+- `shared/` contains the reusable UI primitives, hooks, validation helpers, and design tokens used across the app.
 
----
+## 6. Tech Stack
 
-### 4. Tech Stack
+**Frontend**
 
-### Frontend
+- React 19 with TypeScript
+- Vite 7 for the dev server and production builds
+- React Router 7 for navigation
+- @xyflow/react (React Flow) for the graph canvas
+- clsx for class composition
+- CSS Modules and CSS custom properties for theming
 
-- React + Vite
-- React Flow
+**Backend (Firebase)**
 
-### Backend: Firebase (BaaS)
+- Authentication (Email/Password)
+- Cloud Firestore for user data, nodes, edges, and memories
+- Cloud Storage for images
+- Analytics
 
-#### Authentication
+**Tooling**
 
-- Handles user authentication
-- Stores identity & access control
-
-#### Firestore Database
-
-- Stores:
-  - User profiles
-  - Graph structure
-  - Nodes
-  - Edges
-  - Preferences
-  - Reminders
-
-#### Storage
-
-- Stores:
-  - Node images
-  - Memory photos
-- Firestore only stores image URLs
-
----
-
-### 5. High-Level Data Model (WIP)
-
-```swift
-users/{userId}/
- ├── profile/
- │    ├── name
- │    ├── email
- │    ├── themePreference
- │    ├── emergencyContacts
- │
- ├── graph/
- │    ├── nodes/{nodeId}/
- │    │     ├── type (person | place | task | memory)
- │    │     ├── label
- │    │     ├── imageURLj
- │    │     ├── priority
- │    │     ├── metadata (timestamps, tags, etc.)
- │    │
- │    ├── edges/{edgeId}/
- │          ├── sourceNodeId
- │          ├── targetNodeId
- │          ├── relationshipType
- │          ├── weight / importance
- │
- ├── reminders/
- │    ├── {reminderId}
-```
+- ESLint with the TypeScript and React Hooks plugins
+- TypeScript strict configuration split across `configs/tsconfig.app.json` and `configs/tsconfig.node.json`
