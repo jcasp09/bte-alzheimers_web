@@ -1,39 +1,10 @@
 import type { Edge, Node } from '@xyflow/react'
-import { type Layer, type XY } from '../../../graph/model/flowConstants'
-import { GROUP_DRAW_BOUNDS, GROUP_NODE_DEFAULT_SIZE } from '../../../graph/model/dimensions'
+import { type Layer } from '../../../graph/model/flowConstants'
 import { CENTER_SOURCE_HANDLE_ID, CENTER_TARGET_HANDLE_ID } from '../../../graph/components/NodeEdgeHandles'
 import type { EdgeDoc, NodeDoc, NodeType } from '../../../graph/model/types'
 
 /** Context graph displays only relationship-layer node types. */
-export const CONTEXT_GRAPH_NODE_TYPES = new Set<NodeType>(['person', 'place', 'group', 'self'])
-
-/** Build a normalized rect from two corner points, clamped to the group draw bounds. */
-export function rectFromCorners(p1: XY, p2: XY): { x: number; y: number; width: number; height: number } {
-  const x = Math.min(p1.x, p2.x)
-  const y = Math.min(p1.y, p2.y)
-  const width = Math.min(GROUP_DRAW_BOUNDS.max, Math.max(GROUP_DRAW_BOUNDS.minW, Math.abs(p2.x - p1.x)))
-  const height = Math.min(GROUP_DRAW_BOUNDS.max, Math.max(GROUP_DRAW_BOUNDS.minH, Math.abs(p2.y - p1.y)))
-  return { x, y, width, height }
-}
-
-/** Sort docs so groups render before their children in React Flow's parent-aware layout. */
-export function sortContextGraphDocs(docs: NodeDoc[]): NodeDoc[] {
-  const inScope = docs.filter((d) => CONTEXT_GRAPH_NODE_TYPES.has(d.type))
-  const roots = inScope.filter((d) => !d.parentId)
-  const children = inScope.filter((d) => d.parentId)
-  roots.sort((a, b) => {
-    const ag = a.type === 'group' ? 0 : 1
-    const bg = b.type === 'group' ? 0 : 1
-    if (ag !== bg) return ag - bg
-    return a.id.localeCompare(b.id)
-  })
-  children.sort((a, b) => {
-    const p = (a.parentId ?? '').localeCompare(b.parentId ?? '')
-    if (p !== 0) return p
-    return a.id.localeCompare(b.id)
-  })
-  return [...roots, ...children]
-}
+export const CONTEXT_GRAPH_NODE_TYPES = new Set<NodeType>(['person', 'place', 'self'])
 
 /** Coerce a possibly-malformed stored position into a finite-number pair. */
 function safePosition(p: { x?: number; y?: number } | undefined): { x: number; y: number } {
@@ -60,31 +31,9 @@ export function docToReactFlowNode(doc: NodeDoc): Node | null {
     }
   }
 
-  if (doc.type === 'group') {
-    const w =
-      typeof doc.width === 'number' && Number.isFinite(doc.width)
-        ? doc.width
-        : GROUP_NODE_DEFAULT_SIZE.width
-    const h =
-      typeof doc.height === 'number' && Number.isFinite(doc.height)
-        ? doc.height
-        : GROUP_NODE_DEFAULT_SIZE.height
-    return {
-      id: doc.id,
-      type: 'group',
-      parentId: doc.parentId,
-      position: safePosition(doc.position),
-      width: w,
-      height: h,
-      zIndex: -1,
-      data: { name: doc.name },
-    }
-  }
-
   return {
     id: doc.id,
     type: doc.type,
-    parentId: doc.parentId,
     data: {
       name: doc.name,
       relationship: doc.relationship,
@@ -108,7 +57,8 @@ export function docToReactFlowNode(doc: NodeDoc): Node | null {
 }
 
 export function firestoreNodesToReactFlow(nodes: NodeDoc[]): Node[] {
-  return sortContextGraphDocs(nodes)
+  return nodes
+    .filter((d) => CONTEXT_GRAPH_NODE_TYPES.has(d.type))
     .map(docToReactFlowNode)
     .filter((n): n is Node => n != null)
 }

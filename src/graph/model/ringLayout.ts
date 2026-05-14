@@ -72,10 +72,6 @@ export function ringGuideNodeId(tier: RingTier): string {
   return `${RING_GUIDE_NODE_ID_PREFIX}${tier}`
 }
 
-export function isRingGuideNodeId(id: string): boolean {
-  return id.startsWith(RING_GUIDE_NODE_ID_PREFIX)
-}
-
 function phaseForTier(tier: RingTier): number {
   return ((tier - 1) * Math.PI) / 4
 }
@@ -118,9 +114,8 @@ function dimsForRingedNode(node: Node): { width: number; height: number } {
 }
 
 function isRinged(node: Node): boolean {
-  if (node.type !== 'person' && node.type !== 'place') return false
-  if (node.parentId) return false
-  return true
+  return !(node.type !== 'person' && node.type !== 'place');
+
 }
 
 export type PositionMap = Map<string, { x: number; y: number }>

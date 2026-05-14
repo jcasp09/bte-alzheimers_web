@@ -16,11 +16,8 @@ import { GRAPH_IDS } from '../../model/types'
 import { inferRingFromRelationship, type RingTier } from '../../model/rings'
 import { RingPicker } from '../RingPicker'
 import {
-  GROUP_DIMENSION_BOUNDS,
-  GROUP_NODE_DEFAULT_SIZE,
   canDecreaseNodeSize,
   canIncreaseNodeSize,
-  clampGroupDimension,
   defaultNodeSize,
   safeNodeDimensions,
   stepNodeDimensions,
@@ -29,7 +26,6 @@ import {
   addressValidator,
   allValid,
   emailValidator,
-  groupNameValidator,
   personNameValidator,
   phoneValidator,
   placeNameValidator,
@@ -135,24 +131,14 @@ export function NodeInfoModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [groupW, setGroupW] = useState(() =>
-    clampGroupDimension(nodeWidth, GROUP_NODE_DEFAULT_SIZE.width),
-  )
-  const [groupH, setGroupH] = useState(() =>
-    clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height),
-  )
-
   const canEdit = nodeType === 'person' || nodeType === 'place'
-  const isGroup = nodeType === 'group'
 
   const nameValidator =
     nodeType === 'person'
       ? personNameValidator
       : nodeType === 'place'
         ? placeNameValidator
-        : nodeType === 'group'
-          ? groupNameValidator
-          : null
+        : null
 
   const formValid = (() => {
     if (nodeType === 'person') {
@@ -168,9 +154,6 @@ export function NodeInfoModal({
         [placeNameValidator, name],
         [addressValidator, address],
       ])
-    }
-    if (nodeType === 'group') {
-      return allValid([[groupNameValidator, name]])
     }
     return true
   })()
@@ -188,13 +171,6 @@ export function NodeInfoModal({
     }
   }, [nodeId, sizeNodeType, nodeWidth, nodeHeight])
 
-  useEffect(() => {
-    if (isGroup) {
-      setGroupW(clampGroupDimension(nodeWidth, GROUP_NODE_DEFAULT_SIZE.width))
-      setGroupH(clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height))
-    }
-  }, [nodeId, isGroup, nodeWidth, nodeHeight])
-
   const handleAvatarFilePicked = (file: File) => {
     if (!isAllowedPhotoType(file)) {
       setError(`Only ${PHOTO_TYPE_LABEL} photos are supported`)
@@ -203,37 +179,6 @@ export function NodeInfoModal({
     setError(null)
     setPendingPhotoRemoval(false)
     setPhotoFile(file)
-  }
-
-  const handleSaveGroup = async (e: SubmitEvent) => {
-    e.preventDefault()
-    if (!isGroup) return
-    if (!formValid) {
-      setError(groupNameValidator.validate(name) ?? 'Please fix the highlighted fields.')
-      return
-    }
-
-    setError(null)
-    setIsSaving(true)
-    try {
-      await upsertNode(
-        userId,
-        nodeId,
-        {
-          type: 'group',
-          name,
-          width: clampGroupDimension(groupW, GROUP_NODE_DEFAULT_SIZE.width),
-          height: clampGroupDimension(groupH, GROUP_NODE_DEFAULT_SIZE.height),
-        },
-        GRAPH_IDS.context,
-      )
-      onSuccess()
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save group')
-    } finally {
-      setIsSaving(false)
-    }
   }
 
   const handleSave = async (e: SubmitEvent) => {
@@ -364,15 +309,6 @@ export function NodeInfoModal({
     : undefined
   const fallbackInitials = getInitialsForAvatar(name || nodeName)
 
-  const initialGroupW = useMemo(
-    () => clampGroupDimension(nodeWidth, GROUP_NODE_DEFAULT_SIZE.width),
-    [nodeWidth],
-  )
-  const initialGroupH = useMemo(
-    () => clampGroupDimension(nodeHeight, GROUP_NODE_DEFAULT_SIZE.height),
-    [nodeHeight],
-  )
-
   const initialRingTier: RingTier | null = nodeRingTier ?? null
   const hasUnsavedChanges = (() => {
     if (nodeType === 'person') {
@@ -393,13 +329,6 @@ export function NodeInfoModal({
         ringTier !== initialRingTier ||
         photoFile != null ||
         pendingPhotoRemoval
-      )
-    }
-    if (nodeType === 'group') {
-      return (
-        name !== nodeName ||
-        groupW !== initialGroupW ||
-        groupH !== initialGroupH
       )
     }
     return false
@@ -478,9 +407,7 @@ export function NodeInfoModal({
       ? 'person'
       : nodeType === 'place'
         ? 'place'
-        : nodeType === 'group'
-          ? 'group'
-          : 'neutral'
+        : 'neutral'
 
   const connectedSections = (nodeType === 'person' || nodeType === 'place') ? (
     <>
@@ -533,7 +460,7 @@ export function NodeInfoModal({
         <InlineEditableTitle
           value={name}
           onChange={setName}
-          placeholder={isGroup ? 'Untitled group' : 'Untitled'}
+          placeholder="Untitled"
           ariaLabel="Edit name"
           disabled={busy}
           validator={nameValidator ?? undefined}
@@ -559,42 +486,6 @@ export function NodeInfoModal({
         avatarSlot,
       }}
     >
-      {isGroup && (
-        <form onSubmit={handleSaveGroup} className={clsx('form-stack', styles.editForm)}>
-          <div className={styles.dimensionsGrid}>
-            <label className="field">
-              <span>Width (px)</span>
-              <input
-                type="number"
-                min={GROUP_DIMENSION_BOUNDS.min}
-                max={GROUP_DIMENSION_BOUNDS.max}
-                step={10}
-                required
-                value={groupW}
-                onChange={(e) => setGroupW(Number(e.target.value))}
-              />
-            </label>
-            <label className="field">
-              <span>Height (px)</span>
-              <input
-                type="number"
-                min={GROUP_DIMENSION_BOUNDS.min}
-                max={GROUP_DIMENSION_BOUNDS.max}
-                step={10}
-                required
-                value={groupH}
-                onChange={(e) => setGroupH(Number(e.target.value))}
-              />
-            </label>
-          </div>
-          <p className={styles.helpText}>
-            {`Frame size is clamped between ${GROUP_DIMENSION_BOUNDS.min} and ${GROUP_DIMENSION_BOUNDS.max} px on save.`}
-          </p>
-          <div className={styles.flexSpacer} />
-          <SaveCornerButton visible={hasUnsavedChanges && formValid} busy={isSaving} />
-        </form>
-      )}
-
       {nodeType === 'person' && (
         <form onSubmit={handleSave} className={clsx('form-stack', styles.editForm)}>
           <div className={styles.fieldList}>
@@ -663,10 +554,6 @@ export function NodeInfoModal({
           />
         </form>
       )}
-
-      {isGroup && error ? (
-        <p className={clsx('text-error', formStyles.errorText)}>{error}</p>
-      ) : null}
 
       <TrashCornerButton
         onConfirm={handleDelete}

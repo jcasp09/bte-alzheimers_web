@@ -73,7 +73,6 @@ export function collectConnectedNodeIds(memories: MemoryDoc[]): Set<string> {
  *  - Connected people/places appear at full opacity, at their saved positions.
  *  - Unconnected people/places appear faded (still draggable=false to discourage
  *    accidental moves while in this layer).
- *  - Groups are excluded — memories only attach to people/places.
  *  - Memories are added at spiral positions. */
 export function buildMemoryLayerNodes(
   memories: MemoryDoc[],

@@ -111,12 +111,6 @@
   border-color: var(--color-node-place-border);
 }
 
-.dockIconGroup {
-  background-color: var(--color-accent-soft);
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-}
-
 .dockIconMemory {
   background-color: var(--color-node-memory-soft);
   color: var(--color-node-memory-text);

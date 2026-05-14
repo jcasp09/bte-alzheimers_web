@@ -17,9 +17,7 @@ import { saveNodePositions } from '../../graph/data/nodes'
 import { saveGraphViewport } from '../../graph/data/viewport'
 import { GRAPH_IDS } from '../../graph/model/types'
 import type { PickableNode } from '../../graph/model/types'
-import { GROUP_NODE_DEFAULT_SIZE } from '../../graph/model/dimensions'
 import { coerceRingTier, defaultVisibleRings, inferRingTier, type RingTier } from '../../graph/model/rings'
-import { applyReparentOnDragStop } from '../../graph/model/reparent'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../../graph/hooks/useDeferredEdgePersistence'
 import {
   SYNTH_EDGE_PREFIX,
@@ -31,7 +29,6 @@ import { MemoryTimeline } from '../../memories/components/MemoryTimeline'
 import timelineStyles from '../../memories/components/MemoryTimeline.module.css'
 import { AddNodePanel } from '../../graph/components/modals/AddNodeModal.tsx'
 import { AddConnectionModal } from '../../graph/components/modals/AddConnectionModal.tsx'
-import { AddGroupModal } from '../../graph/components/modals/AddGroupModal.tsx'
 import { AddMemoryModal } from '../../graph/components/modals/AddMemoryModal.tsx'
 import { NodeInfoModal } from '../../graph/components/modals/NodeInfoModal.tsx'
 import { EdgeInfoModal } from '../../graph/components/modals/EdgeInfoModal.tsx'
@@ -39,12 +36,10 @@ import { SelfNodeInfoModal } from '../../graph/components/modals/SelfNodeInfoMod
 import { MemoryInfoModal } from '../../memories/components/MemoryInfoModal.tsx'
 import { useGraphData } from './hooks/useGraphData'
 import { useLayerState } from './hooks/useLayerState'
-import { useGroupPlacement } from './hooks/useGroupPlacement'
 import { useDisplayElements } from './hooks/useDisplayElements'
 import { useNodeSearch } from './hooks/useNodeSearch'
 import { useGraphSidePanel } from './hooks/useGraphSidePanel'
 import { LayerSwitcher } from './components/LayerSwitcher'
-import { GroupPlacementHint } from './components/GroupPlacementHint'
 import { SyncErrorBanner } from './components/SyncErrorBanner'
 import { ErrorToast } from '../../shared/ui/ErrorToast'
 import { GraphSearch } from './components/GraphSearch'
@@ -73,14 +68,6 @@ function Graph() {
     selectedIds: ReadonlySet<string>
     onToggle: (nodeId: string) => void
   } | null>(null)
-  const {
-    addGroupPlacement,
-    addGroupPlacementRef,
-    setAddGroupPlacement,
-    pendingGroupRect,
-    setPendingGroupRect,
-    handlePaneFlowClick,
-  } = useGroupPlacement()
   const {
     openPanel,
     selectedNode,
@@ -121,8 +108,6 @@ function Graph() {
   // Done synchronously alongside setCurrentLayer so we don’t setState in an effect.
   function changeLayer(next: Layer) {
     closeSidePanel()
-    setPendingGroupRect(null)
-    setAddGroupPlacement({ status: 'idle' })
     setMemorySelection(null)
     setMemoryBrushRange(null)
     setSearchQuery('')
@@ -157,10 +142,9 @@ function Graph() {
   }
 
   const onNodeDragStop = (_e: MouseEvent, node: Node) => {
-    setNodes((nds) => {
-      const merged = nds.map((n) => (n.id === node.id ? { ...n, ...node, position: node.position } : n))
-      return applyReparentOnDragStop(merged, node.id)
-    })
+    setNodes((nds) =>
+      nds.map((n) => (n.id === node.id ? { ...n, ...node, position: node.position } : n)),
+    )
   }
 
   /** Pane-click handler: close any open side panel and clear memory-layer selection/brush. */
@@ -337,40 +321,19 @@ function Graph() {
   }, [selectedNode, edges, nodes, memories])
 
   const handleDropAtFlowPosition = (kind: string, point: XY) => {
-    if (addGroupPlacementRef.current.status === 'picking') {
-      setAddGroupPlacement({ status: 'idle' })
-    }
-
-    if (kind === 'group') {
-      const w = GROUP_NODE_DEFAULT_SIZE.width
-      const h = GROUP_NODE_DEFAULT_SIZE.height
-      closeSidePanel()
-      setPendingGroupRect({
-        x: point.x - w / 2,
-        y: point.y - h / 2,
-        width: w,
-        height: h,
-      })
-      return
-    }
-
     if (kind === 'person' || kind === 'place') {
-      setPendingGroupRect(null)
       openAddPanel(kind === 'person' ? 'addPerson' : 'addPlace', point)
       return
     }
 
     if (kind === 'memory') {
       // Memories don't have stored positions
-      setPendingGroupRect(null)
       openAddPanel('addMemory')
     }
   }
 
   const handleNodeClick = (_: MouseEvent, node: Node) => {
     if (node.type === 'anchor') return
-    if (addGroupPlacementRef.current.status === 'picking')
-      return
     if (canvasLinkMode) {
       if (typeof node.type === 'string' && canvasLinkMode.eligibleTypes.has(node.type)) {
         canvasLinkMode.onToggle(node.id)
@@ -393,7 +356,6 @@ function Graph() {
         setMemorySelection({ kind: 'context', id: node.id })
         // fall through to open the existing NodeInfoModal below
       } else {
-        // Groups in memories layer are filtered out, but be defensive.
         return
       }
     }
@@ -406,8 +368,8 @@ function Graph() {
     const photoPath = typeof node.data.photoPath === 'string' ? node.data.photoPath : ''
     const photoUpdatedAt = typeof node.data.photoUpdatedAt === 'string' ? node.data.photoUpdatedAt : undefined
     const ringTier = typeof node.data.ringTier === 'number' && Number.isFinite(node.data.ringTier) ? node.data.ringTier : null
-    const w = node.type === 'group' ? node.width : node.data.width
-    const h = node.type === 'group' ? node.height : node.data.height
+    const w = node.data.width
+    const h = node.data.height
 
     openNodeInfo({
       id: node.id,
@@ -426,9 +388,6 @@ function Graph() {
   }
 
   const handleEdgeClick = (_: MouseEvent, edge: Edge) => {
-    if (addGroupPlacementRef.current.status === 'picking')
-      return
-
     // Memory-layer synth edges aren't backed by Firestore
     if (edge.id.startsWith(SYNTH_EDGE_PREFIX))
       return
@@ -538,7 +497,7 @@ function Graph() {
 
   const focusConnectedNode = (nodeId: string) => {
     const n = nodes.find((x) => x.id === nodeId)
-    if (!n || (n.type !== 'person' && n.type !== 'place' && n.type !== 'group')) return
+    if (!n || (n.type !== 'person' && n.type !== 'place')) return
     const data = n.data ?? {}
     const name = typeof data.name === 'string' ? data.name : ''
     const relationship = typeof data.relationship === 'string' ? data.relationship : ''
@@ -548,8 +507,8 @@ function Graph() {
     const photoPath = typeof data.photoPath === 'string' ? data.photoPath : ''
     const photoUpdatedAt = typeof data.photoUpdatedAt === 'string' ? data.photoUpdatedAt : undefined
     const ringTier = typeof data.ringTier === 'number' && Number.isFinite(data.ringTier) ? data.ringTier : null
-    const w = n.type === 'group' ? n.width : data.width
-    const h = n.type === 'group' ? n.height : data.height
+    const w = data.width
+    const h = data.height
     openNodeInfo({
       id: n.id,
       name,
@@ -595,15 +554,12 @@ function Graph() {
             onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
             onPaneFlowClick={
-              addGroupPlacement.status === 'picking'
-                ? handlePaneFlowClick
-                : canvasLinkMode
+              canvasLinkMode
+                ? handlePaneClick
+                : (isSidePanelOpen || (currentLayer === 'memories' && (memorySelection != null || memoryBrushRange != null)))
                   ? handlePaneClick
-                  : (isSidePanelOpen || (currentLayer === 'memories' && (memorySelection != null || memoryBrushRange != null)))
-                    ? handlePaneClick
                   : undefined
             }
-            groupPlacementPanMode={addGroupPlacement.status === 'picking'}
             defaultViewport={initialViewport}
             onNodeClick={handleNodeClick}
             onEdgeClick={handleEdgeClick}
@@ -619,7 +575,6 @@ function Graph() {
                 updatedNodes.map((n) => ({
                   id: n.id,
                   position: n.position,
-                  parentId: n.parentId ?? null,
                 })),
                 GRAPH_IDS.context,
               )
@@ -661,10 +616,6 @@ function Graph() {
             }
           />
         ) : null}
-
-        {currentLayer === 'relationships' && (
-          <GroupPlacementHint placement={addGroupPlacement} />
-        )}
 
         <SyncErrorBanner message={syncEdgeError} onDismiss={() => setSyncEdgeError(null)} />
 
@@ -713,15 +664,6 @@ function Graph() {
           togglePerson={() => togglePanel('addPerson')}
           togglePlace={() => togglePanel('addPlace')}
           toggleConnection={() => togglePanel('addConnection')}
-          groupPlacement={addGroupPlacement}
-          toggleGroupPlacement={() => {
-            if (addGroupPlacement.status === 'picking') {
-              setAddGroupPlacement({ status: 'idle' })
-              setPendingGroupRect(null)
-              return
-            }
-            setAddGroupPlacement({ status: 'picking', phase: 1 })
-          }}
         />
 
         {openPanel === 'addMemory' && (
@@ -848,21 +790,6 @@ function Graph() {
           />
         )}
       </div>
-
-      {pendingGroupRect && (
-        <AddGroupModal
-          userId={user.uid}
-          draftRect={pendingGroupRect}
-          onClose={() => {
-            setPendingGroupRect(null)
-            setAddGroupPlacement({ status: 'idle' })
-          }}
-          onSuccess={() => {
-            setPendingGroupRect(null)
-            void handleAddNodeSuccess()
-          }}
-        />
-      )}
     </section>
   )
 }

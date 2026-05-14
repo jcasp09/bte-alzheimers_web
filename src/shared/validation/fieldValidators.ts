@@ -44,7 +44,6 @@ const PHONE_PATTERN = /^\+?[\d\s().-]{7,25}$/
 
 export const PERSON_NAME_MAX = 80
 export const PLACE_NAME_MAX = 80
-export const GROUP_NAME_MAX = 60
 export const MEMORY_TITLE_MAX = 120
 export const MEMORY_DESCRIPTION_MAX = 2000
 export const RELATIONSHIP_MAX = 60
@@ -116,12 +115,6 @@ export const personNameValidator: FieldValidator = nameLike({
 export const placeNameValidator: FieldValidator = nameLike({
   label: 'Name',
   maxLength: PLACE_NAME_MAX,
-  required: true,
-})
-
-export const groupNameValidator: FieldValidator = freeText({
-  label: 'Group name',
-  maxLength: GROUP_NAME_MAX,
   required: true,
 })
 

@@ -11,8 +11,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase/firestore'
 import { removeMemoryReferencesToDeletedNode } from '../../memories/data/memories'
-import { GROUP_NODE_DEFAULT_SIZE } from '../model/dimensions'
-import { GRAPH_IDS, SELF_NODE_ID, type GraphId, type NodeDoc, type NodeType } from '../model/types'
+import { GRAPH_IDS, SELF_NODE_ID, type GraphId, type NodeDoc } from '../model/types'
 import {
   edgeDocRef,
   edgesCollection,
@@ -61,20 +60,10 @@ export type CreateTaskNodeData = {
   location?: string
 }
 
-export type CreateGroupNodeData = {
-  type: 'group'
-  name: string
-  width?: number
-  height?: number
-  /** When set (finite coords), the new group is created at this flow position instead of a random offset. */
-  position?: { x: number; y: number }
-}
-
 export type CreateNodeData =
   | CreatePersonNodeData
   | CreatePlaceNodeData
   | CreateTaskNodeData
-  | CreateGroupNodeData
 
 /** Random spread (in flow units) used for new-node placement when no position is given. */
 const RANDOM_PLACEMENT_SPREAD_PX = 80
@@ -95,11 +84,6 @@ export async function createNode(
     position = { x: p.x, y: p.y }
   }
   delete base.position
-
-  if (data.type === 'group') {
-    base.width = data.width ?? GROUP_NODE_DEFAULT_SIZE.width
-    base.height = data.height ?? GROUP_NODE_DEFAULT_SIZE.height
-  }
 
   const docRef = await addDoc(nodesCollection(uid, graphId), {
     ...base,
@@ -163,8 +147,6 @@ export async function getNodes(uid: string, graphId: GraphId = GRAPH_IDS.context
 export type NodeLayoutRow = {
   id: string
   position: { x: number; y: number }
-  /** Omit to leave unchanged; `null` removes parentId in Firestore. */
-  parentId?: string | null
 }
 
 /** Bulk position writer used after drag-end.
@@ -187,19 +169,12 @@ export async function saveNodePositions(
 
   const batch = writeBatch(db)
   toSave.forEach((node) => {
-    const patch: Record<string, unknown> = { position: node.position }
-    if (node.parentId === null) {
-      patch.parentId = deleteField()
-    } else if (typeof node.parentId === 'string') {
-      patch.parentId = node.parentId
-    }
-    batch.set(nodeDocRef(uid, graphId, node.id), patch, { merge: true })
+    batch.set(nodeDocRef(uid, graphId, node.id), { position: node.position }, { merge: true })
   })
   await batch.commit()
 }
 
-/** Delete a node and its incident edges. For groups, children are detached and
- *  reparented at absolute coords first so they don't snap to the canvas origin.
+/** Delete a node and its incident edges.
  *  Photo blob and memory back-references are best-effort cleaned up afterward. */
 export async function deleteNodeAndEdges(
   uid: string,
@@ -211,35 +186,7 @@ export async function deleteNodeAndEdges(
   const nodeSnap = await getDoc(nodeRef)
   const nodeData = (nodeSnap.exists() ? nodeSnap.data() : null) as {
     photoPath?: string
-    type?: NodeType
-    position?: { x: number; y: number }
   } | null
-
-  if (nodeData?.type === 'group' && nodeSnap.exists()) {
-    const parentPos = nodeData.position ?? { x: 0, y: 0 }
-    const childrenSnap = await getDocs(
-      query(nodesCollection(uid, graphId), where('parentId', '==', nodeId)),
-    )
-    if (!childrenSnap.empty) {
-      const detachBatch = writeBatch(db)
-      childrenSnap.forEach((childDoc) => {
-        const rel = (childDoc.data().position as { x: number; y: number } | undefined) ?? {
-          x: 0,
-          y: 0,
-        }
-        const abs = { x: parentPos.x + rel.x, y: parentPos.y + rel.y }
-        detachBatch.set(
-          childDoc.ref,
-          {
-            parentId: deleteField(),
-            position: abs,
-          },
-          { merge: true },
-        )
-      })
-      await detachBatch.commit()
-    }
-  }
 
   await deleteDoc(nodeRef)
 

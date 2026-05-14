@@ -39,7 +39,7 @@ export function useNodeSearch(
         }
       }
     } else {
-      // Relationships layer searches people and places (groups excluded).
+      // Relationships layer searches people and places.
       for (const n of nodes) {
         if (n.type !== 'person' && n.type !== 'place') continue
         const name = typeof n.data?.name === 'string' ? n.data.name : ''

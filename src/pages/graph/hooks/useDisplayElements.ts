@@ -135,7 +135,7 @@ export function useDisplayElements(input: Inputs) {
     }
     const filtered = nodes.map((n) => {
       const t = n.type
-      if (t !== 'self' && t !== 'group') {
+      if (t !== 'self') {
         const tier = ringAssignments.get(n.id)
         if (tier != null && !visibleRings.has(tier)) {
           return { ...n, hidden: true }

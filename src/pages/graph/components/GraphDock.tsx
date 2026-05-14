@@ -3,18 +3,15 @@ import clsx from 'clsx'
 import {
   DOCK_NODE_DND_TYPE,
 } from '../../../graph/model/flowConstants'
-import type { AddGroupPlacement } from '../hooks/useGroupPlacement'
 import styles from '../Graph.module.css'
 
-type DockKind = 'person' | 'place' | 'group' | 'memory'
+type DockKind = 'person' | 'place' | 'memory'
 
 type Props = {
   openPanel: 'addPerson' | 'addPlace' | 'addConnection' | 'addMemory' | null
   togglePerson: () => void
   togglePlace: () => void
   toggleConnection: () => void
-  groupPlacement: AddGroupPlacement
-  toggleGroupPlacement: () => void
 }
 
 function dockDragStart(kind: DockKind) {
@@ -24,16 +21,13 @@ function dockDragStart(kind: DockKind) {
   }
 }
 
-/** Bottom-of-canvas dock with the four node-creation actions. */
+/** Bottom-of-canvas dock with the node-creation actions. */
 export function GraphDock({
   openPanel,
   togglePerson,
   togglePlace,
   toggleConnection,
-  groupPlacement,
-  toggleGroupPlacement,
 }: Props) {
-  const groupActive = groupPlacement.status === 'picking'
   return (
     <div className={styles.dock} role="toolbar" aria-label="Graph actions">
       <button
@@ -58,18 +52,6 @@ export function GraphDock({
       >
         <span className={clsx(styles.dockIcon, styles.dockIconPlace)} aria-hidden="true">+</span>
         <span className={styles.dockLabel}>Place</span>
-      </button>
-
-      <button
-        type="button"
-        draggable
-        onDragStart={dockDragStart('group')}
-        onClick={toggleGroupPlacement}
-        aria-label={groupActive ? 'Cancel group placement' : 'Add a group. Click to draw a region, or drag onto the canvas to drop a default-sized group.'}
-        className={clsx(styles.dockItem, styles.dockItemDraggable, groupActive && styles.dockItemActive)}
-      >
-        <span className={clsx(styles.dockIcon, styles.dockIconGroup)} aria-hidden="true">+</span>
-        <span className={styles.dockLabel}>Group</span>
       </button>
 
       <span className={styles.dockDivider} aria-hidden="true" />

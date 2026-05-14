@@ -53,10 +53,8 @@ type DefaultFlowProps = {
   /** When provided with `edges`, the parent owns edge state (smooth deferred saves). */
   onEdgesChange?: OnEdgesChange
   onNodeDragStop?: (event: MouseEvent, node: Node) => void
-  /** Left-clicks on the empty pane, in flow coordinates (e.g. two-click group placement). */
+  /** Left-clicks on the empty pane, in flow coordinates. */
   onPaneFlowClick?: (point: XY) => void
-  /** When true, left-drag does not pan so pane clicks stay precise; middle/right still pan. */
-  groupPlacementPanMode?: boolean
   onSavePositions?: (nodes: Node[]) => void
   onSaveViewport?: (viewport: Viewport) => void
   defaultViewport?: Viewport
@@ -102,7 +100,6 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
   onEdgesChange: onEdgesChangeFromParent,
   onNodeDragStop,
   onPaneFlowClick,
-  groupPlacementPanMode,
   onSavePositions,
   onSaveViewport,
   defaultViewport,
@@ -138,7 +135,6 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
   const gridColor = useThemeColor('--color-grid-dot')
   const personColor = useThemeColor('--color-node-person-border')
   const placeColor = useThemeColor('--color-node-place-border')
-  const groupColor = useThemeColor('--color-border-strong')
   const memoryColor = useThemeColor('--color-node-memory-border')
   const fallbackColor = useThemeColor('--color-text-muted')
 
@@ -146,10 +142,9 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
     if (node.type === 'anchor' || node.type === 'ringGuide') return 'transparent'
     if (node.type === 'person') return personColor
     if (node.type === 'place') return placeColor
-    if (node.type === 'group') return groupColor
     if (node.type === 'memory') return memoryColor
     return fallbackColor
-  }, [personColor, placeColor, groupColor, memoryColor, fallbackColor])
+  }, [personColor, placeColor, memoryColor, fallbackColor])
 
   const flowWidth = useStore((s) => s.width)
   const flowHeight = useStore((s) => s.height)
@@ -276,7 +271,6 @@ const FlowCanvas = forwardRef<DefaultFlowHandle, DefaultFlowProps>(function Flow
       onPaneClick={onPaneFlowClick ? handlePaneClick : undefined}
       onDragOver={onDropAtFlowPosition ? handleDragOver : undefined}
       onDrop={onDropAtFlowPosition ? handleDrop : undefined}
-      panOnDrag={groupPlacementPanMode ? [1, 2] : true}
       translateExtent={panExtent ?? canvasExtent}
       nodeExtent={canvasExtent}
       nodeTypes={nodeTypes}

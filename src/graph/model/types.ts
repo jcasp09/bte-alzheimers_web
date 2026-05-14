@@ -4,7 +4,7 @@ export type GraphId = 'context' | 'tasks'
 
 export const GRAPH_IDS = { context: 'context', tasks: 'tasks' } as const
 
-export type NodeType = 'person' | 'place' | 'task' | 'group' | 'self'
+export type NodeType = 'person' | 'place' | 'task' | 'self'
 
 export const SELF_NODE_ID = '__self'
 
@@ -21,8 +21,6 @@ export type NodeDoc = {
   type: NodeType
   name: string
   position?: { x: number; y: number }
-  /** When set, this node is laid out inside the parent group (context graph). */
-  parentId?: string
   width?: number
   height?: number
   relationship?: string

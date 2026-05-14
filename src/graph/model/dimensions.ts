@@ -1,17 +1,11 @@
 // Default UI/render size for nodes
 export const PERSON_NODE_DEFAULT_SIZE = { width: 220, height: 100 } as const
 export const PLACE_NODE_DEFAULT_SIZE = { width: 120, height: 100 } as const
-export const GROUP_NODE_DEFAULT_SIZE = { width: 400, height: 300 } as const
 export const SELF_NODE_DEFAULT_SIZE = { width: 264, height: 120 } as const
-
-const GROUP_MAX_DIMENSION = 2000
 
 // Node size multipliers
 const NODE_SIZE_RATIO_BOUNDS = { min: 0.5, max: 2.5 } as const
 const NODE_SIZE_STEP_FACTOR = 1.1
-
-export const GROUP_DIMENSION_BOUNDS = { min: 200, max: GROUP_MAX_DIMENSION } as const
-export const GROUP_DRAW_BOUNDS = { minW: 80, minH: 60, max: GROUP_MAX_DIMENSION } as const
 
 type ResizableNodeType = 'person' | 'place'
 
@@ -82,10 +76,4 @@ export function safeNodeDimensions(
   const w = typeof width === 'number' && Number.isFinite(width) ? width : d.width
   const h = typeof height === 'number' && Number.isFinite(height) ? height : d.height
   return clampNodeDimensions(nodeType, w, h)
-}
-
-/** Clamp an arbitrary value (possibly NaN/non-number) to GROUP_DIMENSION_BOUNDS, with a fallback. */
-export function clampGroupDimension(value: unknown, fallback: number): number {
-  const v = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
-  return Math.min(GROUP_DIMENSION_BOUNDS.max, Math.max(GROUP_DIMENSION_BOUNDS.min, v))
 }
