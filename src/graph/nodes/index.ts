@@ -5,7 +5,8 @@ import { PersonNode } from './PersonNode'
 import { PlaceNode } from './PlaceNode'
 import { SelfNode } from './SelfNode'
 import { RingGuideNode } from './RingGuideNode'
-import { RING_GUIDE_NODE_TYPE } from '../model/ringLayout'
+import { MemoryBubbleNode } from './MemoryBubbleNode'
+import { MEMORY_BUBBLE_NODE_TYPE, RING_GUIDE_NODE_TYPE } from '../model/ringLayout'
 
 export const NODE_TYPE = { PERSON: 'person', PLACE: 'place', ANCHOR: 'anchor', MEMORY: 'memory', SELF: 'self' } as const
 
@@ -16,4 +17,5 @@ export const nodeTypes = {
   [NODE_TYPE.MEMORY]: memo(MemoryNode),
   [NODE_TYPE.SELF]: memo(SelfNode),
   [RING_GUIDE_NODE_TYPE]: memo(RingGuideNode),
+  [MEMORY_BUBBLE_NODE_TYPE]: memo(MemoryBubbleNode),
 }

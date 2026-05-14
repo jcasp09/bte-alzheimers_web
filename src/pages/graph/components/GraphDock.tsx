@@ -12,6 +12,7 @@ type Props = {
   togglePerson: () => void
   togglePlace: () => void
   toggleConnection: () => void
+  toggleMemory: () => void
 }
 
 function dockDragStart(kind: DockKind) {
@@ -27,6 +28,7 @@ export function GraphDock({
   togglePerson,
   togglePlace,
   toggleConnection,
+  toggleMemory,
 }: Props) {
   return (
     <div className={styles.dock} role="toolbar" aria-label="Graph actions">
@@ -52,6 +54,18 @@ export function GraphDock({
       >
         <span className={clsx(styles.dockIcon, styles.dockIconPlace)} aria-hidden="true">+</span>
         <span className={styles.dockLabel}>Place</span>
+      </button>
+
+      <button
+        type="button"
+        draggable
+        onDragStart={dockDragStart('memory')}
+        onClick={toggleMemory}
+        aria-label="Add a memory. Click to open the form, or drag onto the canvas."
+        className={clsx(styles.dockItem, styles.dockItemDraggable, openPanel === 'addMemory' && styles.dockItemActive)}
+      >
+        <span className={clsx(styles.dockIcon, styles.dockIconMemory)} aria-hidden="true">+</span>
+        <span className={styles.dockLabel}>Memory</span>
       </button>
 
       <span className={styles.dockDivider} aria-hidden="true" />

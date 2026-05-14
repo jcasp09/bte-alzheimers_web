@@ -10,11 +10,11 @@ import {
 } from './rings'
 
 export const RING_RADII_BASE: Readonly<Record<RingTier, number>> = {
-  1: 360,
-  2: 680,
-  3: 1000,
-  4: 1320,
-  5: 1620,
+  1: 340,
+  2: 620,
+  3: 900,
+  4: 1180,
+  5: 1440,
 } as const
 
 const RING_NODE_WIDTH: Readonly<Record<RingTier, number>> = {
@@ -26,10 +26,10 @@ const RING_NODE_WIDTH: Readonly<Record<RingTier, number>> = {
 } as const
 
 /** Minimum angular gap between adjacent nodes on the same ring (flow units). */
-const MIN_NODE_GAP = 40
+const MIN_NODE_GAP = 100
 
 /** Visible whitespace (flow units) between the edges of nodes on adjacent rings. */
-const RING_BREATHING_ROOM = 110
+const RING_BREATHING_ROOM = 160
 
 const SELF_HALF_WIDTH = SELF_NODE_DEFAULT_SIZE.width / 2
 
@@ -70,6 +70,23 @@ export const RING_GUIDE_NODE_ID_PREFIX = '__ringGuide_'
 
 export function ringGuideNodeId(tier: RingTier): string {
   return `${RING_GUIDE_NODE_ID_PREFIX}${tier}`
+}
+
+export const MEMORY_BUBBLE_NODE_TYPE = 'memoryBubble'
+export const MEMORY_BUBBLE_NODE_ID_PREFIX = '__memBubble_'
+
+export function memoryBubbleNodeId(memoryId: string): string {
+  return `${MEMORY_BUBBLE_NODE_ID_PREFIX}${memoryId}`
+}
+
+export function isMemoryBubbleNodeId(id: string): boolean {
+  return id.startsWith(MEMORY_BUBBLE_NODE_ID_PREFIX)
+}
+
+/** Strip the synthetic prefix to recover the underlying memory ID. */
+export function memoryIdFromBubbleNodeId(id: string): string | null {
+  if (!isMemoryBubbleNodeId(id)) return null
+  return id.slice(MEMORY_BUBBLE_NODE_ID_PREFIX.length)
 }
 
 function phaseForTier(tier: RingTier): number {
@@ -226,6 +243,104 @@ export function buildRingGuideNodes(
       deletable: false,
       focusable: false,
       style: { pointerEvents: 'none' },
+    })
+  }
+  return out
+}
+
+export type MemoryAnchorInput = {
+  id: string
+  date: string
+  title: string
+  photoPath?: string
+  linkedIds: ReadonlyArray<string>
+}
+
+function bubbleAngleForId(id: string): number {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return (h / 0x100000000) * Math.PI * 2
+}
+
+const BUBBLE_SIZE = 64
+const BUBBLE_GAP = 20
+
+function pickAnchor(
+  mem: MemoryAnchorInput,
+  nodeRingTier: ReadonlyMap<string, RingTier>,
+): string {
+  let anchorId: string | null = null
+  let anchorTier = Number.POSITIVE_INFINITY
+  for (const id of mem.linkedIds) {
+    const tier = nodeRingTier.get(id)
+    if (tier == null) continue
+    if (tier < anchorTier || (tier === anchorTier && anchorId != null && id < anchorId)) {
+      anchorTier = tier
+      anchorId = id
+    }
+  }
+  return anchorId ?? '__self'
+}
+
+export type AnchorBox = {
+  position: { x: number; y: number }
+  width: number
+  height: number
+}
+
+export function buildMemoryBubbleNodes(
+  memories: ReadonlyArray<MemoryAnchorInput>,
+  anchorBoxes: ReadonlyMap<string, AnchorBox>,
+  nodeRingTier: ReadonlyMap<string, RingTier>,
+): Node[] {
+  const byAnchor = new Map<string, MemoryAnchorInput[]>()
+  for (const mem of memories) {
+    const anchorId = pickAnchor(mem, nodeRingTier)
+    let bucket = byAnchor.get(anchorId)
+    if (!bucket) {
+      bucket = []
+      byAnchor.set(anchorId, bucket)
+    }
+    bucket.push(mem)
+  }
+
+  const out: Node[] = []
+  for (const [anchorId, mems] of byAnchor) {
+    const box = anchorBoxes.get(anchorId)
+    if (!box) continue
+    const ax = box.position.x + box.width / 2
+    const ay = box.position.y + box.height / 2
+    const anchorHalf = Math.max(box.width, box.height) / 2
+    const offset = anchorHalf + BUBBLE_SIZE / 2 + BUBBLE_GAP
+    mems.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    const startAngle = bubbleAngleForId(anchorId)
+    const step = (2 * Math.PI) / mems.length
+    mems.forEach((mem, i) => {
+      const angle = startAngle + i * step
+      const cx = ax + offset * Math.cos(angle)
+      const cy = ay + offset * Math.sin(angle)
+      out.push({
+        id: memoryBubbleNodeId(mem.id),
+        type: MEMORY_BUBBLE_NODE_TYPE,
+        position: { x: cx - BUBBLE_SIZE / 2, y: cy - BUBBLE_SIZE / 2 },
+        width: BUBBLE_SIZE,
+        height: BUBBLE_SIZE,
+        zIndex: 5,
+        data: {
+          memoryId: mem.id,
+          title: mem.title,
+          date: mem.date,
+          photoPath: mem.photoPath,
+        },
+        draggable: false,
+        selectable: true,
+        connectable: false,
+        deletable: false,
+        focusable: true,
+      })
     })
   }
   return out

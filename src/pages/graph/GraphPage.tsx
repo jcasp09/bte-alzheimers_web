@@ -18,6 +18,7 @@ import { saveGraphViewport } from '../../graph/data/viewport'
 import { GRAPH_IDS } from '../../graph/model/types'
 import type { PickableNode } from '../../graph/model/types'
 import { coerceRingTier, defaultVisibleRings, inferRingTier, type RingTier } from '../../graph/model/rings'
+import { memoryIdFromBubbleNodeId } from '../../graph/model/ringLayout'
 import { isLocalPendingEdgeId, useDeferredEdgePersistence } from '../../graph/hooks/useDeferredEdgePersistence'
 import {
   SYNTH_EDGE_PREFIX,
@@ -35,11 +36,9 @@ import { EdgeInfoModal } from '../../graph/components/modals/EdgeInfoModal.tsx'
 import { SelfNodeInfoModal } from '../../graph/components/modals/SelfNodeInfoModal.tsx'
 import { MemoryInfoModal } from '../../memories/components/MemoryInfoModal.tsx'
 import { useGraphData } from './hooks/useGraphData'
-import { useLayerState } from './hooks/useLayerState'
 import { useDisplayElements } from './hooks/useDisplayElements'
 import { useNodeSearch } from './hooks/useNodeSearch'
 import { useGraphSidePanel } from './hooks/useGraphSidePanel'
-import { LayerSwitcher } from './components/LayerSwitcher'
 import { SyncErrorBanner } from './components/SyncErrorBanner'
 import { ErrorToast } from '../../shared/ui/ErrorToast'
 import { GraphSearch } from './components/GraphSearch'
@@ -85,9 +84,11 @@ function Graph() {
     togglePanel,
   } = useGraphSidePanel()
   const flowRef = useRef<DefaultFlowHandle>(null)
-  const { currentLayer, setCurrentLayer } = useLayerState()
+  const currentLayer = 'relationships' as Layer
   const [visibleRings, setVisibleRings] = useState<Set<RingTier>>(() => defaultVisibleRings())
   const [showAllEdges, setShowAllEdges] = useState(false)
+  const [memoryLensOn, setMemoryLensOn] = useState(false)
+  const [memoryLensRange, setMemoryLensRange] = useState<MemoryBrushRange | null>(null)
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState<boolean>(() =>
     readSidebarCollapsedPref(),
   )
@@ -103,16 +104,6 @@ function Graph() {
     searchInputRef,
     searchResults,
   } = useNodeSearch(nodes, memories, currentLayer)
-
-  // Switching layers closes any open side panel and clears search/selection.
-  // Done synchronously alongside setCurrentLayer so we don’t setState in an effect.
-  function changeLayer(next: Layer) {
-    closeSidePanel()
-    setMemorySelection(null)
-    setMemoryBrushRange(null)
-    setSearchQuery('')
-    setCurrentLayer(next)
-  }
 
   // Drop changes that target IDs the parent doesn't own.
   const onEdgesChange: OnEdgesChange = (changes) => {
@@ -213,6 +204,7 @@ function Graph() {
     nodes, edges, memories,
     currentLayer, visibleRings,
     showAllEdges,
+    memoryLensOn, memoryLensRange,
     memorySelection, memoryBrushRange,
     relationshipSelectedNodeId: currentLayer === 'memories' ? null : (selectedNode?.id ?? null),
     canvasLinkMode: linkModeForDisplay,
@@ -343,6 +335,15 @@ function Graph() {
 
     if (node.type === 'self') {
       openSelfInfo()
+      return
+    }
+
+    if (node.type === 'memoryBubble') {
+      const memoryId = memoryIdFromBubbleNodeId(node.id)
+      if (memoryId) {
+        openMemoryInfo(memoryId)
+        setMemorySelection({ kind: 'memory', id: memoryId })
+      }
       return
     }
 
@@ -527,9 +528,6 @@ function Graph() {
   }
 
   const focusConnectedMemory = (memoryId: string) => {
-    if (currentLayer !== 'memories') {
-      changeLayer('memories')
-    }
     setMemorySelection({ kind: 'memory', id: memoryId })
     openMemoryInfo(memoryId)
     window.setTimeout(() => flowRef.current?.focusNode(memoryId), 0)
@@ -585,8 +583,6 @@ function Graph() {
           />
         </div>
 
-        <LayerSwitcher currentLayer={currentLayer} onChange={changeLayer} />
-
         {currentLayer === 'memories' ? (
           <MemoryTimeline
             memories={memories}
@@ -617,6 +613,15 @@ function Graph() {
           />
         ) : null}
 
+        {currentLayer === 'relationships' && memoryLensOn ? (
+          <MemoryTimeline
+            memories={memories}
+            onMemoryClick={(id) => openMemoryInfo(id)}
+            brushRange={memoryLensRange}
+            onBrushChange={setMemoryLensRange}
+          />
+        ) : null}
+
         <SyncErrorBanner message={syncEdgeError} onDismiss={() => setSyncEdgeError(null)} />
 
         <ErrorToast
@@ -633,6 +638,8 @@ function Graph() {
           setVisibleRings={setVisibleRings}
           showAllEdges={showAllEdges}
           setShowAllEdges={setShowAllEdges}
+          memoryLensOn={memoryLensOn}
+          setMemoryLensOn={setMemoryLensOn}
           minimapHostRef={minimapHostRef}
         />
 
@@ -659,12 +666,15 @@ function Graph() {
           }}
         />
 
-        <GraphDock
-          openPanel={openPanel}
-          togglePerson={() => togglePanel('addPerson')}
-          togglePlace={() => togglePanel('addPlace')}
-          toggleConnection={() => togglePanel('addConnection')}
-        />
+        {!(currentLayer === 'relationships' && memoryLensOn) && (
+          <GraphDock
+            openPanel={openPanel}
+            togglePerson={() => togglePanel('addPerson')}
+            togglePlace={() => togglePanel('addPlace')}
+            toggleConnection={() => togglePanel('addConnection')}
+            toggleMemory={() => togglePanel('addMemory')}
+          />
+        )}
 
         {openPanel === 'addMemory' && (
           <AddMemoryModal

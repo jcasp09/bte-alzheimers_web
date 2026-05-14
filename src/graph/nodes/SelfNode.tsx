@@ -14,10 +14,11 @@ export function SelfNode() {
 
   const w = SELF_NODE_DEFAULT_SIZE.width
   const h = SELF_NODE_DEFAULT_SIZE.height
-  const avatar = 92
-  const pad = 6
-  const gap = 12
-  const borderRadius = 14
+  const avatar = Math.round(h * 1.2) // slightly larger ratio than people, since self is the focal point
+  const avatarPokeOut = Math.round(avatar * 0.5)
+  const textPaddingLeft = Math.max(8, avatar - avatarPokeOut + 10)
+  const verticalPad = 8
+  const borderRadius = 16
   const fontSize = 16
   const subFont = 11
 
@@ -41,74 +42,75 @@ export function SelfNode() {
           boxShadow: '0 0 0 4px var(--color-accent-soft), 0 8px 22px rgba(var(--color-shadow-rgb), 0.18)',
           color: 'var(--color-node-person-text)',
           display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: 3,
           fontSize,
           textAlign: 'left',
-          padding: pad,
-          gap,
+          paddingTop: verticalPad,
+          paddingBottom: verticalPad,
+          paddingLeft: textPaddingLeft,
+          paddingRight: 12,
+          overflow: 'hidden',
+          minWidth: 0,
         }}
       >
-        <div
+        <span
           style={{
-            width: avatar,
-            height: avatar,
-            borderRadius: '9999px',
-            backgroundImage: photoURL ? `url(${photoURL})` : undefined,
-            backgroundColor: photoURL ? undefined : 'var(--color-accent-soft)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            border: '3px solid var(--color-accent)',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-accent)',
-            fontSize: Math.round(avatar * 0.4),
             fontWeight: 700,
-            userSelect: 'none',
-          }}
-          aria-label={`${displayName} (you) avatar`}
-        >
-          {photoURL ? null : getInitialsForAvatar(displayName) || 'You'}
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 3,
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
             overflow: 'hidden',
-            minWidth: 0,
-            flex: 1,
           }}
         >
-          <span
-            style={{
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              textOverflow: 'ellipsis',
-              overflow: 'hidden',
-            }}
-          >
-            {displayName}
-          </span>
-          <span
-            style={{
-              fontSize: subFont,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--color-accent)',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            You
-          </span>
-        </div>
+          {displayName}
+        </span>
+        <span
+          style={{
+            fontSize: subFont,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--color-accent)',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          You
+        </span>
       </div>
+
+      <div
+        style={{
+          position: 'absolute',
+          left: -avatarPokeOut,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: avatar,
+          height: avatar,
+          borderRadius: '50%',
+          backgroundImage: photoURL ? `url(${photoURL})` : undefined,
+          backgroundColor: photoURL ? undefined : 'var(--color-accent-soft)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          border: '3px solid var(--color-accent)',
+          boxShadow: '0 0 0 4px var(--color-accent-soft)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--color-accent)',
+          fontSize: Math.round(avatar * 0.4),
+          fontWeight: 700,
+          userSelect: 'none',
+          zIndex: 1,
+          boxSizing: 'border-box',
+        }}
+        aria-label={`${displayName} (you) avatar`}
+      >
+        {photoURL ? null : getInitialsForAvatar(displayName) || 'You'}
+      </div>
+
       <NodeEdgeHandles />
     </div>
   )

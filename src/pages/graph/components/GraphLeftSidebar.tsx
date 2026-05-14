@@ -11,6 +11,8 @@ type Props = {
   setVisibleRings: (updater: (prev: Set<RingTier>) => Set<RingTier>) => void
   showAllEdges: boolean
   setShowAllEdges: (next: boolean) => void
+  memoryLensOn: boolean
+  setMemoryLensOn: (next: boolean) => void
   minimapHostRef: Ref<HTMLDivElement>
 }
 
@@ -21,6 +23,8 @@ export function GraphLeftSidebar({
   setVisibleRings,
   showAllEdges,
   setShowAllEdges,
+  memoryLensOn,
+  setMemoryLensOn,
   minimapHostRef,
 }: Props) {
   // Mirror collapsed state to localStorage so it survives reloads.
@@ -146,6 +150,23 @@ export function GraphLeftSidebar({
               <span className={styles.filterDot} aria-hidden="true" />
               <span className={styles.filterLabel}>Show all</span>
               <span className={styles.filterStatus}>{showAllEdges ? 'On' : 'Off'}</span>
+            </button>
+          </section>
+
+          <section className={styles.section} aria-label="Memories">
+            <h3 className={styles.sectionHeading}>
+              <span>Memories</span>
+            </h3>
+            <button
+              type="button"
+              className={clsx(styles.filterRow, styles.memoryRow, !memoryLensOn && styles.filterRowOff)}
+              onClick={() => setMemoryLensOn(!memoryLensOn)}
+              aria-pressed={memoryLensOn}
+              title="When on, memory bubbles appear on the canvas anchored to their linked people and places. Use the date slider at the bottom to narrow which ones show."
+            >
+              <span className={styles.filterDot} aria-hidden="true" />
+              <span className={styles.filterLabel}>Memory lens</span>
+              <span className={styles.filterStatus}>{memoryLensOn ? 'On' : 'Off'}</span>
             </button>
           </section>
 

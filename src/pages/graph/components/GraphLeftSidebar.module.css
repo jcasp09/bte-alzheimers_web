@@ -194,6 +194,10 @@
   background-color: var(--color-node-place-border);
 }
 
+.memoryRow .filterDot {
+  background-color: var(--color-node-memory-border);
+}
+
 .filterLabel {
   flex: 1;
   min-width: 0;
